@@ -1,4 +1,10 @@
+import logging
+
+from django.utils.encoding import force_text
+from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
+
+logger = logging.getLogger('health-check')
 
 
 class HealthCheckStatusType(object):
@@ -6,46 +12,48 @@ class HealthCheckStatusType(object):
     working = 1
     unexpected_result = 2
 
-HEALTH_CHECK_STATUS_TYPE_TRANSLATOR = {
-    0: _("unavailable"),
-    1: _("working"),
-    2: _("unexpected result"),
-}
-
 
 class HealthCheckException(Exception):
-    pass
+    type = _("unknown error")
+
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return "%s: %s" % (self.type, self.message)
 
 
 class ServiceUnavailable(HealthCheckException):
-    message = HEALTH_CHECK_STATUS_TYPE_TRANSLATOR[0]
-    code = 0
+    type = _("unavailable")
 
 
 class ServiceReturnedUnexpectedResult(HealthCheckException):
-    message = HEALTH_CHECK_STATUS_TYPE_TRANSLATOR[2]
-    code = 2
+    type = _("unexpected result")
 
 
 class BaseHealthCheckBackend(object):
+    error = _("unknown error")
 
     def check_status(self):
         return None
 
-    @property
+    @cached_property
     def status(self):
-        if not getattr(self, "_status", False):
-            try:
-                setattr(self, "_status", self.check_status())
-            except (ServiceUnavailable, ServiceReturnedUnexpectedResult) as e:
-                setattr(self, "_status", e.code)
-
-        return self._status
+        try:
+            self.check_status()
+        except Exception as e:
+            logger.exception("Health check failed!")
+            self.error = e
+            return 0
+        else:
+            return 1
 
     def pretty_status(self):
-        return u"%s" % (HEALTH_CHECK_STATUS_TYPE_TRANSLATOR[self.status])
+        if self.status:
+            return _('working')
+        else:
+            return force_text(self.error)
 
     @classmethod
     def identifier(cls):
         return cls.__name__
-

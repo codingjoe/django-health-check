@@ -18,7 +18,7 @@ class CeleryHealthCheck(BaseHealthCheckBackend):
             now = datetime.now()
             while (now + timedelta(seconds=3)) > datetime.now():
                 if result.result == 8:
-                    return True
+                    return
                 sleep(0.5)
         except IOError:
             pass

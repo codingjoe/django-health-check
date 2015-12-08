@@ -17,10 +17,10 @@ class CeleryHealthCheck(BaseHealthCheckBackend):
             result = add.apply_async(args=[4, 4], expires=datetime.now() + timedelta(seconds=timeout))
             now = datetime.now()
             while (now + timedelta(seconds=3)) > datetime.now():
-                print "            checking...."
+                print("            checking....")
                 if result.ready():
                     result.forget()
-                    return True
+                    return
                 sleep(0.5)
         except IOError:
             pass

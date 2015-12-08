@@ -11,7 +11,6 @@ class DjangoDatabaseBackend(BaseHealthCheckBackend):
             obj.title = "newtest"
             obj.save()
             obj.delete()
-            return True
         except IntegrityError:
             raise ServiceReturnedUnexpectedResult("Integrity Error")
         except DatabaseError:

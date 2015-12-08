@@ -2,11 +2,14 @@
 
 from health_check.backends.base import BaseHealthCheckBackend
 
+
 class AlreadyRegistered(Exception):
     pass
 
+
 class NotRegistered(Exception):
     pass
+
 
 class HealthCheckPluginDirectory(object):
     """
@@ -18,7 +21,7 @@ class HealthCheckPluginDirectory(object):
     """
 
     def __init__(self):
-        self._registry = {} # model_class class -> admin_class instance
+        self._registry = {}  # model_class class -> admin_class instance
 
     def register(self, plugin, admin_class=None, **options):
         """
