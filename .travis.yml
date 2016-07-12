@@ -1,32 +1,41 @@
 language: python
 sudo: false
 cache:
-  - pip
+- pip
 python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
-  - pypy
+- '2.7'
+- '3.4'
+- '3.5'
+- pypy
 env:
   global:
-    - DJANGO_SETTINGS_MODULE="tests.testapp.settings"
+  - DJANGO_SETTINGS_MODULE="tests.testapp.settings"
   matrix:
-    - DJANGO="Django<1.9,>=1.8"
-    - DJANGO="Django<1.10,>=1.9"
-    - DJANGO="-e git+https://github.com/django/django.git@master#egg=Django"
+  - DJANGO="Django<1.9,>=1.8"
+  - DJANGO="Django<1.10,>=1.9"
+  - DJANGO="-e git+https://github.com/django/django.git@master#egg=Django"
 matrix:
   fast_finish: true
   allow_failures:
-    - env: DJANGO="-e git+https://github.com/django/django.git@master#egg=Django"
+  - env: DJANGO="-e git+https://github.com/django/django.git@master#egg=Django"
 install:
-  - pip install --upgrade pip
-  - pip install -r requirements-dev.txt
-  - pip install $DJANGO
-  - pip install --upgrade coveralls
+- pip install --upgrade pip
+- pip install -r requirements-dev.txt
+- pip install $DJANGO
+- pip install --upgrade coveralls
 script:
-  - isort --check-only --recursive --diff .
-  - flake8 --jobs=2 .
-  - pydocstyle --verbose --explain --source --count
-  - coverage run -m pytest
+- isort --check-only --recursive --diff .
+- flake8 --jobs=2 .
+- pydocstyle --verbose --explain --source --count
+- coverage run -m pytest
 after_success:
-  - coveralls
+- coveralls
+deploy:
+  provider: pypi
+  user: codingjoe
+  password:
+    secure: cQxSCUZnHNcZpqpoqN5NuWudA0Utxb8r4KT1TeRSWBExXreyHN0Wgu8+fdvMicw1pcQlyDaxjQvAws0cgEaYe4zpkqiB2BRAiuLVlmpmn1LgsPwb/IwgFld2xhYUXW1O1G6LgMESNuXSyq89URS8iAGN+kImP8m9I54gRrZRyr8=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: KristianOellegaard/django-health-check
