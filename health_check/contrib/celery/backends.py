@@ -1,13 +1,17 @@
 from celery.exceptions import TaskRevokedError, TimeoutError
 from django.conf import settings
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
+from health_check.deprecation import deprecated
 from health_check.exceptions import ServiceReturnedUnexpectedResult, ServiceUnavailable
 
 from .tasks import add
 
 
-class CeleryHealthCheck(BaseHealthCheckBackend):
+@deprecated(
+    "`CeleryHealthCheck` is deprecated: use `health_check.contrib.celery.Ping` (or the new view-based Celery ping check) instead. Action: remove legacy CeleryHealthCheck subclasses and configure `HealthCheckView` with the new Celery ping check in your `checks` list. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md)."
+)
+class CeleryHealthCheck(HealthCheck):
     def check_status(self):
         timeout = getattr(settings, "HEALTHCHECK_CELERY_TIMEOUT", 3)
         result_timeout = getattr(settings, "HEALTHCHECK_CELERY_RESULT_TIMEOUT", timeout)

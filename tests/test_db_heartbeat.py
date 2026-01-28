@@ -26,11 +26,11 @@ class TestDatabaseHeartBeatCheck:
         health_check = DatabaseHeartBeatCheck()
         health_check.check_status()
 
-    @patch("health_check.contrib.db_heartbeat.backends.connection")
+    @patch("health_check.contrib.db_heartbeat.backends.connections")
     def test_check_status__failure(self, mock_connection):
         mock_cursor = MagicMock()
         mock_cursor.fetchone.return_value = (1,)
-        mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_connection["default"].cursor.return_value.__enter__.return_value = mock_cursor
 
         health_check = DatabaseHeartBeatCheck()
         try:
@@ -38,9 +38,9 @@ class TestDatabaseHeartBeatCheck:
         except Exception as e:
             pytest.fail(f"check_status() raised an exception unexpectedly: {e}")
 
-    @patch("health_check.contrib.db_heartbeat.backends.connection")
+    @patch("health_check.contrib.db_heartbeat.backends.connections")
     def test_check_status_service_unavailable(self, mock_connection):
-        mock_connection.cursor.side_effect = Exception("Database error")
+        mock_connection["default"].cursor.side_effect = Exception("Database error")
 
         health_check = DatabaseHeartBeatCheck()
         with pytest.raises(ServiceUnavailable):

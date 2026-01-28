@@ -11,4 +11,4 @@ class HealthCheckConfig(AppConfig):
         from .backends import CacheBackend
 
         for backend in settings.CACHES:
-            plugin_dir.register(CacheBackend, backend=backend)
+            plugin_dir.register(CacheBackend, alias=backend)

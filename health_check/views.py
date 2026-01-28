@@ -1,11 +1,14 @@
 import re
+from functools import cached_property
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
+from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
+from health_check.deprecation import deprecated
 from health_check.mixins import CheckMixin
 
 
@@ -81,7 +84,9 @@ class MediaType:
 
 
 @method_decorator(transaction.non_atomic_requests, name="dispatch")
-class MainView(CheckMixin, TemplateView):
+class _MainView(CheckMixin, TemplateView):
+    """Deprecated: Use HealthCheckView instead."""
+
     template_name = "health_check/index.html"
 
     @method_decorator(never_cache)
@@ -117,10 +122,48 @@ class MainView(CheckMixin, TemplateView):
         return {
             **super().get_context_data(**kwargs),
             "plugins": self.filter_plugins(subset=subset).values(),
+            "errors": any(p.errors for p in self.filter_plugins(subset=subset).values()),
         }
 
     def render_to_response_json(self, plugins, status):
         return JsonResponse(
-            {str(plugin_identifier): str(p.pretty_status()) for plugin_identifier, p in plugins.items()},
+            {label: str(p.pretty_status()) for label, p in plugins.items()},
             status=status,
         )
+
+
+@deprecated(
+    "MainView is deprecated: use `HealthCheckView` instead (view-based API). Action: replace `MainView` usage with `HealthCheckView.as_view(checks=...)`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md)."
+)
+class MainView(_MainView):
+    """Deprecated: Use HealthCheckView instead."""
+
+    pass
+
+
+class HealthCheckView(_MainView):
+    """Perform health checks and return results in various formats."""
+
+    checks: list[str | tuple[str, dict]] = [
+        "health_check.Cache",
+        "health_check.Database",
+        "health_check.Disk",
+        "health_check.Mail",
+        "health_check.Memory",
+        "health_check.Storage",
+    ]
+
+    def get_plugins(self):
+        for check in self.checks:
+            try:
+                check, options = check
+            except ValueError:
+                options = {}
+            if isinstance(check, str):
+                check = import_string(check)
+            plugin_instance = check(**options)
+            yield repr(plugin_instance), plugin_instance
+
+    @cached_property
+    def plugins(self):
+        return dict(self.get_plugins())

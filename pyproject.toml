@@ -40,7 +40,13 @@ dynamic = [
 ]
 dependencies = [
   "Django>=4.2",
+  "psutil",
 ]
+
+[project.optional-dependencies]
+celery = ["celery>=5.0.0"]
+rabbitmq = ["kombu>=5.0.0"]
+redis = ["redis>=3.0.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
@@ -98,7 +104,6 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
 
 [tool.ruff.lint]
 select = [
@@ -112,10 +117,16 @@ select = [
     "UP", # pyupgrade
     "W", # pycodestyle warnings
 ]
-ignore = ["D1", "D203", "D212"]
+ignore = ["D1", "D203", "D212", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101", "S105", "PLR2004"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["measurement", "tests"]
+
+[tool.djlint]
+profile="django"
+indent=2
+max_line_length=120
+line_break_after_multiline_tag=true

@@ -25,15 +25,14 @@ anomalous behavior is detected.
 
 The following health checks are bundled with this project:
 
-- cache
-- database
-- storage
-- disk and memory utilization (via `psutil`)
-- AWS S3 storage
-- Celery task queue
-- Celery ping
+- caches
+- databases
+- disk and memory utilization
+- email servers
+- storages
+- Celery
 - RabbitMQ
-- Migrations
+- Redis
 
 Writing your own custom health checks is also very quick and easy.
 

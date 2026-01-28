@@ -3,40 +3,24 @@ from io import StringIO
 
 import pytest
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import BaseHealthCheck, HealthCheck
 from health_check.exceptions import HealthCheckException
 
 
 class TestBaseHealthCheckBackend:
     def test_run_check(self):
         with pytest.raises(NotImplementedError):
-            BaseHealthCheckBackend().run_check()
-
-    def test_identifier(self):
-        assert BaseHealthCheckBackend().identifier() == "BaseHealthCheckBackend"
-
-        class MyHeathCheck(BaseHealthCheckBackend):
-            pass
-
-        assert MyHeathCheck().identifier() == "MyHeathCheck"
-
-        class MyHeathCheck(BaseHealthCheckBackend):
-            foo = "bar"
-
-            def identifier(self):
-                return self.foo
-
-        assert MyHeathCheck().identifier() == "bar"
+            HealthCheck().run_check()
 
     def test_status(self):
-        ht = BaseHealthCheckBackend()
+        ht = HealthCheck()
         assert ht.status == 1
         ht.errors = [1]
         assert ht.status == 0
 
     def test_pretty_status(self):
-        ht = BaseHealthCheckBackend()
-        assert ht.pretty_status() == "working"
+        ht = HealthCheck()
+        assert ht.pretty_status() == "OK"
         ht.errors = ["foo"]
         assert ht.pretty_status() == "foo"
         ht.errors.append("bar")
@@ -45,23 +29,23 @@ class TestBaseHealthCheckBackend:
         assert ht.pretty_status() == "foo\nbar\n123"
 
     def test_add_error(self):
-        ht = BaseHealthCheckBackend()
+        ht = HealthCheck()
         e = HealthCheckException("foo")
         ht.add_error(e)
         assert ht.errors[0] is e
 
-        ht = BaseHealthCheckBackend()
+        ht = HealthCheck()
         ht.add_error("bar")
         assert isinstance(ht.errors[0], HealthCheckException)
         assert str(ht.errors[0]) == "unknown error: bar"
 
-        ht = BaseHealthCheckBackend()
+        ht = HealthCheck()
         ht.add_error(type)
         assert isinstance(ht.errors[0], HealthCheckException)
         assert str(ht.errors[0]) == "unknown error: unknown error"
 
     def test_add_error_cause(self):
-        ht = BaseHealthCheckBackend()
+        ht = HealthCheck()
         logger = logging.getLogger("health-check")
         with StringIO() as stream:
             stream_handler = logging.StreamHandler(stream)
@@ -94,3 +78,33 @@ class TestBaseHealthCheckBackend:
             assert "Traceback" not in log
             assert "Exception: bar" not in log
             logger.removeHandler(stream_handler)
+
+    def test_repr_and_identifier_deprecation(self):
+        class OldStyle(HealthCheck):
+            def identifier(self):
+                return "old"
+
+            def check_status(self):
+                pass
+
+        # Calling repr should warn that identifier is deprecated
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            r = repr(OldStyle())
+            assert any(isinstance(x.message, DeprecationWarning) for x in w)
+            assert "old" in r
+
+    def test_basehealthcheck_subclass_warning(self):
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            class Derived(BaseHealthCheck):
+                def check_status(self):
+                    pass
+
+            # subclassing should trigger a DeprecationWarning
+            assert any(isinstance(x.message, DeprecationWarning) for x in w)

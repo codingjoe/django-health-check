@@ -1,7 +1,9 @@
-from django.db import connection
+import dataclasses
+
+from django.db import connections
 from django.db.models import Expression
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 
@@ -15,10 +17,20 @@ class SelectOne(Expression):
         return "SELECT 1 FROM DUAL", []
 
 
-class DatabaseHeartBeatCheck(BaseHealthCheckBackend):
-    """Health check that runs a simple SELECT 1; query to test if the database connection is alive."""
+@dataclasses.dataclass
+class DatabaseHeartBeatCheck(HealthCheck):
+    """
+    Check database connectivity by executing a simple SELECT 1 query.
+
+    Args:
+        alias: The alias of the database connection to check.
+
+    """
+
+    alias: str = dataclasses.field(default="default")
 
     def check_status(self):
+        connection = connections[self.alias]
         try:
             result = None
             compiler = connection.ops.compiler("SQLCompiler")(SelectOne(), connection, None)

@@ -1,22 +1,29 @@
+import dataclasses
 import logging
 
 from amqp.exceptions import AccessRefused
 from django.conf import settings
 from kombu import Connection
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 logger = logging.getLogger(__name__)
 
 
-class RabbitMQHealthCheck(BaseHealthCheckBackend):
-    """Health check for RabbitMQ."""
+@dataclasses.dataclass
+class RabbitMQHealthCheck(HealthCheck):
+    """
+    Check RabbitMQ service by opening and closing a broker channel.
 
-    namespace = None
+    Args:
+        namespace: Optional namespace for the broker URL setting.
+
+    """
+
+    namespace: str = None
 
     def check_status(self):
-        """Check RabbitMQ service by opening and closing a broker channel."""
         logger.debug("Checking for a broker_url on django settings...")
 
         broker_url_setting_key = f"{self.namespace}_BROKER_URL" if self.namespace else "BROKER_URL"
