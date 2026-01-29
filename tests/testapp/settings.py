@@ -1,7 +1,10 @@
 import os.path
 import uuid
 
-from kombu import Queue
+try:
+    from kombu import Queue
+except Exception:  # pragma: no cover - optional dependency
+    Queue = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEBUG = True
@@ -13,7 +16,7 @@ DATABASES = {
     },
     "other": {  # 2nd database conneciton to ensure proper connection handling
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":backup:",
+        "NAME": ":backup",
     },
 }
 
@@ -62,10 +65,13 @@ SECRET_KEY = uuid.uuid4().hex
 
 USE_TZ = True
 
-CELERY_QUEUES = [
-    Queue("default"),
-    Queue("queue2"),
-]
+CELERY_QUEUES = []
+if Queue is not None:
+    CELERY_QUEUES += [
+        Queue("default"),
+        Queue("queue2"),
+    ]
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
-BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost/1")
+BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")

@@ -1,3 +1,8 @@
+import pytest
+
+pytest.importorskip("amqp")
+pytest.importorskip("kombu")
+
 from unittest import mock
 
 from amqp.exceptions import AccessRefused

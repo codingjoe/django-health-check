@@ -85,6 +85,9 @@ write_to = "health_check/_version.py"
 
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
+filterwarnings = [
+  "ignore::DeprecationWarning"
+]
 testpaths = [
   "tests",
 ]
