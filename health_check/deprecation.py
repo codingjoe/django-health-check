@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-import warnings
-
 try:
     from warnings import deprecated
 except ImportError:
     import functools
+    import warnings
 
     def deprecated(message: str, *, category: type[Warning] | None = DeprecationWarning, stacklevel: int = 1):
-        """
-        Fallback implementation of warnings.deprecated for Python < 3.13.
-
-        Mimics Python 3.13's behavior by deferring the deprecation warning until
-        the decorated class is instantiated or function is called, rather than
-        warning at decoration/import time.
-        """
-
         def _decorator(obj):
             obj.__deprecated__ = message
 
