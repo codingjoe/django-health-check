@@ -21,7 +21,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
       - run: uv run mkdocs build --strict
-  PyTest:
+  pytest:
+    name: pytest
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -52,3 +53,37 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}
+  pytest-contrib:
+    name: pytest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.13"
+        django-version:
+          - "5.2"
+        extra:
+          - "redis"
+          - "celery"
+          - "rabbitmq"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv run --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}-${{ matrix.extra }}
