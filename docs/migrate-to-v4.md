@@ -6,38 +6,40 @@ Upgrade (what to do)
 
 1. Remove these `health_check.*` sub‑apps from `INSTALLED_APPS` but keep `health_check`!
 
+1. Remove all `HEALTH_CHECK_*` settings from your settings file.
+
 1. Replace the URL include with the view and explicit `checks` list.
    Before:
 
-```python
-# urls.py
-path("ht/", include("health_check.urls"))
-```
+   ```python
+   # urls.py
+   path("ht/", include("health_check.urls"))
+   ```
 
-After (example):
+   After (example):
 
-```python
-# urls.py
-from health_check.views import HealthCheckView
+   ```python
+   # urls.py
+   from health_check.views import HealthCheckView
 
-path(
-    "ht/",
-    HealthCheckView.as_view(
-        checks=[
-            "health_check.Cache",
-            "health_check.Database",
-            "health_check.Disk",
-            "health_check.Mail",
-            "health_check.Memory",
-            "health_check.Storage",
-            # 3rd party checks
-            "health_check.contrib.celery.Ping",
-            "health_check.contrib.rabbitmq.RabbitMQ",
-            "health_check.contrib.redis.Redis",
-        ]
-    ),
-)
-```
+   path(
+       "ht/",
+       HealthCheckView.as_view(
+           checks=[
+               "health_check.Cache",
+               "health_check.Database",
+               "health_check.Disk",
+               "health_check.Mail",
+               "health_check.Memory",
+               "health_check.Storage",
+               # 3rd party checks
+               "health_check.contrib.celery.Ping",
+               "health_check.contrib.rabbitmq.RabbitMQ",
+               "health_check.contrib.redis.Redis",
+           ]
+       ),
+   )
+   ```
 
 ## Removals and Replacements
 
