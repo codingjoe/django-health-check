@@ -22,8 +22,12 @@ class RedisHealthCheck(HealthCheck):
 
     """
 
-    redis_url: str = dataclasses.field(default=getattr(settings, "REDIS_URL", "redis://localhost/1"), repr=False)
-    redis_url_options: dict[str, typing.Any] = getattr(settings, "HEALTHCHECK_REDIS_URL_OPTIONS", None)
+    redis_url: str = dataclasses.field(
+        default_factory=lambda: getattr(settings, "REDIS_URL", "redis://localhost/1"), repr=False
+    )
+    redis_url_options: dict[str, typing.Any] = dataclasses.field(
+        default_factory=lambda: getattr(settings, "HEALTHCHECK_REDIS_URL_OPTIONS", None)
+    )
 
     def check_status(self):
         logger.debug("Got %s as the redis_url. Connecting to redis...", self.redis_url)

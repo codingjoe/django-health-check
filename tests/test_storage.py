@@ -126,7 +126,7 @@ class TestHealthCheckStorage:
     """
 
     def test_get_storage(self):
-        """Test get_storage method returns None on the base class, but a Storage instance on default."""
+        """Test get_storage method returns a Storage instance."""
         base_storage = StorageHealthCheck()
         assert isinstance(base_storage.get_storage(), Storage)
 

@@ -48,7 +48,6 @@ class TestCommand:
         call_command("health_check", f"--subset={SUBSET_NAME_1}", stdout=stdout)
         stdout.seek(0)
         output = stdout.read()
-        print(output)
         assert "OK" in output
 
     def test_command_with_failed_check_subset(self):

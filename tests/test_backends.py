@@ -102,7 +102,7 @@ class TestBaseHealthCheckBackend:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            class Derived(BaseHealthCheck):
+            class Derived(BaseHealthCheck):  # noqa: F841
                 def check_status(self):
                     pass
 
