@@ -10,7 +10,7 @@ except ImportError:
     def deprecated(message: str, *, category: type[Warning] | None = DeprecationWarning, stacklevel: int = 1):
         """
         Fallback implementation of warnings.deprecated for Python < 3.13.
-        
+
         Mimics Python 3.13's behavior by deferring the deprecation warning until
         the decorated class is instantiated or function is called, rather than
         warning at decoration/import time.
