@@ -282,8 +282,6 @@ class TestMainView:
             "liveness-probe": ["SuccessTwoBackend"],
         }
 
-        print(SuccessOneBackend())
-
         response_startup_probe = client.get(self.url + "startup-probe/", {"format": "json"})
         assert response_startup_probe.status_code == 200, response_startup_probe.content.decode("utf-8")
         assert response_startup_probe["content-type"] == "application/json"

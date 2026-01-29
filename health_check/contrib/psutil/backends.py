@@ -21,8 +21,10 @@ class DiskUsage(HealthCheck):
 
     """
 
-    path: pathlib.Path | str = dataclasses.field(default=os.getcwd())
-    max_disk_usage_percent: float | None = dataclasses.field(default=HEALTH_CHECK["DISK_USAGE_MAX"], repr=False)
+    path: pathlib.Path | str = dataclasses.field(default_factory=os.getcwd)
+    max_disk_usage_percent: float | None = dataclasses.field(
+        default_factory=lambda: HEALTH_CHECK["DISK_USAGE_MAX"], repr=False
+    )
 
     def check_status(self):
         try:
@@ -39,7 +41,7 @@ class MemoryUsage(HealthCheck):
     Check system memory usage.
 
     Args:
-        min_gibibytes_available: Minimum available memory in bytes or None to disable the check.
+        min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
         max_memory_usage_percent: Maximum memory usage in percent or None to disable the check.
 
     """

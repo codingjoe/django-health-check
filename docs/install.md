@@ -38,7 +38,7 @@ urlpatterns = [
                 (
                     "health_check.Memory",
                     {  # tuple with options
-                        "min_bytes_available": 100 * 1024 * 1024,  # 100 MB
+                        "min_gibibytes_available": 0.1,  # 0.1 GiB (~100 MiB)
                         "max_memory_usage_percent": 80.0,
                     },
                 ),
