@@ -32,8 +32,7 @@ class CacheBackend(HealthCheck):
 
     alias: str = dataclasses.field(default="default")
     cache_key: str = dataclasses.field(
-        default_factory=lambda: getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test"),
-        repr=False,
+        default=getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test"), repr=False
     )
 
     def check_status(self):

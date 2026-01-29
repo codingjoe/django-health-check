@@ -19,9 +19,7 @@ class CeleryPingHealthCheck(HealthCheck):
     """
 
     CORRECT_PING_RESPONSE = {"ok": "pong"}
-    timeout: datetime.timedelta = dataclasses.field(
-        default_factory=lambda: datetime.timedelta(seconds=getattr(settings, "HEALTHCHECK_CELERY_PING_TIMEOUT", 1))
-    )
+    timeout: datetime.timedelta = datetime.timedelta(seconds=getattr(settings, "HEALTHCHECK_CELERY_PING_TIMEOUT", 1))
 
     def check_status(self):
         try:
