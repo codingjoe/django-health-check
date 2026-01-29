@@ -66,6 +66,9 @@ jobs:
         ports:
           - 5672:5672
           - 15672:15672
+    env:
+      REDIS_URL: redis://localhost:6379/0
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672//
     runs-on: ubuntu-latest
     strategy:
       matrix:

@@ -66,3 +66,6 @@ CELERY_QUEUES = [
     Queue("default"),
     Queue("queue2"),
 ]
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
