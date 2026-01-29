@@ -1,3 +1,6 @@
+import pytest
+
+pytest.importorskip("amqp")
 from unittest.mock import patch
 
 from amqp.exceptions import AccessRefused

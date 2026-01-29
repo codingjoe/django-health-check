@@ -1,3 +1,6 @@
+import pytest
+
+pytest.importorskip("redis")
 from unittest.mock import patch
 
 from redis import exceptions as redis_exceptions

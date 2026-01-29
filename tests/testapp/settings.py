@@ -1,11 +1,6 @@
 import os.path
 import uuid
 
-try:
-    from kombu import Queue
-except Exception:  # pragma: no cover - optional dependency
-    Queue = None
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEBUG = True
 
@@ -20,7 +15,7 @@ DATABASES = {
     },
 }
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -29,14 +24,27 @@ INSTALLED_APPS = (
     "health_check.cache",
     "health_check.db",
     "health_check.storage",
-    "health_check.contrib.celery",
     "health_check.contrib.migrations",
-    "health_check.contrib.celery_ping",
     "health_check.contrib.s3boto_storage",
     "health_check.contrib.db_heartbeat",
     "health_check.contrib.mail",
     "tests",
-)
+]
+
+try:
+    import redis  # noqa F401
+except ImportError:
+    pass
+else:
+    INSTALLED_APPS += ["health_check.contrib.redis"]
+
+try:
+    import celery  # noqa F401
+except ImportError:
+    pass
+else:
+    INSTALLED_APPS += ["health_check.contrib.celery_ping", "health_check.contrib.celery"]
+
 
 MIDDLEWARE_CLASSES = (
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -66,7 +74,12 @@ SECRET_KEY = uuid.uuid4().hex
 USE_TZ = True
 
 CELERY_QUEUES = []
-if Queue is not None:
+
+try:
+    from kombu import Queue
+except ImportError:
+    pass
+else:
     CELERY_QUEUES += [
         Queue("default"),
         Queue("queue2"),

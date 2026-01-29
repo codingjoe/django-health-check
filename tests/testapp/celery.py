@@ -1,4 +1,9 @@
-from celery import Celery
+try:
+    from celery import Celery
+except ImportError:
+    from unittest.mock import Mock
 
-app = Celery("testapp", broker="memory://")
-app.config_from_object("django.conf:settings", namespace="CELERY")
+    app = Mock()
+else:
+    app = Celery("testapp", broker="memory://")
+    app.config_from_object("django.conf:settings", namespace="CELERY")

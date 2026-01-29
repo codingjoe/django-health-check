@@ -1,3 +1,6 @@
+import pytest
+
+pytest.importorskip("celery")
 from unittest.mock import patch
 
 from celery.exceptions import TaskRevokedError
