@@ -23,9 +23,9 @@ class MailHealthCheck(backends.HealthCheck):
 
     """
 
-    backend: str = dataclasses.field(default_factory=lambda: settings.EMAIL_BACKEND)
+    backend: str = settings.EMAIL_BACKEND
     timeout: datetime.timedelta = dataclasses.field(
-        default_factory=lambda: datetime.timedelta(seconds=conf.HEALTH_CHECK.get("MAIL_TIMEOUT", 15)),
+        default=datetime.timedelta(seconds=conf.HEALTH_CHECK.get("MAIL_TIMEOUT", 15)),
         repr=False,
     )
 
