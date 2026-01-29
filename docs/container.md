@@ -12,7 +12,7 @@ You may want to limit the checks performed by the health check command to a subs
 E.g. you might want to skip checks that are monitoring external services like databases, caches, or task queues
 since those containers usually provide their own health checks.
 
-You can add a separate :
+You can add a separate health check endpoint for container checks:
 
 ```python
 # urls.py
