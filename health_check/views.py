@@ -180,6 +180,7 @@ class HealthCheckView(TemplateView):
         }
 
     def render_to_response_json(self, status):
+        """Return JSON response with health check results."""
         return JsonResponse(
             {label: str(p.pretty_status()) for label, p in self.results.items()},
             status=status,

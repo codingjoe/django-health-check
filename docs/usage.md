@@ -72,7 +72,7 @@ class MyHealthCheckBackend(HealthCheck):
 ## Customizing output
 
 You can customize HTML or JSON rendering by inheriting from [HealthCheckView][health_check.views.HealthCheckView]
-and customizing the `template_name`, `render_to_response_json` properties:
+and customizing the [template_name][django.views.generic.base.TemplateView], [render_to_response_json][health_check.views.HealthCheckView] properties:
 
 ```python
 # views.py
