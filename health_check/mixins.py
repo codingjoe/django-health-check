@@ -11,7 +11,7 @@ from health_check.plugins import plugin_dir
 
 
 class CheckMixin:
-    _errors: list[HealthCheckException] = None
+    _errors: list[HealthCheckException] | None = None
     _plugins = None
     use_threading: bool = not HEALTH_CHECK["DISABLE_THREADING"]
     warnings_as_errors: bool = HEALTH_CHECK["WARNINGS_AS_ERRORS"]

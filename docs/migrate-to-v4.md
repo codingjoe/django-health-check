@@ -46,4 +46,4 @@ Upgrade (what to do)
 - `StorageHealthCheck`, `DefaultFileStorageHealthCheck`, `S3BotoStorageHealthCheck`, `S3Boto3StorageHealthCheck` have been replaced with [Storage][health_check.Storage].
 - `CeleryHealthCheck` has been replaced with [Ping][health_check.contrib.celery.Ping].
 - `MigrationsHealthCheck` has been removed; its functionality is covered by [Django's check framework](https://docs.djangoproject.com/en/stable/topics/checks/).
-- `DatabaseHealthCheck` has been replaced with [Database][health_check.Database] which doesn't require a table and supports multiple database alias.
+- `DatabaseHealthCheck` has been replaced with [Database][health_check.Database] which doesn't require a table and supports multiple database aliases.

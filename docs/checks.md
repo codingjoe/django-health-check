@@ -14,7 +14,7 @@
 
 ::: health_check.Storage
 
-## 3d Party Services
+## 3rd Party Services
 
 To use the checks, you will need to install and set up their corresponding dependencies.
 
