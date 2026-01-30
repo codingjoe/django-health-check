@@ -165,7 +165,7 @@ class HealthCheckView(TemplateView):
                 context = self.get_context_data(**kwargs)
                 return self.render_to_response(context, status=status_code)
             elif media.mime_type in ("application/json", "application/*"):
-                return self.render_to_response_json(self.plugins, status_code)
+                return self.render_to_response_json(status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json",
             status=406,
@@ -179,9 +179,9 @@ class HealthCheckView(TemplateView):
             "errors": any(p.errors for p in self.plugins.values()),
         }
 
-    def render_to_response_json(self, plugins, status):
+    def render_to_response_json(self, status):
         return JsonResponse(
-            {label: str(p.pretty_status()) for label, p in plugins.items()},
+            {label: str(p.pretty_status()) for label, p in self.plugins.items()},
             status=status,
         )
 
