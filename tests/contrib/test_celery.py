@@ -72,3 +72,23 @@ class TestCelery:
             check = CeleryPingHealthCheck()
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
+
+    def test_check_status__missing_queue_worker(self):
+        """Raise ServiceUnavailable when a defined queue has no active workers."""
+        mock_result = {"celery@worker1": {"ok": "pong"}}
+
+        with mock.patch("health_check.contrib.celery.app") as mock_app:
+            mock_app.control.ping.return_value = [mock_result]
+            mock_queue = mock.MagicMock()
+            mock_queue.name = "missing_queue"
+            mock_app.conf.task_queues = [mock_queue]
+            mock_inspect = mock.MagicMock()
+            mock_inspect.active_queues.return_value = {
+                "celery@worker1": [{"name": "celery"}]
+            }
+            mock_app.control.inspect.return_value = mock_inspect
+
+            check = CeleryPingHealthCheck()
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "missing_queue" in str(exc_info.value)
