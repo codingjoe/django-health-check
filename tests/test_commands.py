@@ -100,7 +100,7 @@ class TestCommand:
 
     def test_command_endpoint_invalid_json(self, monkeypatch):
         """If the endpoint returns invalid JSON, the command should exit with an error."""
-        stdout = StringIO()
+        stderr = StringIO()
 
         class DummyResponse:
             def __init__(self, data: bytes):
@@ -115,13 +115,13 @@ class TestCommand:
         )
 
         with pytest.raises(SystemExit):
-            call_command("health_check", "health_check:health_check_home", stdout=stdout, addrport="127.0.0.1:8000")
-        stdout.seek(0)
-        assert "did not return valid JSON" in stdout.read()
+            call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
+        stderr.seek(0)
+        assert "did not return valid JSON" in stderr.read()
 
     def test_command_endpoint_unreachable(self, monkeypatch):
         """If the endpoint is unreachable (URLError), the command should exit with an error and helpful message."""
-        stdout = StringIO()
+        stderr = StringIO()
 
         def raise_url_error(req):
             import urllib.error
@@ -134,6 +134,6 @@ class TestCommand:
         )
 
         with pytest.raises(SystemExit):
-            call_command("health_check", "health_check:health_check_home", stdout=stdout, addrport="127.0.0.1:8000")
-        stdout.seek(0)
-        assert "is not reachable" in stdout.read()
+            call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
+        stderr.seek(0)
+        assert "is not reachable" in stderr.read()

@@ -43,7 +43,7 @@ class Command(CheckMixin, BaseCommand):
             except urllib.error.HTTPError as e:
                 content = e.read()
             except urllib.error.URLError as e:
-                self.stdout.write(f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.')
+                self.stderr.write(f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.')
                 sys.exit(1)
             else:
                 content = response.read()
@@ -51,7 +51,7 @@ class Command(CheckMixin, BaseCommand):
             try:
                 json_data = json.loads(content.decode("utf-8"))
             except json.JSONDecodeError as e:
-                self.stdout.write(f"Health check endpoint '{endpoint}' did not return valid JSON: {e.msg}\n")
+                self.stderr.write(f"Health check endpoint '{endpoint}' did not return valid JSON: {e.msg}\n")
                 sys.exit(1)
             else:
                 errors = False
