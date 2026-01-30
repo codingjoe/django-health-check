@@ -135,12 +135,12 @@ class HealthCheckView(TemplateView):
 
         if self.use_threading:
             with ThreadPoolExecutor(
-                max_workers=len(self.plugins.values()) or 1
+                max_workers=len(self.results.values()) or 1
             ) as executor:
-                for plugin in executor.map(_run, self.plugins.values()):
+                for plugin in executor.map(_run, self.results.values()):
                     _collect_errors(plugin)
         else:
-            for plugin in self.plugins.values():
+            for plugin in self.results.values():
                 _run(plugin)
                 _collect_errors(plugin)
         return errors
@@ -152,7 +152,7 @@ class HealthCheckView(TemplateView):
         format_override = request.GET.get("format")
 
         if format_override == "json":
-            return self.render_to_response_json(self.plugins, status_code)
+            return self.render_to_response_json(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -175,17 +175,17 @@ class HealthCheckView(TemplateView):
     def get_context_data(self, **kwargs):
         return {
             **super().get_context_data(**kwargs),
-            "plugins": self.plugins.values(),
-            "errors": any(p.errors for p in self.plugins.values()),
+            "plugins": self.results.values(),
+            "errors": any(p.errors for p in self.results.values()),
         }
 
     def render_to_response_json(self, status):
         return JsonResponse(
-            {label: str(p.pretty_status()) for label, p in self.plugins.items()},
+            {label: str(p.pretty_status()) for label, p in self.results.items()},
             status=status,
         )
 
-    def get_plugins(self):
+    def get_results(self):
         # If checks are explicitly set, use them
         if self.checks is not None:
             for check in self.checks:
@@ -199,5 +199,5 @@ class HealthCheckView(TemplateView):
                 yield repr(plugin_instance), plugin_instance
 
     @cached_property
-    def plugins(self):
-        return OrderedDict(self.get_plugins())
+    def results(self):
+        return OrderedDict(self.get_results())

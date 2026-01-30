@@ -86,7 +86,10 @@ class HealthCheckCustomView(HealthCheckView):
 
     def render_to_response_json(self, status):  # customize JSON output
         return JsonResponse(
-            {repr(p): "COOL" if status == 200 else "SWEATY" for p in self.plugins},
+            {
+                label: "COOL" if status == 200 else "SWEATY"
+                for label, check in self.results.items()
+            },
             status=status,
         )
 
