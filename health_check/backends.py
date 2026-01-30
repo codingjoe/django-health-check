@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-import warnings
 from timeit import default_timer as timer
 
 from health_check.exceptions import HealthCheckException
@@ -74,28 +73,4 @@ class HealthCheck:
         return int(not self.errors)
 
     def __repr__(self):
-        if hasattr(self, "identifier"):
-            warnings.warn(
-                "`identifier()` method is deprecated: implement `__repr__()` instead to return a stable identifier. Action: update your backend class to implement `__repr__` and remove `identifier()`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md).",
-                DeprecationWarning,
-            )
-            return self.identifier()
-
         return self.__class__.__name__
-
-
-class BaseHealthCheck(HealthCheck):
-    """
-    Deprecated base class for health check backends.
-
-    This class is maintained for backward compatibility.
-    New health check backends should inherit from `HealthCheck` instead.
-    """
-
-    def __init_subclass__(cls, **kwargs):
-        warnings.warn(
-            f"{cls.__name__} inherits from deprecated `BaseHealthCheck`: inherit from `HealthCheck` instead. Action: update subclass to inherit from `health_check.backends.HealthCheck`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md).",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init_subclass__(**kwargs)

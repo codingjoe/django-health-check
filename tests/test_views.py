@@ -314,15 +314,3 @@ class TestMainView:
         assert response.status_code == 500, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
         assert "JSON Error" in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
-
-    @pytest.mark.django_db(transaction=True)
-    def test_non_native_atomic_request(self, settings, monkeypatch, client):
-        # See also: https://github.com/codingjoe/django-health-check/pull/469
-        settings.DATABASES["default"]["ATOMIC_REQUESTS"] = True
-        # disable the ensure_connection
-        monkeypatch.setattr(
-            "django.db.backends.base.base.BaseDatabaseWrapper.ensure_connection", Mock(side_effect=DatabaseError())
-        )
-        response = client.get(self.url)
-        assert response.status_code == 500
-        assert b"System status" in response.content

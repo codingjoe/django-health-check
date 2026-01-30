@@ -3,7 +3,7 @@ from io import StringIO
 
 import pytest
 
-from health_check.backends import BaseHealthCheck, HealthCheck
+from health_check.backends import HealthCheck
 from health_check.exceptions import HealthCheckException
 
 
@@ -78,33 +78,3 @@ class TestBaseHealthCheckBackend:
             assert "Traceback" not in log
             assert "Exception: bar" not in log
             logger.removeHandler(stream_handler)
-
-    def test_repr_and_identifier_deprecation(self):
-        class OldStyle(HealthCheck):
-            def identifier(self):
-                return "old"
-
-            def check_status(self):
-                pass
-
-        # Calling repr should warn that identifier is deprecated
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            r = repr(OldStyle())
-            assert any(isinstance(x.message, DeprecationWarning) for x in w)
-            assert "old" in r
-
-    def test_basehealthcheck_subclass_warning(self):
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-
-            class Derived(BaseHealthCheck):  # noqa: F841
-                def check_status(self):
-                    pass
-
-            # subclassing should trigger a DeprecationWarning
-            assert any(isinstance(x.message, DeprecationWarning) for x in w)

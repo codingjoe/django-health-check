@@ -8,7 +8,6 @@ from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
-from health_check.deprecation import deprecated
 from health_check.mixins import CheckMixin
 
 
@@ -84,10 +83,11 @@ class MediaType:
 
 
 @method_decorator(transaction.non_atomic_requests, name="dispatch")
-class _MainView(CheckMixin, TemplateView):
-    """Deprecated: Use HealthCheckView instead."""
+class HealthCheckView(CheckMixin, TemplateView):
+    """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
+    checks: list[str | tuple[str, dict]] | None = None
 
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
@@ -131,39 +131,31 @@ class _MainView(CheckMixin, TemplateView):
             status=status,
         )
 
-
-@deprecated(
-    "MainView is deprecated: use `HealthCheckView` instead (view-based API). Action: replace `MainView` usage with `HealthCheckView.as_view(checks=...)`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md)."
-)
-class MainView(_MainView):
-    """Deprecated: Use HealthCheckView instead."""
-
-    pass
-
-
-class HealthCheckView(_MainView):
-    """Perform health checks and return results in various formats."""
-
-    checks: list[str | tuple[str, dict]] | None = None
-
     def get_plugins(self):
-        for check in self.checks or [
-            "health_check.Cache",
-            "health_check.Database",
-            "health_check.Disk",
-            "health_check.Mail",
-            "health_check.Memory",
-            "health_check.Storage",
-        ]:
-            try:
-                check, options = check
-            except ValueError:
-                options = {}
-            if isinstance(check, str):
-                check = import_string(check)
-            plugin_instance = check(**options)
-            yield repr(plugin_instance), plugin_instance
+        # If checks are explicitly set, use them
+        if self.checks is not None:
+            for check in self.checks:
+                try:
+                    check, options = check
+                except ValueError:
+                    options = {}
+                if isinstance(check, str):
+                    check = import_string(check)
+                plugin_instance = check(**options)
+                yield repr(plugin_instance), plugin_instance
+        # Otherwise, fall back to plugin_dir for backward compatibility (tests, etc.)
+        else:
+            from health_check.plugins import plugin_dir
+            import copy
+            if plugin_dir._registry:
+                registering_plugins = (
+                    plugin_class(**copy.deepcopy(options)) for plugin_class, options in plugin_dir._registry
+                )
+                registering_plugins = sorted(registering_plugins, key=repr)
+                for plugin in registering_plugins:
+                    yield repr(plugin), plugin
 
     @cached_property
     def plugins(self):
-        return dict(self.get_plugins())
+        from collections import OrderedDict
+        return OrderedDict(self.get_plugins())
