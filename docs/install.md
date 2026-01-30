@@ -8,79 +8,84 @@ uv add django-health-check
 pip install django-health-check
 ```
 
-Add the health checker to a URL you want to use:
-
-```python
-# urls.py
-from django.urls import include, path
-
-urlpatterns = [
-    # ...
-    path("ht/", include("health_check.urls")),
-]
-```
-
-Add the `health_check` applications to your `INSTALLED_APPS`:
+Add `health_check` and any desired plugins to your `INSTALLED_APPS` in `settings.py`:
 
 ```python
 # settings.py
 INSTALLED_APPS = [
-    # ...
+    # …
     "health_check",  # required
-    "health_check.db",  # stock Django health checkers
-    "health_check.cache",
-    "health_check.storage",
-    "health_check.contrib.migrations",
-    "health_check.contrib.celery",  # requires celery
-    "health_check.contrib.celery_ping",  # requires celery
-    "health_check.contrib.psutil",  # disk and memory utilization; requires psutil
-    "health_check.contrib.s3boto3_storage",  # requires boto3 and S3BotoStorage backend
-    "health_check.contrib.rabbitmq",  # requires RabbitMQ broker
-    "health_check.contrib.redis",  # requires Redis broker
 ]
 ```
 
-(Optional) If using the `psutil` app, you can configure disk and memory
-threshold settings; otherwise below defaults are assumed. If you want to
-disable one of these checks, set its value to `None`.
+Add a health check view to your URL configuration. For example:
 
 ```python
-# settings.py
-HEALTH_CHECK = {
-    "DISK_USAGE_MAX": 90,  # percent
-    "MEMORY_MIN": 100,  # in MB
-}
+# urls.py
+from django.urls import include, path
+from health_check.views import HealthCheckView
+
+urlpatterns = [
+    # …
+    path(
+        "health/",
+        HealthCheckView.as_view(
+            checks=[  # optional, default is all but 3rd party checks
+                "health_check.Cache",
+                "health_check.Database",
+                "health_check.Disk",
+                "health_check.Mail",
+                (
+                    "health_check.Memory",
+                    {  # tuple with options
+                        "min_gibibytes_available": 0.1,  # 0.1 GiB (~100 MiB)
+                        "max_memory_usage_percent": 80.0,
+                    },
+                ),
+                "health_check.Storage",
+                # 3rd party checks
+                "health_check.contrib.celery.Ping",
+                "health_check.contrib.rabbitmq.RabbitMQ",
+                "health_check.contrib.redis.Redis",
+            ],
+            use_threading=True,  # optional, default is True
+            warnings_as_errors=True,  # optional, default is True
+        ),
+    ),
+]
 ```
 
-If using the DB check, run migrations:
+## Threading
 
-```shell
-django-admin migrate
-```
+Django Health Check runs each check in a separate thread by default to improve performance. If you prefer to run the checks sequentially, you can set the `use_threading` parameter to `False` when instantiating the `HealthCheckView`, as shown in the example above.
 
-To use the RabbitMQ healthcheck, please make sure that there is a
-variable named `BROKER_URL` on django.conf.settings with the required
-format to connect to your rabbit server. For example:
+This can be useful in environments where threads are not closing IO connections properly, leading to resource leaks.
+However, for Django's database connections, threading is generally safe and recommended for better performance.
 
-```python
-# settings.py
-BROKER_URL = "amqp://myuser:mypassword@localhost:5672/myvhost"
-```
+## Warnings as Errors
 
-To use the Redis healthcheck, please make sure that there is a variable
-named `REDIS_URL` on django.conf.settings with the required format to
-connect to your redis server. For example:
+Treats `ServiceWarning` as errors, meaning they will cause the views to respond with a 500 status code. Default is `True`.
+If set to `False` warnings will be displayed in the template or in the JSON response but the status code will remain a 200.
 
-```python
-# settings.py
-REDIS_URL = "redis://localhost:6370"
-```
+## Security
 
-The cache healthcheck tries to write and read a specific key within the
-cache backend. It can be customized by setting `HEALTHCHECK_CACHE_KEY`
-to another value:
+You can protect the health check endpoint by adding a secure token to your URL.
 
-```python
-# settings.py
-HEALTHCHECK_CACHE_KEY = "custom_healthcheck_key"
-```
+1. Setup HTTPS. Seriously…
+1. Generate a strong secret token:
+   ```shell
+   python -c "import secrets; print(secrets.token_urlsafe())"
+   ```
+   > [!WARNING]
+   > Do NOT use Django's `SECRET_KEY` setting!
+1. Add it to your URL configuration:
+   ```python
+   #  urls.py
+   from django.urls import include, path
+   from health_check.views import HealthCheckView
+
+   urlpatterns = [
+       # …
+       path("health/super_secret_token/", HealthCheckView.as_view()),
+   ]
+   ```

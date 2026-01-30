@@ -1,3 +1,6 @@
+import pytest
+
+pytest.importorskip("celery")
 from celery import current_app
 from django.conf import settings
 

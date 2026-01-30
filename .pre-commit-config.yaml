@@ -20,6 +20,10 @@ repos:
     rev: 1.29.1
     hooks:
       - id: django-upgrade
+  - repo: https://github.com/djlint/djLint
+    rev: v1.36.4
+    hooks:
+      - id: djlint-reformat-django
   - repo: https://github.com/hukkin/mdformat
     rev: 1.0.0
     hooks:

@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from unittest.mock import Mock
 
@@ -5,7 +6,7 @@ import pytest
 from django.db import DatabaseError
 from django.urls import reverse
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.conf import HEALTH_CHECK
 from health_check.exceptions import ServiceWarning
 from health_check.plugins import plugin_dir
@@ -85,7 +86,7 @@ class TestMainView:
         assert response["content-type"] == "text/html; charset=utf-8"
 
     def test_error(self, client):
-        class MyBackend(BaseHealthCheckBackend):
+        class MyBackend(HealthCheck):
             def check_status(self):
                 self.add_error("Super Fail!")
 
@@ -96,8 +97,8 @@ class TestMainView:
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"Super Fail!" in response.content
 
-    def test_warning(self, client):
-        class MyBackend(BaseHealthCheckBackend):
+    def test_warning(self, client, monkeypatch):
+        class MyBackend(HealthCheck):
             def check_status(self):
                 raise ServiceWarning("so so")
 
@@ -107,7 +108,7 @@ class TestMainView:
         assert response.status_code == 500, response.content.decode("utf-8")
         assert b"so so" in response.content, response.content
 
-        HEALTH_CHECK["WARNINGS_AS_ERRORS"] = False
+        monkeypatch.setattr("health_check.mixins.CheckMixin.warnings_as_errors", False)
 
         response = client.get(self.url)
         assert response.status_code == 200, response.content.decode("utf-8")
@@ -115,7 +116,7 @@ class TestMainView:
         assert b"so so" in response.content, response.content
 
     def test_non_critical(self, client):
-        class MyBackend(BaseHealthCheckBackend):
+        class MyBackend(HealthCheck):
             critical_service = False
 
             def check_status(self):
@@ -124,12 +125,12 @@ class TestMainView:
         plugin_dir.reset()
         plugin_dir.register(MyBackend)
         response = client.get(self.url)
-        assert response.status_code == 200, response.content.decode("utf-8")
+        assert response.status_code == 200, "Should be 200 OK for non-critical services"
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"Super Fail!" in response.content
 
     def test_success_accept_json(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -140,7 +141,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_success_prefer_json(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -151,7 +152,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_success_accept_xhtml(self, client):
-        class SuccessBackend(BaseHealthCheckBackend):
+        class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -162,7 +163,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_success_unsupported_accept(self, client):
-        class SuccessBackend(BaseHealthCheckBackend):
+        class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -174,7 +175,7 @@ class TestMainView:
         assert response.content == b"Not Acceptable: Supported content types: text/html, application/json"
 
     def test_success_unsupported_and_supported_accept(self, client):
-        class SuccessBackend(BaseHealthCheckBackend):
+        class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -185,7 +186,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_success_accept_order(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -199,7 +200,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_success_accept_order__reverse(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -213,7 +214,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_format_override(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -224,7 +225,7 @@ class TestMainView:
         assert response.status_code == 200
 
     def test_format_no_accept_header(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -235,7 +236,7 @@ class TestMainView:
         assert response["content-type"] == "text/html; charset=utf-8"
 
     def test_error_accept_json(self, client):
-        class JSONErrorBackend(BaseHealthCheckBackend):
+        class JSONErrorBackend(HealthCheck):
             def run_check(self):
                 self.add_error("JSON Error")
 
@@ -244,10 +245,11 @@ class TestMainView:
         response = client.get(self.url, HTTP_ACCEPT="application/json")
         assert response.status_code == 500, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
-        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[JSONErrorBackend().identifier()]
+        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
 
     def test_success_param_json(self, client):
-        class JSONSuccessBackend(BaseHealthCheckBackend):
+        @dataclasses.dataclass
+        class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -257,15 +259,15 @@ class TestMainView:
         assert response.status_code == 200, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
         assert json.loads(response.content.decode("utf-8")) == {
-            JSONSuccessBackend().identifier(): JSONSuccessBackend().pretty_status()
+            repr(JSONSuccessBackend()): JSONSuccessBackend().pretty_status()
         }
 
     def test_success_subset_define(self, client):
-        class SuccessOneBackend(BaseHealthCheckBackend):
+        class SuccessOneBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        class SuccessTwoBackend(BaseHealthCheckBackend):
+        class SuccessTwoBackend(HealthCheck):
             def run_check(self):
                 pass
 
@@ -282,15 +284,15 @@ class TestMainView:
         assert response_startup_probe.status_code == 200, response_startup_probe.content.decode("utf-8")
         assert response_startup_probe["content-type"] == "application/json"
         assert json.loads(response_startup_probe.content.decode("utf-8")) == {
-            SuccessOneBackend().identifier(): SuccessOneBackend().pretty_status(),
-            SuccessTwoBackend().identifier(): SuccessTwoBackend().pretty_status(),
+            repr(SuccessOneBackend()): SuccessOneBackend().pretty_status(),
+            repr(SuccessTwoBackend()): SuccessTwoBackend().pretty_status(),
         }
 
         response_liveness_probe = client.get(self.url + "liveness-probe/", {"format": "json"})
         assert response_liveness_probe.status_code == 200, response_liveness_probe.content.decode("utf-8")
         assert response_liveness_probe["content-type"] == "application/json"
         assert json.loads(response_liveness_probe.content.decode("utf-8")) == {
-            SuccessTwoBackend().identifier(): SuccessTwoBackend().pretty_status(),
+            repr(SuccessTwoBackend()): SuccessTwoBackend().pretty_status(),
         }
 
     def test_error_subset_not_found(self, client):
@@ -301,7 +303,8 @@ class TestMainView:
         assert response.status_code == 404, response.content.decode("utf-8")
 
     def test_error_param_json(self, client):
-        class JSONErrorBackend(BaseHealthCheckBackend):
+        @dataclasses.dataclass
+        class JSONErrorBackend(HealthCheck):
             def run_check(self):
                 self.add_error("JSON Error")
 
@@ -310,7 +313,7 @@ class TestMainView:
         response = client.get(self.url, {"format": "json"})
         assert response.status_code == 500, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
-        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[JSONErrorBackend().identifier()]
+        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
 
     @pytest.mark.django_db(transaction=True)
     def test_non_native_atomic_request(self, settings, monkeypatch, client):
@@ -322,4 +325,4 @@ class TestMainView:
         )
         response = client.get(self.url)
         assert response.status_code == 500
-        assert b"<title>System status</title>" in response.content
+        assert b"System status" in response.content

@@ -1,34 +1,43 @@
 # Container (Docker/Podman)
 
-Django HealthCheck can be integrated into various container orchestration systems by defining health checks that utilize the `manage.py health_check` command. Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
+Django HealthCheck can be integrated into various container orchestration systems by defining health checks that utilize the `manage.py health_check` command.
+Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
 
 > [!TIP]
-> Utilizing the health check command is usually superior to simple HTTP checks, as Django's `ALLOWED_HOSTS` settings and other middleware may interfere with HTTP-based health checks.
+> The health check command does not require curl or any HTTP client in your container image.
 
-## Subsets
+## Container Health Check Endpoint
 
 You may want to limit the checks performed by the health check command to a subset of all available checks.
-E.g. you might want to skip checks that are monitoring external services like databases, caches, or task queues.
+E.g. you might want to skip checks that are monitoring external services like databases, caches, or task queues
+since those containers usually provide their own health checks.
 
-You can define subsets in your Django settings:
+You can add a separate health check endpoint for container checks:
 
 ```python
-# settings.py
-HEALTH_CHECK = {
-    "SUBSETS": {
-        "container": [
-            "MemoryUsage",
-            "DiskUsage",
-        ],
-    }
-}
+# urls.py
+from django.urls import include, path
+from health_check.views import HealthCheckView
+
+urlpatterns = [
+    # …
+    path(
+        "container/health/",
+        HealthCheckView.as_view(
+            checks=["health_check.Disk", "health_check.Memory"],
+        ),
+        name="health_check-container",
+    ),
+]
 ```
 
-... and then run the health check command with the `--subset` option:
+… and then run the health check command:
 
 ```shell
-python manage.py health_check --subset=container
+python manage.py health_check health_check-container localhost:8000
 ```
+
+Your host name and port may vary depending on your container setup.
 
 ## Configuration Examples
 
@@ -37,7 +46,7 @@ python manage.py health_check --subset=container
 ```Dockerfile
 # Containerfile / Dockerfile
 HEALTHCHECK --interval=30s --timeout=10s \
-  CMD python manage.py health_check --subset=container || exit 1
+  CMD python manage.py health_check health_check-container web:8000 || exit 1
 ```
 
 ### Compose
@@ -46,9 +55,9 @@ HEALTHCHECK --interval=30s --timeout=10s \
 # compose.yml / docker-compose.yml
 services:
   web:
-    # ... your service definition ...
+    # … your service definition …
     healthcheck:
-      test: ["CMD", "python", "manage.py", "health_check", "--subset", "container"]
+      test: ["CMD", "python", "manage.py", "health_check", "health_check-container", "web:8000"]
       interval: 60s
       timeout: 10s
 ```
@@ -65,7 +74,7 @@ spec:
   template:
     spec:
       containers:
-        - name: django-container
+        - name: web
           image: my-django-image:latest
           livenessProbe:
             exec:
@@ -73,8 +82,8 @@ spec:
                 - python
                 - manage.py
                 - health_check
-                - --subset
-                - container
+                - health_check-container
+                - web:8000
             periodSeconds: 60
             timeoutSeconds: 10
 ```

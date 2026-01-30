@@ -1,8 +1,12 @@
 import logging
 
+from health_check.deprecation import deprecated
 from health_check.storage.backends import StorageHealthCheck
 
 
+@deprecated(
+    "`S3BotoStorageHealthCheck` is deprecated: use `health_check.Storage` instead. Action: remove legacy storage checks and add `health_check.Storage` to your `HealthCheckView.checks`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md)."
+)
 class S3BotoStorageHealthCheck(StorageHealthCheck):
     """
     Tests the status of a `S3BotoStorage` file storage backend.

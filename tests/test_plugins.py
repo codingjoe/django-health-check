@@ -1,15 +1,15 @@
 import pytest
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.plugins import plugin_dir
 
 
-class FakePlugin(BaseHealthCheckBackend):
+class FakePlugin(HealthCheck):
     def check_status(self):
         pass
 
 
-class Plugin(BaseHealthCheckBackend):
+class Plugin(HealthCheck):
     def check_status(self):
         pass
 

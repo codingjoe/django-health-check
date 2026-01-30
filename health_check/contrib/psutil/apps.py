@@ -1,3 +1,5 @@
+import warnings
+
 from django.apps import AppConfig
 from django.conf import settings
 
@@ -9,6 +11,11 @@ class HealthCheckConfig(AppConfig):
 
     def ready(self):
         from .backends import DiskUsage, MemoryUsage
+
+        warnings.warn(
+            "The `health_check.contrib.psutil` app is deprecated: checks are now configured via `HealthCheckView` and explicit `checks` lists. Action: remove this sub-app from `INSTALLED_APPS` and add `health_check.Disk` and `health_check.Memory` to your `HealthCheckView.checks`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md).",
+            DeprecationWarning,
+        )
 
         # Ensure checks haven't been explicitly disabled before registering
         if (

@@ -1,8 +1,6 @@
 import os.path
 import uuid
 
-from kombu import Queue
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEBUG = True
 
@@ -11,13 +9,13 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     },
-    "other": {  # 2nd database conneciton to ensure proper connection handling
+    "other": {  # 2nd database connection to ensure proper connection handling
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":backup:",
+        "NAME": ":memory:",
     },
 }
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -26,14 +24,27 @@ INSTALLED_APPS = (
     "health_check.cache",
     "health_check.db",
     "health_check.storage",
-    "health_check.contrib.celery",
     "health_check.contrib.migrations",
-    "health_check.contrib.celery_ping",
     "health_check.contrib.s3boto_storage",
     "health_check.contrib.db_heartbeat",
     "health_check.contrib.mail",
     "tests",
-)
+]
+
+try:
+    import redis  # noqa F401
+except ImportError:
+    pass
+else:
+    INSTALLED_APPS += ["health_check.contrib.redis"]
+
+try:
+    import celery  # noqa F401
+except ImportError:
+    pass
+else:
+    INSTALLED_APPS += ["health_check.contrib.celery_ping", "health_check.contrib.celery"]
+
 
 MIDDLEWARE_CLASSES = (
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -62,7 +73,18 @@ SECRET_KEY = uuid.uuid4().hex
 
 USE_TZ = True
 
-CELERY_QUEUES = [
-    Queue("default"),
-    Queue("queue2"),
-]
+CELERY_QUEUES = []
+
+try:
+    from kombu import Queue
+except ImportError:
+    pass
+else:
+    CELERY_QUEUES += [
+        Queue("default"),
+        Queue("queue2"),
+    ]
+
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost/1")
+BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")

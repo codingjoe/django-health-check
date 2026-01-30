@@ -1,7 +1,10 @@
+import dataclasses
+import datetime
+
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceReturnedUnexpectedResult, ServiceUnavailable
 
 try:
@@ -17,21 +20,27 @@ except ModuleNotFoundError:
         pass
 
 
-class CacheBackend(BaseHealthCheckBackend):
-    def __init__(self, backend="default"):
-        super().__init__()
-        self.backend = backend
-        self.cache_key = getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test")
+@dataclasses.dataclass
+class CacheBackend(HealthCheck):
+    """
+    Check that the cache backend is able to set and get a value.
 
-    def identifier(self):
-        return f"Cache backend: {self.backend}"
+    Args:
+        alias: The cache alias to test against.
+
+    """
+
+    alias: str = dataclasses.field(default="default")
+    cache_key: str = dataclasses.field(
+        default=getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test"), repr=False
+    )
 
     def check_status(self):
-        cache = caches[self.backend]
-
+        cache = caches[self.alias]
+        ts = datetime.datetime.now().timestamp()
         try:
-            cache.set(self.cache_key, "itworks")
-            if not cache.get(self.cache_key) == "itworks":
+            cache.set(self.cache_key, f"itworks-{ts}")
+            if not cache.get(self.cache_key) == f"itworks-{ts}":
                 raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
         except CacheKeyWarning as e:
             self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"), e)

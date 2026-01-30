@@ -126,12 +126,12 @@ class TestHealthCheckStorage:
     """
 
     def test_get_storage(self):
-        """Test get_storage method returns None on the base class, but a Storage instance on default."""
+        """Test get_storage method returns a Storage instance."""
         base_storage = StorageHealthCheck()
-        assert base_storage.get_storage() is None
+        assert isinstance(base_storage.get_storage(), Storage)
 
-        default_storage = DefaultFileStorageHealthCheck()
-        assert isinstance(default_storage.get_storage(), Storage)
+        default_storage_check = DefaultFileStorageHealthCheck()
+        assert isinstance(default_storage_check.get_storage(), Storage)
 
     @unittest.skipUnless((4, 2) <= django.VERSION < (5, 0), "Only for Django 4.2 - 5.0")
     def test_get_storage_django_between_42_and_50(self, settings):
@@ -149,10 +149,6 @@ class TestHealthCheckStorage:
         default_storage = DefaultFileStorageHealthCheck()
         assert isinstance(default_storage.get_storage(), CustomStorage)
 
-    @mock.patch(
-        "health_check.storage.backends.DefaultFileStorageHealthCheck.storage",
-        MockStorage(),
-    )
     def test_check_status_working(self):
         """Test check_status returns True when storage is working properly."""
         default_storage_health = DefaultFileStorageHealthCheck()

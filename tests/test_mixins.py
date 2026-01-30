@@ -2,18 +2,18 @@ from unittest.mock import patch
 
 import pytest
 
-from health_check.backends import BaseHealthCheckBackend
+from health_check.backends import HealthCheck
 from health_check.conf import HEALTH_CHECK
 from health_check.mixins import CheckMixin
 from health_check.plugins import plugin_dir
 
 
-class FailPlugin(BaseHealthCheckBackend):
+class FailPlugin(HealthCheck):
     def check_status(self):
         self.add_error("Oops")
 
 
-class OkPlugin(BaseHealthCheckBackend):
+class OkPlugin(HealthCheck):
     def check_status(self):
         pass
 
@@ -69,7 +69,7 @@ class TestCheckMixin:
     def test_run_check_threading_disabled(self, monkeypatch):
         """Ensure threading not used when disabled."""
         # Ensure threading is disabled.
-        monkeypatch.setitem(HEALTH_CHECK, "DISABLE_THREADING", True)
+        monkeypatch.setattr("health_check.mixins.CheckMixin.use_threading", False)
 
         # Ensure ThreadPoolExecutor is not used
         with patch("health_check.mixins.ThreadPoolExecutor") as tpe:

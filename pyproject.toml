@@ -40,7 +40,13 @@ dynamic = [
 ]
 dependencies = [
   "Django>=4.2",
+  "psutil",
 ]
+
+[project.optional-dependencies]
+celery = ["celery>=5.0.0"]
+rabbitmq = ["kombu>=5.0.0"]
+redis = ["redis>=3.0.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
@@ -60,8 +66,6 @@ test = [
   "pytest",
   "pytest-cov",
   "pytest-django",
-  "celery",
-  "redis",
   "django-storages",
   "boto3",
 ]
@@ -81,6 +85,12 @@ write_to = "health_check/_version.py"
 
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
+filterwarnings = [
+  # Ignore deprecation warnings from our own migration path (apps being deprecated)
+  "ignore:The `health_check.*` app is deprecated:DeprecationWarning:health_check",
+  # Ignore explicit endpoint argument deprecation in management commands
+  "ignore:Explicit endpoint argument will be required:DeprecationWarning:health_check",
+]
 testpaths = [
   "tests",
 ]
@@ -98,7 +108,6 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
 
 [tool.ruff.lint]
 select = [
@@ -112,10 +121,16 @@ select = [
     "UP", # pyupgrade
     "W", # pycodestyle warnings
 ]
-ignore = ["D1", "D203", "D212"]
+ignore = ["D1", "D203", "D212", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101", "S105", "PLR2004"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["measurement", "tests"]
+
+[tool.djlint]
+profile="django"
+indent=2
+max_line_length=120
+line_break_after_multiline_tag=true
