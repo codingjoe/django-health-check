@@ -1,14 +1,18 @@
 import re
+import typing
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 
-from django.db import transaction
+from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
-from health_check.mixins import CheckMixin
+from health_check import HealthCheck
+from health_check.exceptions import HealthCheckException, ServiceWarning
 
 
 class MediaType:
@@ -65,7 +69,11 @@ class MediaType:
     def parse_header(cls, value="*/*"):
         """Parse HTTP accept header and return instances sorted by weight."""
         yield from sorted(
-            (cls.from_string(token.strip()) for token in value.split(",") if token.strip()),
+            (
+                cls.from_string(token.strip())
+                for token in value.split(",")
+                if token.strip()
+            ),
             reverse=True,
         )
 
@@ -83,21 +91,78 @@ class MediaType:
 
 
 @method_decorator(transaction.non_atomic_requests, name="dispatch")
-class HealthCheckView(CheckMixin, TemplateView):
+class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
-    checks: list[str | tuple[str, dict]] | None = None
+
+    _errors: list[HealthCheckException] | None = None
+    _plugins = None
+
+    use_threading: bool = True
+    warnings_as_errors: bool = False
+    checks: typing.Iterable[
+        HealthCheck | str | tuple[HealthCheck | str, dict[str, typing.Any]]
+    ] = (
+        "health_check.checks.Cache",
+        "health_check.checks.Database",
+        "health_check.checks.Disk",
+        "health_check.checks.Mail",
+        "health_check.checks.Memory",
+        "health_check.checks.Storage",
+    )
+
+    @property
+    def errors(self):
+        if not self._errors:
+            self._errors = self.run_check()
+        return self._errors
+
+    def check(self):
+        return self.run_check()
+
+    def run_check(self):
+        errors = []
+
+        def _run(plugin):
+            plugin.run_check()
+            try:
+                return plugin
+            finally:
+                if self.use_threading:
+                    # DB connections are thread-local so we need to close them here
+                    connections.close_all()
+
+        def _collect_errors(plugin):
+            if plugin.critical_service:
+                if not self.warnings_as_errors:
+                    errors.extend(
+                        e for e in plugin.errors if not isinstance(e, ServiceWarning)
+                    )
+                else:
+                    errors.extend(plugin.errors)
+
+        plugins = dict(self.plugins)
+        plugin_instances = plugins.values()
+
+        if not self.use_threading:
+            for plugin in plugin_instances:
+                _run(plugin)
+                _collect_errors(plugin)
+        else:
+            with ThreadPoolExecutor(max_workers=len(plugin_instances) or 1) as executor:
+                for plugin in executor.map(_run, plugin_instances):
+                    _collect_errors(plugin)
+        return errors
 
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
-        subset = kwargs.get("subset")
-        health_check_has_error = self.check(subset)
+        health_check_has_error = self.check()
         status_code = 500 if health_check_has_error else 200
         format_override = request.GET.get("format")
 
         if format_override == "json":
-            return self.render_to_response_json(self.filter_plugins(subset=subset), status_code)
+            return self.render_to_response_json(self.plugins, status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -110,7 +175,7 @@ class HealthCheckView(CheckMixin, TemplateView):
                 context = self.get_context_data(**kwargs)
                 return self.render_to_response(context, status=status_code)
             elif media.mime_type in ("application/json", "application/*"):
-                return self.render_to_response_json(self.filter_plugins(subset=subset), status_code)
+                return self.render_to_response_json(self.plugins, status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json",
             status=406,
@@ -118,11 +183,10 @@ class HealthCheckView(CheckMixin, TemplateView):
         )
 
     def get_context_data(self, **kwargs):
-        subset = kwargs.get("subset")
         return {
             **super().get_context_data(**kwargs),
-            "plugins": self.filter_plugins(subset=subset).values(),
-            "errors": any(p.errors for p in self.filter_plugins(subset=subset).values()),
+            "plugins": self.plugins.values(),
+            "errors": any(p.errors for p in self.plugins.values()),
         }
 
     def render_to_response_json(self, plugins, status):
@@ -143,22 +207,7 @@ class HealthCheckView(CheckMixin, TemplateView):
                     check = import_string(check)
                 plugin_instance = check(**options)
                 yield repr(plugin_instance), plugin_instance
-        # Otherwise, fall back to plugin_dir for backward compatibility (tests, etc.)
-        else:
-            import copy
-
-            from health_check.plugins import plugin_dir
-
-            if plugin_dir._registry:
-                registering_plugins = (
-                    plugin_class(**copy.deepcopy(options)) for plugin_class, options in plugin_dir._registry
-                )
-                registering_plugins = sorted(registering_plugins, key=repr)
-                for plugin in registering_plugins:
-                    yield repr(plugin), plugin
 
     @cached_property
     def plugins(self):
-        from collections import OrderedDict
-
         return OrderedDict(self.get_plugins())

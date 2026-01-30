@@ -20,7 +20,9 @@ class Ping(HealthCheck):
     """
 
     CORRECT_PING_RESPONSE = {"ok": "pong"}
-    timeout: datetime.timedelta = dataclasses.field(default_factory=lambda: datetime.timedelta(seconds=1))
+    timeout: datetime.timedelta = dataclasses.field(
+        default_factory=lambda: datetime.timedelta(seconds=1)
+    )
 
     def check_status(self):
         try:
@@ -29,7 +31,9 @@ class Ping(HealthCheck):
             self.add_error(ServiceUnavailable("IOError"), e)
         except NotImplementedError as exc:
             self.add_error(
-                ServiceUnavailable("NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"),
+                ServiceUnavailable(
+                    "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
+                ),
                 exc,
             )
         except BaseException as exc:
@@ -49,7 +53,9 @@ class Ping(HealthCheck):
             worker, response = list(result.items())[0]
             if response != self.CORRECT_PING_RESPONSE:
                 self.add_error(
-                    ServiceUnavailable(f"Celery worker {worker} response was incorrect"),
+                    ServiceUnavailable(
+                        f"Celery worker {worker} response was incorrect"
+                    ),
                 )
                 continue
             active_workers.append(worker)
@@ -58,7 +64,9 @@ class Ping(HealthCheck):
             self._check_active_queues(active_workers)
 
     def _check_active_queues(self, active_workers):
-        defined_queues = getattr(app.conf, "task_queues", None) or getattr(app.conf, "CELERY_QUEUES", None)
+        defined_queues = getattr(app.conf, "task_queues", None) or getattr(
+            app.conf, "CELERY_QUEUES", None
+        )
 
         if not defined_queues:
             return

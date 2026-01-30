@@ -98,7 +98,10 @@ class HealthCheckCustomView(HealthCheckView):
         return HttpResponse("COOL" if status == 200 else "SWEATY", status=status)
 
     def render_to_response_json(self, plugins, status):  # customize JSON output
-        return JsonResponse({repr(p): "COOL" if status == 200 else "SWEATY" for p in plugins}, status=status)
+        return JsonResponse(
+            {repr(p): "COOL" if status == 200 else "SWEATY" for p in plugins},
+            status=status,
+        )
 
 
 # urls.py
@@ -110,7 +113,9 @@ urlpatterns = [
     # …
     path(
         "ht/",
-        views.HealthCheckCustomView.as_view(checks=["myapp.health_checks.MyHealthCheckBackend"]),
+        views.HealthCheckCustomView.as_view(
+            checks=["myapp.health_checks.MyHealthCheckBackend"]
+        ),
         name="health_check_custom",
     ),
 ]

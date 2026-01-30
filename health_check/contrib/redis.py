@@ -24,7 +24,9 @@ class Redis(HealthCheck):
     """
 
     redis_url: str = dataclasses.field(repr=False)
-    redis_url_options: dict[str, typing.Any] = dataclasses.field(default=None, repr=False)
+    redis_url_options: dict[str, typing.Any] = dataclasses.field(
+        default_factory=dict, repr=False
+    )
 
     def check_status(self):
         logger.debug("Got %s as the redis_url. Connecting to redis...", self.redis_url)
@@ -32,17 +34,23 @@ class Redis(HealthCheck):
         logger.debug("Attempting to connect to redis...")
         try:
             # conn is used as a context to release opened resources later
-            with from_url(self.redis_url, **(self.redis_url_options or {})) as conn:
+            with from_url(self.redis_url, **self.redis_url_options) as conn:
                 conn.ping()  # exceptions may be raised upon ping
         except ConnectionRefusedError as e:
             self.add_error(
-                ServiceUnavailable("Unable to connect to Redis: Connection was refused."),
+                ServiceUnavailable(
+                    "Unable to connect to Redis: Connection was refused."
+                ),
                 e,
             )
         except exceptions.TimeoutError as e:
-            self.add_error(ServiceUnavailable("Unable to connect to Redis: Timeout."), e)
+            self.add_error(
+                ServiceUnavailable("Unable to connect to Redis: Timeout."), e
+            )
         except exceptions.ConnectionError as e:
-            self.add_error(ServiceUnavailable("Unable to connect to Redis: Connection Error"), e)
+            self.add_error(
+                ServiceUnavailable("Unable to connect to Redis: Connection Error"), e
+            )
         except BaseException as e:
             self.add_error(ServiceUnavailable("Unknown error"), e)
         else:

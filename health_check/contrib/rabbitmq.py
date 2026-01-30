@@ -23,12 +23,14 @@ class RabbitMQ(HealthCheck):
 
     """
 
-    namespace: str = None
+    namespace: str | None = None
 
     def check_status(self):
         logger.debug("Checking for a broker_url on django settings...")
 
-        broker_url_setting_key = f"{self.namespace}_BROKER_URL" if self.namespace else "BROKER_URL"
+        broker_url_setting_key = (
+            f"{self.namespace}_BROKER_URL" if self.namespace else "BROKER_URL"
+        )
         broker_url = getattr(settings, broker_url_setting_key, None)
 
         logger.debug("Got %s as the broker_url. Connecting to rabbit...", broker_url)
@@ -40,13 +42,17 @@ class RabbitMQ(HealthCheck):
                 conn.connect()  # exceptions may be raised upon calling connect
         except ConnectionRefusedError as e:
             self.add_error(
-                ServiceUnavailable("Unable to connect to RabbitMQ: Connection was refused."),
+                ServiceUnavailable(
+                    "Unable to connect to RabbitMQ: Connection was refused."
+                ),
                 e,
             )
 
         except AccessRefused as e:
             self.add_error(
-                ServiceUnavailable("Unable to connect to RabbitMQ: Authentication error."),
+                ServiceUnavailable(
+                    "Unable to connect to RabbitMQ: Authentication error."
+                ),
                 e,
             )
 

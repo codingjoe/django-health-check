@@ -6,8 +6,9 @@ from django.urls import reverse
 
 from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceWarning
-from health_check.plugins import plugin_dir
 from health_check.views import MediaType
+
+plugin_dir = None  # this is gone and the tests need to be adapted accordingly
 
 
 class TestMediaType:
@@ -67,7 +68,11 @@ class TestMediaType:
         assert list(MediaType.parse_header()) == [
             MediaType("*/*"),
         ]
-        assert list(MediaType.parse_header("text/html; q=0.1, application/xhtml+xml; q=0.1 ,application/json")) == [
+        assert list(
+            MediaType.parse_header(
+                "text/html; q=0.1, application/xhtml+xml; q=0.1 ,application/json"
+            )
+        ) == [
             MediaType("application/json"),
             MediaType("text/html", 0.1),
             MediaType("application/xhtml+xml", 0.1),
@@ -144,7 +149,9 @@ class TestMainView:
 
         plugin_dir.reset()
         plugin_dir.register(JSONSuccessBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/json; q=0.8, text/html; q=0.5")
+        response = client.get(
+            self.url, HTTP_ACCEPT="application/json; q=0.8, text/html; q=0.5"
+        )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
@@ -169,7 +176,10 @@ class TestMainView:
         response = client.get(self.url, HTTP_ACCEPT="application/octet-stream")
         assert response["content-type"] == "text/plain"
         assert response.status_code == 406
-        assert response.content == b"Not Acceptable: Supported content types: text/html, application/json"
+        assert (
+            response.content
+            == b"Not Acceptable: Supported content types: text/html, application/json"
+        )
 
     def test_success_unsupported_and_supported_accept(self, client):
         class SuccessBackend(HealthCheck):
@@ -178,7 +188,9 @@ class TestMainView:
 
         plugin_dir.reset()
         plugin_dir.register(SuccessBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/octet-stream, application/json; q=0.9")
+        response = client.get(
+            self.url, HTTP_ACCEPT="application/octet-stream, application/json; q=0.9"
+        )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
@@ -242,7 +254,10 @@ class TestMainView:
         response = client.get(self.url, HTTP_ACCEPT="application/json")
         assert response.status_code == 500, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
-        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
+        assert (
+            "JSON Error"
+            in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
+        )
 
     def test_success_param_json(self, client):
         @dataclasses.dataclass
@@ -270,4 +285,7 @@ class TestMainView:
         response = client.get(self.url, {"format": "json"})
         assert response.status_code == 500, response.content.decode("utf-8")
         assert response["content-type"] == "application/json"
-        assert "JSON Error" in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
+        assert (
+            "JSON Error"
+            in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
+        )

@@ -4,7 +4,6 @@ import pytest
 from django.core.management import call_command
 
 from health_check.backends import HealthCheck
-from health_check.plugins import plugin_dir
 
 
 class FailPlugin(HealthCheck):
@@ -18,14 +17,6 @@ class OkPlugin(HealthCheck):
 
 
 class TestCommand:
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        plugin_dir.reset()
-        plugin_dir.register(FailPlugin)
-        plugin_dir.register(OkPlugin)
-        yield
-        plugin_dir.reset()
-
     def test_command_endpoint_ok(self, monkeypatch):
         """Calling the management command with an endpoint should fetch JSON and print results."""
         stdout = StringIO()
@@ -43,7 +34,12 @@ class TestCommand:
         )
 
         # Should not raise SystemExit for all-OK response
-        call_command("health_check", "health_check:health_check_home", stdout=stdout, addrport="127.0.0.1:8000")
+        call_command(
+            "health_check",
+            "health_check:health_check_home",
+            stdout=stdout,
+            addrport="127.0.0.1:8000",
+        )
         stdout.seek(0)
         out = stdout.read()
         assert "Label" in out
@@ -66,7 +62,12 @@ class TestCommand:
         )
 
         with pytest.raises(SystemExit) as excinfo:
-            call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
+            call_command(
+                "health_check",
+                "health_check:health_check_home",
+                stderr=stderr,
+                addrport="127.0.0.1:8000",
+            )
         stderr.seek(0)
         assert excinfo.value.code == 2
         assert "did not return valid JSON" in stderr.read()
@@ -86,7 +87,12 @@ class TestCommand:
         )
 
         with pytest.raises(SystemExit) as excinfo:
-            call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
+            call_command(
+                "health_check",
+                "health_check:health_check_home",
+                stderr=stderr,
+                addrport="127.0.0.1:8000",
+            )
         stderr.seek(0)
         assert excinfo.value.code == 2
         assert "is not reachable" in stderr.read()

@@ -2,12 +2,14 @@
 
 import dataclasses
 import datetime
+import logging
 import os
 import pathlib
 import socket
 import uuid
 
 import psutil
+from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
 from django.core.files.base import ContentFile
 from django.core.files.storage import storages
@@ -17,7 +19,11 @@ from django.db import connections
 from django.db.models import Expression
 
 from health_check.backends import HealthCheck
-from health_check.exceptions import ServiceReturnedUnexpectedResult, ServiceUnavailable, ServiceWarning
+from health_check.exceptions import (
+    ServiceReturnedUnexpectedResult,
+    ServiceUnavailable,
+    ServiceWarning,
+)
 
 try:
     # Exceptions thrown by Redis do not subclass builtin exceptions like ConnectionError.
@@ -30,6 +36,9 @@ except ModuleNotFoundError:
     # In case Redis is not installed and another cache backend is used.
     class RedisError(Exception):
         pass
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -87,13 +96,17 @@ class Database(HealthCheck):
         connection = connections[self.alias]
         try:
             result = None
-            compiler = connection.ops.compiler("SQLCompiler")(_SelectOne(), connection, None)
+            compiler = connection.ops.compiler("SQLCompiler")(
+                _SelectOne(), connection, None
+            )
             with connection.cursor() as cursor:
                 cursor.execute(*compiler.compile(_SelectOne()))
                 result = cursor.fetchone()
 
             if result != (1,):
-                raise ServiceUnavailable("Health Check query did not return the expected result.")
+                raise ServiceUnavailable(
+                    "Health Check query did not return the expected result."
+                )
         except Exception as e:
             raise ServiceUnavailable(f"Database health check failed: {e}")
 
@@ -116,7 +129,10 @@ class Disk(HealthCheck):
     def check_status(self):
         try:
             du = psutil.disk_usage(str(self.path))
-            if self.max_disk_usage_percent and du.percent >= self.max_disk_usage_percent:
+            if (
+                self.max_disk_usage_percent
+                and du.percent >= self.max_disk_usage_percent
+            ):
                 raise ServiceWarning(f"{du.percent}\u202f% disk usage")
         except ValueError as e:
             self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
@@ -133,18 +149,11 @@ class Mail(HealthCheck):
 
     """
 
-    backend: str = None
+    backend: str = settings.EMAIL_BACKEND
     timeout: int = dataclasses.field(default=15, repr=False)
 
     def check_status(self) -> None:
-        import logging
-
-        from django.conf import settings
-
-        logger = logging.getLogger(__name__)
-
-        backend = self.backend if self.backend is not None else settings.EMAIL_BACKEND
-        connection: BaseEmailBackend = get_connection(backend, fail_silently=False)
+        connection: BaseEmailBackend = get_connection(self.backend, fail_silently=False)
         connection.timeout = self.timeout
         logger.debug("Trying to open connection to mail backend.")
         try:
@@ -154,7 +163,9 @@ class Mail(HealthCheck):
 
             if isinstance(error, smtplib.SMTPException):
                 self.add_error(
-                    error=ServiceUnavailable("Failed to open connection with SMTP server"),
+                    error=ServiceUnavailable(
+                        "Failed to open connection with SMTP server"
+                    ),
                     cause=error,
                 )
             elif isinstance(error, ConnectionRefusedError):
@@ -169,7 +180,9 @@ class Mail(HealthCheck):
                 )
         finally:
             connection.close()
-        logger.debug("Connection established. Mail backend %r is healthy.", backend)
+        logger.debug(
+            "Connection established. Mail backend %r is healthy.", self.backend
+        )
 
 
 @dataclasses.dataclass()
@@ -193,9 +206,15 @@ class Memory(HealthCheck):
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
             msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent}\u202f%)"
-            if self.min_gibibytes_available and available_gibi < self.min_gibibytes_available:
+            if (
+                self.min_gibibytes_available
+                and available_gibi < self.min_gibibytes_available
+            ):
                 raise ServiceWarning(msg)
-            if self.max_memory_usage_percent and memory.percent >= self.max_memory_usage_percent:
+            if (
+                self.max_memory_usage_percent
+                and memory.percent >= self.max_memory_usage_percent
+            ):
                 raise ServiceWarning(msg)
         except ValueError as e:
             self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
@@ -214,7 +233,9 @@ class Storage(HealthCheck):
     alias: str = "default"
 
     def get_storage(self):
-        return storages[self.storage_alias if hasattr(self, "storage_alias") else self.alias]
+        return storages[
+            self.storage_alias if hasattr(self, "storage_alias") else self.alias
+        ]
 
     def get_file_name(self):
         return f"health_check_storage_test/test-{uuid.uuid4()}.txt"
