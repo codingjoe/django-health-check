@@ -114,9 +114,10 @@ class TestCommand:
             lambda req: DummyResponse(b"not-json"),
         )
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as excinfo:
             call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
         stderr.seek(0)
+        assert excinfo.value.code == 2
         assert "did not return valid JSON" in stderr.read()
 
     def test_command_endpoint_unreachable(self, monkeypatch):
@@ -133,7 +134,8 @@ class TestCommand:
             raise_url_error,
         )
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as excinfo:
             call_command("health_check", "health_check:health_check_home", stderr=stderr, addrport="127.0.0.1:8000")
         stderr.seek(0)
+        assert excinfo.value.code == 2
         assert "is not reachable" in stderr.read()
