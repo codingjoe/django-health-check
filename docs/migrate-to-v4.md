@@ -37,7 +37,12 @@
                # 3rd party checks
                "health_check.contrib.celery.Ping",
                "health_check.contrib.rabbitmq.RabbitMQ",
-               "health_check.contrib.redis.Redis",
+               (
+                   "health_check.contrib.redis.Redis",
+                   {
+                       "redis_url": "redis://localhost:6379/1",
+                   },
+               ),
            ]
        ),
    )
