@@ -1,6 +1,7 @@
 import dataclasses
 import os
 import pathlib
+import socket
 
 import psutil
 
@@ -22,6 +23,7 @@ class DiskUsage(HealthCheck):
 
     path: pathlib.Path | str = dataclasses.field(default=os.getcwd())
     max_disk_usage_percent: float | None = dataclasses.field(default=HEALTH_CHECK["DISK_USAGE_MAX"], repr=False)
+    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def check_status(self):
         try:
@@ -45,6 +47,7 @@ class MemoryUsage(HealthCheck):
 
     min_gibibytes_available: float | None = dataclasses.field(default=None, repr=False)
     max_memory_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
+    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def check_status(self):
         try:
