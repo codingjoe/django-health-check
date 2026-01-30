@@ -133,7 +133,7 @@ class Mail(HealthCheck):
 
     """
 
-    backend: str = dataclasses.field(default=None, repr=False)
+    backend: str = None
     timeout: int = dataclasses.field(default=15, repr=False)
 
     def check_status(self) -> None:
@@ -248,7 +248,6 @@ class Storage(HealthCheck):
             file_content = self.get_file_content()
             file_name = self.check_save(file_name, file_content)
             self.check_delete(file_name)
-            return True
         except ServiceUnavailable as e:
             raise e
         except Exception as e:

@@ -23,7 +23,7 @@ class Redis(HealthCheck):
 
     """
 
-    redis_url: str = dataclasses.field(default="redis://localhost/1", repr=False)
+    redis_url: str = dataclasses.field(repr=False)
     redis_url_options: dict[str, typing.Any] = dataclasses.field(default=None, repr=False)
 
     def check_status(self):

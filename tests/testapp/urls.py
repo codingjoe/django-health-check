@@ -10,7 +10,9 @@ urlpatterns = [
 # Add Celery check if celery is available
 try:
     import celery  # noqa: F401
-
+except ImportError:
+    pass
+else:
     urlpatterns.append(
         path(
             "ht/celery/",
@@ -18,13 +20,13 @@ try:
             name="health_check_celery",
         )
     )
-except ImportError:
-    pass
 
 # Add Redis check if redis is available
 try:
     import redis  # noqa: F401
-
+except ImportError:
+    pass
+else:
     urlpatterns.append(
         path(
             "ht/redis/",
@@ -32,13 +34,13 @@ try:
             name="health_check_redis",
         )
     )
-except ImportError:
-    pass
 
 # Add RabbitMQ check if kombu is available
 try:
     import kombu  # noqa: F401
-
+except ImportError:
+    pass
+else:
     urlpatterns.append(
         path(
             "ht/rabbitmq/",
@@ -46,8 +48,6 @@ try:
             name="health_check_rabbitmq",
         )
     )
-except ImportError:
-    pass
 
 # For backwards compatibility with tests, wrap in a namespace
 health_check_patterns = (urlpatterns, "health_check")
