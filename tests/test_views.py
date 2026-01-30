@@ -2,13 +2,11 @@ import dataclasses
 import json
 
 import pytest
-from django.urls import reverse
+from django.test import RequestFactory
 
 from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceWarning
-from health_check.views import MediaType
-
-plugin_dir = None  # this is gone and the tests need to be adapted accordingly
+from health_check.views import HealthCheckView, MediaType
 
 
 class TestMediaType:
@@ -80,100 +78,104 @@ class TestMediaType:
 
 
 class TestMainView:
-    url = reverse("health_check:health_check_home")
+    def test_success(self, health_check_view):
+        # Use a simple empty backend for testing
+        class SuccessBackend(HealthCheck):
+            def run_check(self):
+                pass
 
-    def test_success(self, client):
-        response = client.get(self.url)
-        assert response.status_code == 200, response.content.decode("utf-8")
+        response = health_check_view([SuccessBackend])
+        assert response.status_code == 200
         assert response["content-type"] == "text/html; charset=utf-8"
 
-    def test_error(self, client):
+    def test_error(self, health_check_view):
         class MyBackend(HealthCheck):
             def check_status(self):
                 self.add_error("Super Fail!")
 
-        plugin_dir.reset()
-        plugin_dir.register(MyBackend)
-        response = client.get(self.url)
-        assert response.status_code == 500, response.content.decode("utf-8")
+        response = health_check_view([MyBackend])
+        assert response.status_code == 500
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"Super Fail!" in response.content
 
-    def test_warning(self, client, monkeypatch):
+    def test_warning(self, health_check_view):
         class MyBackend(HealthCheck):
             def check_status(self):
                 raise ServiceWarning("so so")
 
-        plugin_dir.reset()
-        plugin_dir.register(MyBackend)
-        response = client.get(self.url)
-        assert response.status_code == 500, response.content.decode("utf-8")
+        # Test with warnings_as_errors=True (should return 500)
+        factory = RequestFactory()
+        request = factory.get("/")
+        view = HealthCheckView.as_view(checks=[MyBackend], warnings_as_errors=True)
+        response = view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 500
         assert b"so so" in response.content, response.content
 
-        monkeypatch.setattr("health_check.mixins.CheckMixin.warnings_as_errors", False)
-
-        response = client.get(self.url)
-        assert response.status_code == 200, response.content.decode("utf-8")
+        # Test with warnings_as_errors=False (should return 200)
+        view = HealthCheckView.as_view(checks=[MyBackend], warnings_as_errors=False)
+        response = view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 200
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"so so" in response.content, response.content
 
-    def test_non_critical(self, client):
+    def test_non_critical(self, health_check_view):
         class MyBackend(HealthCheck):
             critical_service = False
 
             def check_status(self):
                 self.add_error("Super Fail!")
 
-        plugin_dir.reset()
-        plugin_dir.register(MyBackend)
-        response = client.get(self.url)
+        response = health_check_view([MyBackend])
         assert response.status_code == 200, "Should be 200 OK for non-critical services"
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"Super Fail!" in response.content
 
-    def test_success_accept_json(self, client):
+    def test_success_accept_json(self, health_check_view):
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/json")
-        assert response["content-type"] == "application/json"
-        assert response.status_code == 200
-
-    def test_success_prefer_json(self, client):
-        class JSONSuccessBackend(HealthCheck):
-            def run_check(self):
-                pass
-
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(
-            self.url, HTTP_ACCEPT="application/json; q=0.8, text/html; q=0.5"
+        response = health_check_view(
+            [JSONSuccessBackend], accept_header="application/json"
         )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
-    def test_success_accept_xhtml(self, client):
+    def test_success_prefer_json(self, health_check_view):
+        class JSONSuccessBackend(HealthCheck):
+            def run_check(self):
+                pass
+
+        response = health_check_view(
+            [JSONSuccessBackend],
+            accept_header="application/json; q=0.8, text/html; q=0.5",
+        )
+        assert response["content-type"] == "application/json"
+        assert response.status_code == 200
+
+    def test_success_accept_xhtml(self, health_check_view):
         class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(SuccessBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/xhtml+xml")
+        response = health_check_view(
+            [SuccessBackend], accept_header="application/xhtml+xml"
+        )
         assert response["content-type"] == "text/html; charset=utf-8"
         assert response.status_code == 200
 
-    def test_success_unsupported_accept(self, client):
+    def test_success_unsupported_accept(self, health_check_view):
         class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(SuccessBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/octet-stream")
+        response = health_check_view(
+            [SuccessBackend], accept_header="application/octet-stream"
+        )
         assert response["content-type"] == "text/plain"
         assert response.status_code == 406
         assert (
@@ -181,109 +183,98 @@ class TestMainView:
             == b"Not Acceptable: Supported content types: text/html, application/json"
         )
 
-    def test_success_unsupported_and_supported_accept(self, client):
+    def test_success_unsupported_and_supported_accept(self, health_check_view):
         class SuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(SuccessBackend)
-        response = client.get(
-            self.url, HTTP_ACCEPT="application/octet-stream, application/json; q=0.9"
+        response = health_check_view(
+            [SuccessBackend],
+            accept_header="application/octet-stream, application/json; q=0.9",
         )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
-    def test_success_accept_order(self, client):
+    def test_success_accept_order(self, health_check_view):
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(
-            self.url,
-            HTTP_ACCEPT="text/html, application/xhtml+xml, application/json; q=0.9, */*; q=0.1",
+        response = health_check_view(
+            [JSONSuccessBackend],
+            accept_header="text/html, application/xhtml+xml, application/json; q=0.9, */*; q=0.1",
         )
         assert response["content-type"] == "text/html; charset=utf-8"
         assert response.status_code == 200
 
-    def test_success_accept_order__reverse(self, client):
+    def test_success_accept_order__reverse(self, health_check_view):
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(
-            self.url,
-            HTTP_ACCEPT="text/html; q=0.1, application/xhtml+xml; q=0.1, application/json",
+        response = health_check_view(
+            [JSONSuccessBackend],
+            accept_header="text/html; q=0.1, application/xhtml+xml; q=0.1, application/json",
         )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
-    def test_format_override(self, client):
+    def test_format_override(self, health_check_view):
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(self.url + "?format=json", HTTP_ACCEPT="text/html")
+        response = health_check_view(
+            [JSONSuccessBackend], format_param="json", accept_header="text/html"
+        )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
-    def test_format_no_accept_header(self, client):
+    def test_format_no_accept_header(self, health_check_view):
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(self.url)
-        assert response.status_code == 200, response.content.decode("utf-8")
+        response = health_check_view([JSONSuccessBackend])
+        assert response.status_code == 200
         assert response["content-type"] == "text/html; charset=utf-8"
 
-    def test_error_accept_json(self, client):
+    def test_error_accept_json(self, health_check_view):
         class JSONErrorBackend(HealthCheck):
             def run_check(self):
                 self.add_error("JSON Error")
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONErrorBackend)
-        response = client.get(self.url, HTTP_ACCEPT="application/json")
-        assert response.status_code == 500, response.content.decode("utf-8")
+        response = health_check_view(
+            [JSONErrorBackend], accept_header="application/json"
+        )
+        assert response.status_code == 500
         assert response["content-type"] == "application/json"
         assert (
             "JSON Error"
             in json.loads(response.content.decode("utf-8"))[repr(JSONErrorBackend())]
         )
 
-    def test_success_param_json(self, client):
+    def test_success_param_json(self, health_check_view):
         @dataclasses.dataclass
         class JSONSuccessBackend(HealthCheck):
             def run_check(self):
                 pass
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONSuccessBackend)
-        response = client.get(self.url, {"format": "json"})
-        assert response.status_code == 200, response.content.decode("utf-8")
+        response = health_check_view([JSONSuccessBackend], format_param="json")
+        assert response.status_code == 200
         assert response["content-type"] == "application/json"
         assert json.loads(response.content.decode("utf-8")) == {
             repr(JSONSuccessBackend()): JSONSuccessBackend().pretty_status()
         }
 
-    def test_error_param_json(self, client):
+    def test_error_param_json(self, health_check_view):
         @dataclasses.dataclass
         class JSONErrorBackend(HealthCheck):
             def run_check(self):
                 self.add_error("JSON Error")
 
-        plugin_dir.reset()
-        plugin_dir.register(JSONErrorBackend)
-        response = client.get(self.url, {"format": "json"})
-        assert response.status_code == 500, response.content.decode("utf-8")
+        response = health_check_view([JSONErrorBackend], format_param="json")
+        assert response.status_code == 500
         assert response["content-type"] == "application/json"
         assert (
             "JSON Error"

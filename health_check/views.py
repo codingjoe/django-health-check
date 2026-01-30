@@ -201,7 +201,7 @@ class HealthCheckView(TemplateView):
             for check in self.checks:
                 try:
                     check, options = check
-                except ValueError:
+                except (ValueError, TypeError):
                     options = {}
                 if isinstance(check, str):
                     check = import_string(check)

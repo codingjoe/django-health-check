@@ -6,10 +6,8 @@ import urllib.request
 from django.core.management.base import BaseCommand
 from django.urls import reverse
 
-from health_check.mixins import CheckMixin
 
-
-class Command(CheckMixin, BaseCommand):
+class Command(BaseCommand):
     help = "Run health checks and exit 0 if everything went well."
 
     def add_arguments(self, parser):
