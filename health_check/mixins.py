@@ -13,7 +13,7 @@ from health_check.plugins import plugin_dir
 class CheckMixin:
     _errors: list[HealthCheckException] = None
     _plugins = None
-    disable_threading: bool = HEALTH_CHECK["DISABLE_THREADING"]
+    use_threading: bool = HEALTH_CHECK["USE_THREADING"]
     warnings_as_errors: bool = HEALTH_CHECK["WARNINGS_AS_ERRORS"]
 
     @property
@@ -61,7 +61,7 @@ class CheckMixin:
             try:
                 return plugin
             finally:
-                if not self.disable_threading:
+                if self.use_threading:
                     # DB connections are thread-local so we need to close them here
                     connections.close_all()
 
@@ -75,7 +75,7 @@ class CheckMixin:
         plugins = dict(self.filter_plugins(subset=subset))
         plugin_instances = plugins.values()
 
-        if self.disable_threading:
+        if not self.use_threading:
             for plugin in plugin_instances:
                 _run(plugin)
                 _collect_errors(plugin)

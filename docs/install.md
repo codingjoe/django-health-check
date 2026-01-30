@@ -48,7 +48,7 @@ urlpatterns = [
                 "health_check.contrib.rabbitmq.RabbitMQ",
                 "health_check.contrib.redis.Redis",
             ],
-            disable_threading=False,  # optional, default is False
+            use_threading=True,  # optional, default is True
             warnings_as_errors=True,  # optional, default is True
         ),
     ),
@@ -57,7 +57,7 @@ urlpatterns = [
 
 ## Threading
 
-Django Health Check runs each check in a separate thread by default to improve performance. If you prefer to run the checks sequentially, you can set the `disable_threading` parameter to `True` when instantiating the `HealthCheckView`, as shown in the example above.
+Django Health Check runs each check in a separate thread by default to improve performance. If you prefer to run the checks sequentially, you can set the `use_threading` parameter to `False` when instantiating the `HealthCheckView`, as shown in the example above.
 
 This can be useful in environments where threads are not closing IO connections properly, leading to resource leaks.
 However, for Django's database connections, threading is generally safe and recommended for better performance.
