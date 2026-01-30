@@ -102,7 +102,7 @@ class HealthCheckView(TemplateView):
     use_threading: bool = True
     warnings_as_errors: bool = False
     checks: typing.Iterable[
-        HealthCheck | str | tuple[HealthCheck | str, dict[str, typing.Any]]
+        type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
     ] = (
         "health_check.checks.Cache",
         "health_check.checks.Database",

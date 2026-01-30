@@ -4,7 +4,6 @@ import dataclasses
 import logging
 
 from amqp.exceptions import AccessRefused
-from django.conf import settings
 from kombu import Connection
 
 from health_check.backends import HealthCheck
@@ -19,47 +18,31 @@ class RabbitMQ(HealthCheck):
     Check RabbitMQ service by opening and closing a broker channel.
 
     Args:
-        namespace: Optional namespace for the broker URL setting.
+        url (str): The URL of the RabbitMQ broker to connect to, e.g., 'amqp://guest:guest@localhost:5672//'.
 
     """
 
-    namespace: str | None = None
+    url: str
 
     def check_status(self):
-        logger.debug("Checking for a broker_url on django settings...")
-
-        broker_url_setting_key = (
-            f"{self.namespace}_BROKER_URL" if self.namespace else "BROKER_URL"
-        )
-        broker_url = getattr(settings, broker_url_setting_key, None)
-
-        logger.debug("Got %s as the broker_url. Connecting to rabbit...", broker_url)
-
-        logger.debug("Attempting to connect to rabbit...")
+        logger.debug("Attempting to connect to %r...", self.url)
         try:
             # conn is used as a context to release opened resources later
-            with Connection(broker_url) as conn:
+            with Connection(self.url) as conn:
                 conn.connect()  # exceptions may be raised upon calling connect
         except ConnectionRefusedError as e:
-            self.add_error(
-                ServiceUnavailable(
-                    "Unable to connect to RabbitMQ: Connection was refused."
-                ),
-                e,
-            )
-
+            raise ServiceUnavailable(
+                "Unable to connect to RabbitMQ: Connection was refused."
+            ) from e
         except AccessRefused as e:
-            self.add_error(
-                ServiceUnavailable(
-                    "Unable to connect to RabbitMQ: Authentication error."
-                ),
-                e,
-            )
+            raise ServiceUnavailable(
+                "Unable to connect to RabbitMQ: Authentication error."
+            ) from e
 
         except OSError as e:
-            self.add_error(ServiceUnavailable("IOError"), e)
+            raise ServiceUnavailable("IOError") from e
 
         except BaseException as e:
-            self.add_error(ServiceUnavailable("Unknown error"), e)
+            raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. RabbitMQ is healthy.")

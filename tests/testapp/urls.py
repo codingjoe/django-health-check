@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import include, path
 
 from health_check.views import HealthCheckView
@@ -30,7 +31,14 @@ else:
     urlpatterns.append(
         path(
             "ht/redis/",
-            HealthCheckView.as_view(checks=["health_check.contrib.redis.Redis"]),
+            HealthCheckView.as_view(
+                checks=[
+                    (
+                        "health_check.contrib.redis.Redis",
+                        {"url": settings.REDIS_URL},
+                    )
+                ]
+            ),
             name="health_check_redis",
         )
     )
@@ -44,7 +52,16 @@ else:
     urlpatterns.append(
         path(
             "ht/rabbitmq/",
-            HealthCheckView.as_view(checks=["health_check.contrib.rabbitmq.RabbitMQ"]),
+            HealthCheckView.as_view(
+                checks=[
+                    (
+                        "health_check.contrib.rabbitmq.RabbitMQ",
+                        {
+                            "url": settings.BROKER_URL,
+                        },
+                    )
+                ]
+            ),
             name="health_check_rabbitmq",
         )
     )

@@ -18,23 +18,21 @@ class Redis(HealthCheck):
     Check Redis service by pinging the redis instance with a redis connection.
 
     Args:
-        redis_url: The Redis connection URL.
-        redis_url_options: Additional options for the Redis connection.
+        url: The Redis connection URL, e.g., 'redis://localhost:6379/0'.
+        options: Additional options for the Redis connection, e.g., {'socket_connect_timeout': 5}.
 
     """
 
-    redis_url: str = dataclasses.field(repr=False)
-    redis_url_options: dict[str, typing.Any] = dataclasses.field(
-        default_factory=dict, repr=False
-    )
+    url: str = dataclasses.field(repr=False)
+    options: dict[str, typing.Any] = dataclasses.field(default_factory=dict, repr=False)
 
     def check_status(self):
-        logger.debug("Got %s as the redis_url. Connecting to redis...", self.redis_url)
+        logger.debug("Got %s as the redis_url. Connecting to redis...", self.url)
 
         logger.debug("Attempting to connect to redis...")
         try:
             # conn is used as a context to release opened resources later
-            with from_url(self.redis_url, **self.redis_url_options) as conn:
+            with from_url(self.url, **self.options) as conn:
                 conn.ping()  # exceptions may be raised upon ping
         except ConnectionRefusedError as e:
             self.add_error(
