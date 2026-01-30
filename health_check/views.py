@@ -148,6 +148,7 @@ class HealthCheckView(CheckMixin, TemplateView):
             import copy
 
             from health_check.plugins import plugin_dir
+
             if plugin_dir._registry:
                 registering_plugins = (
                     plugin_class(**copy.deepcopy(options)) for plugin_class, options in plugin_dir._registry
@@ -159,4 +160,5 @@ class HealthCheckView(CheckMixin, TemplateView):
     @cached_property
     def plugins(self):
         from collections import OrderedDict
+
         return OrderedDict(self.get_plugins())
