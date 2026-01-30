@@ -20,6 +20,18 @@ class TestHealthCheck:
         check.run_check()
         assert check.errors == []
 
+    def test_run_check__unexpected_exception_reraised(self):
+        """Re-raise unexpected exceptions that are not HealthCheckException."""
+
+        class UnexpectedErrorCheck(HealthCheck):
+            def check_status(self):
+                raise RuntimeError("Unexpected error")
+
+        check = UnexpectedErrorCheck()
+        with pytest.raises(RuntimeError) as exc_info:
+            check.run_check()
+        assert str(exc_info.value) == "Unexpected error"
+
     def test_status__healthy(self):
         """Return 1 when no errors are present."""
         ht = HealthCheck()

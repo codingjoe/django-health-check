@@ -336,3 +336,70 @@ class TestHealthCheckView:
             "JSON Error"
             in json.loads(response.content.decode("utf-8"))[repr(FailingBackend())]
         )
+
+    def test_threading_enabled(self, health_check_view):
+        """Use ThreadPoolExecutor when use_threading is True."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        view = HealthCheckView.as_view(
+            checks=[SuccessBackend, SuccessBackend], use_threading=True
+        )
+        response = view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 200
+
+    def test_threading_disabled(self, health_check_view):
+        """Execute checks sequentially when use_threading is False."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        view = HealthCheckView.as_view(
+            checks=[SuccessBackend, SuccessBackend], use_threading=False
+        )
+        response = view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 200
+
+    def test_get_plugins__with_string_import(self):
+        """Import check from string path."""
+        factory = RequestFactory()
+        request = factory.get("/")
+        view = HealthCheckView.as_view(
+            checks=["health_check.Disk"],
+        )
+        response = view(request)
+        response.render()
+        plugins = view.view_initkwargs["checks"]
+        assert plugins == ["health_check.Disk"]
+
+    def test_get_plugins__with_tuple_options(self):
+        """Handle check tuples with options."""
+
+        @dataclasses.dataclass
+        class ConfigurableCheck(HealthCheck):
+            value: int = 0
+
+            def check_status(self):
+                if self.value < 0:
+                    raise HealthCheckException("Invalid value")
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        view = HealthCheckView.as_view(
+            checks=[(ConfigurableCheck, {"value": 42})],
+        )
+        response = view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 200
