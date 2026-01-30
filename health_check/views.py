@@ -166,4 +166,10 @@ class HealthCheckView(_MainView):
 
     @cached_property
     def plugins(self):
+        """
+        Override CheckMixin.plugins to use the `checks` list instead of the global plugin_dir registry.
+        
+        This allows HealthCheckView to be configured with a custom list of checks via the `checks` attribute,
+        rather than relying on the global registry used by CheckMixin.
+        """
         return dict(self.get_plugins())

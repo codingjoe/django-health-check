@@ -37,7 +37,7 @@ class CacheBackend(HealthCheck):
 
     def check_status(self):
         cache = caches[self.alias]
-        ts = datetime.datetime.now().timestamp()
+        ts = datetime.datetime.now(tz=datetime.UTC).timestamp()
         try:
             cache.set(self.cache_key, f"itworks-{ts}")
             if not cache.get(self.cache_key) == f"itworks-{ts}":

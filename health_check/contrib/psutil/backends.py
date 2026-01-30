@@ -1,5 +1,4 @@
 import dataclasses
-import locale
 import os
 import pathlib
 
@@ -28,7 +27,7 @@ class DiskUsage(HealthCheck):
         try:
             du = psutil.disk_usage(str(self.path))
             if self.max_disk_usage_percent and du.percent >= self.max_disk_usage_percent:
-                raise ServiceWarning(f"{du.percent}\u202f % disk usage")
+                raise ServiceWarning(f"{du.percent}\u202f% disk usage")
         except ValueError as e:
             self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
 
@@ -54,7 +53,6 @@ class MemoryUsage(HealthCheck):
             total_gibi = memory.total / (1024**3)
             msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent}\u202f%)"
             if self.min_gibibytes_available and available_gibi < self.min_gibibytes_available:
-                locale.setlocale(locale.LC_ALL, "")
                 raise ServiceWarning(msg)
             if self.max_memory_usage_percent and memory.percent >= self.max_memory_usage_percent:
                 raise ServiceWarning(msg)

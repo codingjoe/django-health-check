@@ -9,7 +9,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     },
-    "other": {  # 2nd database conneciton to ensure proper connection handling
+    "other": {  # 2nd database connection to ensure proper connection handling
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":backup",
     },

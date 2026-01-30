@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from health_check.contrib.psutil.backends import DiskUsage, MemoryUsage
-from health_check.exceptions import ServiceReturnedUnexpectedResult
+from health_check.exceptions import ServiceReturnedUnexpectedResult, ServiceWarning
 
 
 class _FakeDiskUsage:
@@ -33,7 +33,7 @@ def test_disk_usage_warns_on_high_percent():
     with patch("health_check.contrib.psutil.backends.psutil.disk_usage") as mock_du:
         mock_du.return_value = _FakeDiskUsage(percent=75)
         # run_check wraps warnings as errors via HEALTH_CHECK setting; expect ServiceWarning added
-        with pytest.raises(Exception):
+        with pytest.raises(ServiceWarning):
             # run_check may propagate exceptions depending on behavior; call check_status directly to inspect warnings
             disk.check_status()
 
@@ -53,7 +53,7 @@ def test_memory_usage_warns_on_low_available():
     with patch("health_check.contrib.psutil.backends.psutil.virtual_memory") as mock_vm:
         mock_vm.return_value = _FakeMemory(total=8 * 1024**3, available=2 * 1024**3, percent=75)
         # check_status should raise/add a ServiceWarning
-        with pytest.raises(Exception):
+        with pytest.raises(ServiceWarning):
             mem.check_status()
 
 

@@ -99,8 +99,6 @@ class TestMainView:
 
     def test_warning(self, client, monkeypatch):
         class MyBackend(HealthCheck):
-            level = "warning"
-
             def check_status(self):
                 raise ServiceWarning("so so")
 

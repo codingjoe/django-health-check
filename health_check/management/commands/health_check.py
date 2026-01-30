@@ -40,13 +40,16 @@ class Command(CheckMixin, BaseCommand):
             )
             try:
                 response = urllib.request.urlopen(request)  # noqa: S310
+                content = response.read()
             except urllib.error.HTTPError as e:
+                self.stdout.write(
+                    f'"{url}" returned HTTP {e.code} {e.reason}\n'
+                    f'The health check may have failed. Attempting to parse response...\n'
+                )
                 content = e.read()
             except urllib.error.URLError as e:
                 self.stdout.write(f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.')
                 sys.exit(1)
-            else:
-                content = response.read()
 
             try:
                 json_data = json.loads(content.decode("utf-8"))

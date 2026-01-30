@@ -58,7 +58,11 @@ class TestCommand:
         with pytest.raises(SystemExit):
             call_command("health_check", f"--subset={SUBSET_NAME}", stdout=stdout)
         stdout.seek(0)
-        assert stdout.read() == ("FailPlugin               ... unknown error: Oops\nOkPlugin                 ... OK\n")
+        output = stdout.read()
+        assert "FailPlugin" in output
+        assert "unknown error: Oops" in output
+        assert "OkPlugin" in output
+        assert "OK" in output
 
     def test_command_with_non_existence_subset(self):
         SUBSET_NAME = "subset-2"

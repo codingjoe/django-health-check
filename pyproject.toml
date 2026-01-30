@@ -86,7 +86,10 @@ write_to = "health_check/_version.py"
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
 filterwarnings = [
-  "ignore::DeprecationWarning"
+  # Ignore deprecation warnings from our own migration path (apps being deprecated)
+  "ignore:The `health_check.*` app is deprecated:DeprecationWarning:health_check",
+  # Ignore explicit endpoint argument deprecation in management commands
+  "ignore:Explicit endpoint argument will be required:DeprecationWarning:health_check",
 ]
 testpaths = [
   "tests",
