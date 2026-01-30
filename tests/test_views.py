@@ -1,9 +1,7 @@
 import dataclasses
 import json
-from unittest.mock import Mock
 
 import pytest
-from django.db import DatabaseError
 from django.urls import reverse
 
 from health_check.backends import HealthCheck

@@ -4,7 +4,6 @@ import pytest
 from django.core.management import call_command
 
 from health_check.backends import HealthCheck
-from health_check.conf import HEALTH_CHECK
 from health_check.plugins import plugin_dir
 
 

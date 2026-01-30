@@ -145,8 +145,9 @@ class HealthCheckView(CheckMixin, TemplateView):
                 yield repr(plugin_instance), plugin_instance
         # Otherwise, fall back to plugin_dir for backward compatibility (tests, etc.)
         else:
-            from health_check.plugins import plugin_dir
             import copy
+
+            from health_check.plugins import plugin_dir
             if plugin_dir._registry:
                 registering_plugins = (
                     plugin_class(**copy.deepcopy(options)) for plugin_class, options in plugin_dir._registry

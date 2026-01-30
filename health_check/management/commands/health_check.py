@@ -4,7 +4,6 @@ import urllib.error
 import urllib.request
 
 from django.core.management.base import BaseCommand
-from django.http import Http404
 from django.urls import reverse
 
 from health_check.mixins import CheckMixin
