@@ -43,26 +43,17 @@ class HealthCheck:
         try:
             self.check_status()
         except HealthCheckException as e:
-            self.add_error(e, e)
+            self.add_error(e)
         except BaseException:
             logger.exception("Unexpected Error!")
             raise
         finally:
             self.time_taken = timer() - start
 
-    def add_error(self, error, cause=None):
-        if isinstance(error, HealthCheckException):
-            pass
-        elif isinstance(error, str):
-            msg = error
-            error = HealthCheckException(msg)
-        else:
-            msg = "unknown error"
-            error = HealthCheckException(msg)
-        if isinstance(cause, BaseException):
-            logger.exception(str(error))
-        else:
-            logger.error(str(error))
+    def add_error(self, error: str | HealthCheckException):
+        if isinstance(error, str):
+            error = HealthCheckException(error)
+        logger.exception(error.message)
         self.errors.append(error)
 
     def pretty_status(self):

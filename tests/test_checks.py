@@ -90,7 +90,7 @@ class TestServiceUnavailable(TestCase):
     def test_str__exception_message(self):
         """Format exception with message type prefix."""
         exc = ServiceUnavailable("Test error")
-        assert str(exc) == "unavailable: Test error"
+        assert str(exc) == "Unavailable: Test error"
 
 
 class TestCheckStatus(TestCase):

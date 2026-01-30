@@ -62,12 +62,12 @@ class Cache(HealthCheck):
             cache.set(self.cache_key, f"itworks-{ts}")
             if not cache.get(self.cache_key) == f"itworks-{ts}":
                 raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
-        except CacheKeyWarning as e:
-            self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"), e)
-        except ValueError as e:
-            self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
-        except (ConnectionError, RedisError) as e:
-            self.add_error(ServiceReturnedUnexpectedResult("Connection Error"), e)
+        except CacheKeyWarning:
+            self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"))
+        except ValueError:
+            self.add_error(ServiceReturnedUnexpectedResult("ValueError"))
+        except (ConnectionError, RedisError):
+            self.add_error(ServiceReturnedUnexpectedResult("Connection Error"))
 
 
 class _SelectOne(Expression):
@@ -134,8 +134,8 @@ class Disk(HealthCheck):
                 and du.percent >= self.max_disk_usage_percent
             ):
                 raise ServiceWarning(f"{du.percent}\u202f% disk usage")
-        except ValueError as e:
-            self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
+        except ValueError:
+            self.add_error(ServiceReturnedUnexpectedResult("ValueError"))
 
 
 @dataclasses.dataclass
@@ -166,17 +166,14 @@ class Mail(HealthCheck):
                     error=ServiceUnavailable(
                         "Failed to open connection with SMTP server"
                     ),
-                    cause=error,
                 )
             elif isinstance(error, ConnectionRefusedError):
                 self.add_error(
                     error=ServiceUnavailable("Connection refused error"),
-                    cause=error,
                 )
             else:
                 self.add_error(
                     error=ServiceUnavailable(f"Unknown error {error.__class__}"),
-                    cause=error,
                 )
         finally:
             connection.close()
@@ -216,8 +213,8 @@ class Memory(HealthCheck):
                 and memory.percent >= self.max_memory_usage_percent
             ):
                 raise ServiceWarning(msg)
-        except ValueError as e:
-            self.add_error(ServiceReturnedUnexpectedResult("ValueError"), e)
+        except ValueError:
+            self.add_error(ServiceReturnedUnexpectedResult("ValueError"))
 
 
 @dataclasses.dataclass

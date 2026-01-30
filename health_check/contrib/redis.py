@@ -34,22 +34,19 @@ class Redis(HealthCheck):
             # conn is used as a context to release opened resources later
             with from_url(self.url, **self.options) as conn:
                 conn.ping()  # exceptions may be raised upon ping
-        except ConnectionRefusedError as e:
+        except ConnectionRefusedError:
             self.add_error(
                 ServiceUnavailable(
                     "Unable to connect to Redis: Connection was refused."
-                ),
-                e,
+                )
             )
-        except exceptions.TimeoutError as e:
+        except exceptions.TimeoutError:
+            self.add_error(ServiceUnavailable("Unable to connect to Redis: Timeout."))
+        except exceptions.ConnectionError:
             self.add_error(
-                ServiceUnavailable("Unable to connect to Redis: Timeout."), e
+                ServiceUnavailable("Unable to connect to Redis: Connection Error")
             )
-        except exceptions.ConnectionError as e:
-            self.add_error(
-                ServiceUnavailable("Unable to connect to Redis: Connection Error"), e
-            )
-        except BaseException as e:
-            self.add_error(ServiceUnavailable("Unknown error"), e)
+        except BaseException:
+            self.add_error(ServiceUnavailable("Unknown error"))
         else:
             logger.debug("Connection established. Redis is healthy.")

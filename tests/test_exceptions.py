@@ -19,7 +19,7 @@ class TestHealthCheckException:
     def test_str__format_with_type(self):
         """Format string with message type and message."""
         exc = HealthCheckException("foo")
-        assert str(exc) == "unknown error: foo"
+        assert str(exc) == "Unknown Error: foo"
 
     def test_inherits_from_exception(self):
         """Inherit from Exception base class."""
@@ -37,7 +37,7 @@ class TestServiceWarning:
     def test_str__format_with_warning_type(self):
         """Format string with 'warning' message type."""
         exc = ServiceWarning("unstable")
-        assert str(exc) == "warning: unstable"
+        assert str(exc) == "Warning: unstable"
 
     def test_inherits_from_health_check_exception(self):
         """Inherit from HealthCheckException."""
@@ -60,7 +60,7 @@ class TestServiceUnavailable:
     def test_str__format_with_unavailable_type(self):
         """Format string with 'unavailable' message type."""
         exc = ServiceUnavailable("database down")
-        assert str(exc) == "unavailable: database down"
+        assert str(exc) == "Unavailable: database down"
 
     def test_inherits_from_health_check_exception(self):
         """Inherit from HealthCheckException."""
@@ -83,7 +83,7 @@ class TestServiceReturnedUnexpectedResult:
     def test_str__format_with_unexpected_result_type(self):
         """Format string with 'unexpected result' message type."""
         exc = ServiceReturnedUnexpectedResult("wrong format")
-        assert str(exc) == "unexpected result: wrong format"
+        assert str(exc) == "Unexpected Result: wrong format"
 
     def test_inherits_from_health_check_exception(self):
         """Inherit from HealthCheckException."""

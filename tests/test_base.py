@@ -64,37 +64,10 @@ class TestHealthCheck:
         ht = HealthCheck()
         ht.add_error("bar")
         assert isinstance(ht.errors[0], HealthCheckException)
-        assert str(ht.errors[0]) == "unknown error: bar"
+        assert str(ht.errors[0]) == "Unknown Error: bar"
 
-    def test_add_error__with_non_string_non_exception(self):
-        """Convert non-string/non-exception to HealthCheckException with generic message."""
-        ht = HealthCheck()
-        ht.add_error(type)
-        assert isinstance(ht.errors[0], HealthCheckException)
-        assert str(ht.errors[0]) == "unknown error: unknown error"
-
-    def test_add_error__with_exception_cause(self):
+    def test_add_error__with_exception_trace(self):
         """Log exception details when cause is provided."""
-        ht = HealthCheck()
-        logger = logging.getLogger("health-check")
-        with StringIO() as stream:
-            stream_handler = logging.StreamHandler(stream)
-            logger.addHandler(stream_handler)
-            try:
-                raise Exception("bar")
-            except Exception as e:
-                ht.add_error("foo", e)
-
-            stream.seek(0)
-            log = stream.read()
-            assert "foo" in log
-            assert "bar" in log
-            assert "Traceback" in log
-            assert "Exception: bar" in log
-            logger.removeHandler(stream_handler)
-
-    def test_add_error__without_exception_cause(self):
-        """Log error message without traceback when cause is not provided."""
         ht = HealthCheck()
         logger = logging.getLogger("health-check")
         with StringIO() as stream:
@@ -108,7 +81,7 @@ class TestHealthCheck:
             stream.seek(0)
             log = stream.read()
             assert "foo" in log
-            assert "bar" not in log
-            assert "Traceback" not in log
-            assert "Exception: bar" not in log
+            assert "bar" in log
+            assert "Traceback" in log
+            assert "Exception: bar" in log
             logger.removeHandler(stream_handler)
