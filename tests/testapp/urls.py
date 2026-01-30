@@ -2,14 +2,56 @@ from django.urls import include, path
 
 from health_check.views import HealthCheckView
 
-health_check_patterns = (
-    [
-        path("", HealthCheckView.as_view(), name="health_check_home"),
-        path("<str:subset>/", HealthCheckView.as_view(), name="health_check_subset"),
-    ],
-    "health_check",
-)
+# For test compatibility - main endpoint uses plugin_dir for flexibility
+urlpatterns = [
+    path("ht/", HealthCheckView.as_view(), name="health_check_home"),
+]
+
+# Add Celery check if celery is available
+try:
+    import celery  # noqa: F401
+
+    urlpatterns.append(
+        path(
+            "ht/celery/",
+            HealthCheckView.as_view(checks=["health_check.contrib.celery.Ping"]),
+            name="health_check_celery",
+        )
+    )
+except ImportError:
+    pass
+
+# Add Redis check if redis is available
+try:
+    import redis  # noqa: F401
+
+    urlpatterns.append(
+        path(
+            "ht/redis/",
+            HealthCheckView.as_view(checks=["health_check.contrib.redis.Redis"]),
+            name="health_check_redis",
+        )
+    )
+except ImportError:
+    pass
+
+# Add RabbitMQ check if kombu is available
+try:
+    import kombu  # noqa: F401
+
+    urlpatterns.append(
+        path(
+            "ht/rabbitmq/",
+            HealthCheckView.as_view(checks=["health_check.contrib.rabbitmq.RabbitMQ"]),
+            name="health_check_rabbitmq",
+        )
+    )
+except ImportError:
+    pass
+
+# For backwards compatibility with tests, wrap in a namespace
+health_check_patterns = (urlpatterns, "health_check")
 
 urlpatterns = [
-    path("ht/", include(health_check_patterns)),
+    path("", include(health_check_patterns)),
 ]

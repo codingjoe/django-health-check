@@ -1,8 +1,8 @@
+"""Celery health check."""
+
 import dataclasses
-import datetime
 
 from celery.app import default_app as app
-from django.conf import settings
 
 from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -14,21 +14,16 @@ class Ping(HealthCheck):
     Check Celery worker availability using the ping control command.
 
     Args:
-        timeout: Timeout duration for the ping command.
+        timeout: Timeout duration for the ping command in seconds.
 
     """
 
     CORRECT_PING_RESPONSE = {"ok": "pong"}
-    timeout: datetime.timedelta = dataclasses.field(default_factory=lambda: datetime.timedelta(seconds=1))
-
-    def __post_init__(self):
-        # Override timeout from settings if available and using default
-        if self.timeout == datetime.timedelta(seconds=1) and hasattr(settings, "HEALTHCHECK_CELERY_PING_TIMEOUT"):
-            object.__setattr__(self, "timeout", datetime.timedelta(seconds=settings.HEALTHCHECK_CELERY_PING_TIMEOUT))
+    timeout: int = 1
 
     def check_status(self):
         try:
-            ping_result = app.control.ping(timeout=self.timeout.total_seconds())
+            ping_result = app.control.ping(timeout=self.timeout)
         except OSError as e:
             self.add_error(ServiceUnavailable("IOError"), e)
         except NotImplementedError as exc:

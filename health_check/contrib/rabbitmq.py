@@ -1,3 +1,5 @@
+"""RabbitMQ health check."""
+
 import dataclasses
 import logging
 

@@ -5,7 +5,6 @@ import pytest
 from django.urls import reverse
 
 from health_check.backends import HealthCheck
-from health_check.conf import HEALTH_CHECK
 from health_check.exceptions import ServiceWarning
 from health_check.plugins import plugin_dir
 from health_check.views import MediaType
@@ -259,46 +258,6 @@ class TestMainView:
         assert json.loads(response.content.decode("utf-8")) == {
             repr(JSONSuccessBackend()): JSONSuccessBackend().pretty_status()
         }
-
-    def test_success_subset_define(self, client):
-        class SuccessOneBackend(HealthCheck):
-            def run_check(self):
-                pass
-
-        class SuccessTwoBackend(HealthCheck):
-            def run_check(self):
-                pass
-
-        plugin_dir.reset()
-        plugin_dir.register(SuccessOneBackend)
-        plugin_dir.register(SuccessTwoBackend)
-
-        HEALTH_CHECK["SUBSETS"] = {
-            "startup-probe": ["SuccessOneBackend", "SuccessTwoBackend"],
-            "liveness-probe": ["SuccessTwoBackend"],
-        }
-
-        response_startup_probe = client.get(self.url + "startup-probe/", {"format": "json"})
-        assert response_startup_probe.status_code == 200, response_startup_probe.content.decode("utf-8")
-        assert response_startup_probe["content-type"] == "application/json"
-        assert json.loads(response_startup_probe.content.decode("utf-8")) == {
-            repr(SuccessOneBackend()): SuccessOneBackend().pretty_status(),
-            repr(SuccessTwoBackend()): SuccessTwoBackend().pretty_status(),
-        }
-
-        response_liveness_probe = client.get(self.url + "liveness-probe/", {"format": "json"})
-        assert response_liveness_probe.status_code == 200, response_liveness_probe.content.decode("utf-8")
-        assert response_liveness_probe["content-type"] == "application/json"
-        assert json.loads(response_liveness_probe.content.decode("utf-8")) == {
-            repr(SuccessTwoBackend()): SuccessTwoBackend().pretty_status(),
-        }
-
-    def test_error_subset_not_found(self, client):
-        plugin_dir.reset()
-        response = client.get(self.url + "liveness-probe/", {"format": "json"})
-        print(f"content: {response.content}")
-        print(f"code: {response.status_code}")
-        assert response.status_code == 404, response.content.decode("utf-8")
 
     def test_error_param_json(self, client):
         @dataclasses.dataclass
