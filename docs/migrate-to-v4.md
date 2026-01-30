@@ -1,5 +1,11 @@
 # Migration to version 4.x
 
+1. If you have `health_check.db` in your `INSTALLED_APPS`, remove revert the migration to drop the `TestModel` table:
+
+   ```shell
+   python manage.py migrate health_check.db zero
+   ```
+
 1. Remove these `health_check.*` sub‑apps from `INSTALLED_APPS` but keep `health_check`!
 
 1. Remove all `HEALTH_CHECK_*` settings from your settings file.
