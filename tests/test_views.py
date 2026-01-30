@@ -62,19 +62,20 @@ class TestMediaType:
         """Parse valid media type strings."""
         assert MediaType.from_string(type) == expected
 
-    invalid_strings = [
-        "*/*;0.9",
-        'text/html;z=""',
-        "text/html; xxx",
-        "text/html;  =a",
-    ]
-
-    @pytest.mark.parametrize("type", invalid_strings)
-    def test_from_string__invalid(self, type):
+    @pytest.mark.parametrize(
+        "mime_type",
+        [
+            "*/*;0.9",
+            'text/html;z=""',
+            "text/html; xxx",
+            "text/html;  =a",
+        ],
+    )
+    def test_from_string__invalid(self, mime_type):
         """Raise ValueError for invalid media type strings."""
         with pytest.raises(ValueError) as e:
-            MediaType.from_string(type)
-        expected_error = f'"{type}" is not a valid media type'
+            MediaType.from_string(mime_type)
+        expected_error = f'"{mime_type}" is not a valid media type'
         assert expected_error in str(e.value)
 
     def test_parse_header__default(self):

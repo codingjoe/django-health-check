@@ -56,14 +56,11 @@ class MediaType:
 
     @classmethod
     def from_string(cls, value):
-        """Return single instance parsed from given accept header string."""
+        """Return single instance parsed from the given Accept-header string."""
         match = cls.pattern.search(value)
         if match is None:
             raise ValueError(f'"{value}" is not a valid media type')
-        try:
-            return cls(match.group("mime_type"), float(match.group("weight") or 1))
-        except ValueError:
-            return cls(value)
+        return cls(match.group("mime_type"), float(match.group("weight") or 1))
 
     @classmethod
     def parse_header(cls, value="*/*"):
@@ -112,12 +109,6 @@ class HealthCheckView(TemplateView):
         "health_check.checks.Storage",
     )
 
-    @property
-    def errors(self):
-        if not self._errors:
-            self._errors = self.run_check()
-        return self._errors
-
     def check(self):
         return self.run_check()
 
@@ -142,17 +133,16 @@ class HealthCheckView(TemplateView):
                 else:
                     errors.extend(plugin.errors)
 
-        plugins = dict(self.plugins)
-        plugin_instances = plugins.values()
-
-        if not self.use_threading:
-            for plugin in plugin_instances:
+        if self.use_threading:
+            with ThreadPoolExecutor(
+                max_workers=len(self.plugins.values()) or 1
+            ) as executor:
+                for plugin in executor.map(_run, self.plugins.values()):
+                    _collect_errors(plugin)
+        else:
+            for plugin in self.plugins.values():
                 _run(plugin)
                 _collect_errors(plugin)
-        else:
-            with ThreadPoolExecutor(max_workers=len(plugin_instances) or 1) as executor:
-                for plugin in executor.map(_run, plugin_instances):
-                    _collect_errors(plugin)
         return errors
 
     @method_decorator(never_cache)

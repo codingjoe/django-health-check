@@ -17,7 +17,13 @@ else:
     urlpatterns.append(
         path(
             "ht/celery/",
-            HealthCheckView.as_view(checks=["health_check.contrib.celery.Ping"]),
+            HealthCheckView.as_view(
+                checks=[
+                    "health_check.contrib.celery.Ping",
+                    "health_check.contrib.celery.Ping",
+                ],
+                use_threading=False,
+            ),
             name="health_check_celery",
         )
     )
