@@ -18,7 +18,7 @@ from django.core.mail.backends.base import BaseEmailBackend
 from django.db import connections
 from django.db.models import Expression
 
-from health_check.backends import HealthCheck
+from health_check.base import HealthCheck
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,

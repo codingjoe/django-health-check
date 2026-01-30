@@ -6,7 +6,7 @@ import logging
 from amqp.exceptions import AccessRefused
 from kombu import Connection
 
-from health_check.backends import HealthCheck
+from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 logger = logging.getLogger(__name__)

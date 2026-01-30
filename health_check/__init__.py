@@ -1,7 +1,7 @@
 """Monitor the health of your Django app and its connected services."""
 
 from . import _version  # noqa
-from .backends import HealthCheck
+from .base import HealthCheck
 from .checks import Cache, Database, Disk, Mail, Memory, Storage
 
 __version__ = _version.__version__

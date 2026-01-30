@@ -92,6 +92,9 @@ DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
 norecursedirs = ".git"
 python_files = "test_*.py"
 xfail_strict = true
+markers = [
+  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
 
 [tool.coverage.run]
 source = ["health_check"]

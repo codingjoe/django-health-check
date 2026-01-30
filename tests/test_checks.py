@@ -1,4 +1,4 @@
-"""Tests for health check modules that require actual services."""
+"""Integration tests for health check implementations."""
 
 import tempfile
 
@@ -9,100 +9,98 @@ from health_check.checks import Cache, Database, Disk, Mail, Memory, Storage
 from health_check.exceptions import ServiceUnavailable
 
 
-class TestCacheCheck(TestCase):
+class TestCache(TestCase):
     """Test the Cache health check."""
 
-    def test_cache_healthy(self):
-        """Test that cache check passes when cache is working."""
+    def test_run_check__cache_working(self):
+        """Cache backend successfully sets and retrieves values."""
         check = Cache()
         check.run_check()
-        assert check.errors == []
+        assert check.errors == [], "Cache should have no errors"
 
 
-class TestDatabaseCheck(TestCase):
+class TestDatabase(TestCase):
     """Test the Database health check."""
 
     @pytest.mark.django_db
-    def test_database_healthy(self):
-        """Test that database check passes when database is available."""
+    def test_run_check__database_available(self):
+        """Database connection returns successful query result."""
         check = Database()
         check.run_check()
-        assert check.errors == []
+        assert check.errors == [], "Database should have no errors"
 
 
-class TestDiskCheck(TestCase):
+class TestDisk(TestCase):
     """Test the Disk health check."""
 
-    def test_disk_healthy(self):
-        """Test that disk check passes."""
+    def test_run_check__disk_accessible(self):
+        """Disk space check completes successfully."""
         check = Disk()
         check.run_check()
-        assert check.errors == []
+        assert check.errors == [], "Disk should have no errors"
 
-    def test_disk_with_custom_path(self):
-        """Test disk check with a custom path."""
+    def test_run_check__custom_path(self):
+        """Disk check succeeds with custom path."""
         with tempfile.TemporaryDirectory() as tmpdir:
             check = Disk(path=tmpdir)
             check.run_check()
-            assert check.errors == []
+            assert check.errors == [], "Custom path should have no errors"
 
 
-class TestMemoryCheck(TestCase):
+class TestMemory(TestCase):
     """Test the Memory health check."""
 
-    def test_memory_healthy(self):
-        """Test that memory check passes."""
+    def test_run_check__memory_available(self):
+        """Memory check completes successfully."""
         check = Memory()
         check.run_check()
-        assert check.errors == []
+        assert check.errors == [], "Memory should have no errors"
 
 
-class TestMailCheck(TestCase):
+class TestMail(TestCase):
     """Test the Mail health check."""
 
-    def test_mail_with_locmem_backend(self):
-        """Test that mail check works with locmem backend."""
+    def test_run_check__locmem_backend(self):
+        """Mail check completes with locmem backend."""
         with override_settings(
             EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
         ):
             check = Mail()
-            # Just ensure it doesn't crash
             check.run_check()
 
 
-class TestStorageCheck(TestCase):
+class TestStorage(TestCase):
     """Test the Storage health check."""
 
-    def test_storage_healthy(self):
-        """Test that storage check works with default storage."""
+    def test_run_check__default_storage(self):
+        """Storage check completes without exceptions."""
         check = Storage()
         check.run_check()
-        # May have errors if storage is not properly configured,
-        # but test ensures it doesn't crash
 
 
-class TestHealthCheckExceptions(TestCase):
-    """Test health check exception handling."""
+class TestServiceUnavailable(TestCase):
+    """Test ServiceUnavailable exception formatting."""
 
-    def test_service_unavailable_str(self):
-        """Test ServiceUnavailable exception string representation."""
+    def test_str__exception_message(self):
+        """Format exception with message type prefix."""
         exc = ServiceUnavailable("Test error")
-        assert str(exc) == "unavailable: Test error"
+        assert str(exc) == "unavailable: Test error", (
+            "Should format with 'unavailable' prefix"
+        )
 
 
-class TestCheckStatusRendering(TestCase):
-    """Test check status rendering."""
+class TestCheckStatus(TestCase):
+    """Test check status and rendering."""
 
-    def test_check_without_error_status(self):
-        """Test that check without errors has status 1."""
+    def test_status__without_errors(self):
+        """Status returns 1 when no errors are present."""
         check = Cache()
         check.run_check()
-        assert check.status == 1
-        assert len(check.errors) == 0
+        assert check.status == 1, "Status should be 1 for healthy check"
+        assert len(check.errors) == 0, "Should have no errors"
 
-    def test_check_pretty_status_ok(self):
-        """Test pretty_status without errors."""
+    def test_pretty_status__no_errors(self):
+        """Return 'OK' when no errors are present."""
         check = Cache()
         check.errors = []
-        status = check.pretty_status()
-        assert status == "OK"
+        assert check.pretty_status() == "OK", "Should display 'OK' for healthy check"

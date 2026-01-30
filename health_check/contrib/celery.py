@@ -5,7 +5,7 @@ import datetime
 
 from celery.app import default_app as app
 
-from health_check.backends import HealthCheck
+from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 

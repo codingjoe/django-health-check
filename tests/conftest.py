@@ -24,7 +24,6 @@ def health_check_view():
         request = factory.get(path, **kwargs)
         view = HealthCheckView.as_view(checks=checks)
         response = view(request)
-        # Render the response if it's a TemplateResponse
         if hasattr(response, "render"):
             response.render()
         return response

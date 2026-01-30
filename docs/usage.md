@@ -51,7 +51,7 @@ and implementing the `check_status` method. For example:
 
 ```python
 import dataclasses
-from health_check.backends import HealthCheck
+from health_check import HealthCheck
 
 
 @dataclasses.dataclass
