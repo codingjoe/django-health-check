@@ -1,10 +1,6 @@
-import logging
-from io import StringIO
-
 import pytest
 
 from health_check.base import HealthCheck
-from health_check.exceptions import HealthCheckException
 
 
 class TestHealthCheck:
@@ -51,37 +47,3 @@ class TestHealthCheck:
         ht = HealthCheck()
         ht.errors = ["foo", "bar", 123]
         assert ht.pretty_status() == "foo\nbar\n123"
-
-    def test_add_error__with_exception(self):
-        """Store HealthCheckException as-is when passed."""
-        ht = HealthCheck()
-        e = HealthCheckException("foo")
-        ht.add_error(e)
-        assert ht.errors[0] is e
-
-    def test_add_error__with_string(self):
-        """Convert string to HealthCheckException."""
-        ht = HealthCheck()
-        ht.add_error("bar")
-        assert isinstance(ht.errors[0], HealthCheckException)
-        assert str(ht.errors[0]) == "Unknown Error: bar"
-
-    def test_add_error__with_exception_trace(self):
-        """Log exception details when cause is provided."""
-        ht = HealthCheck()
-        logger = logging.getLogger("health-check")
-        with StringIO() as stream:
-            stream_handler = logging.StreamHandler(stream)
-            logger.addHandler(stream_handler)
-            try:
-                raise Exception("bar")
-            except Exception:
-                ht.add_error("foo")
-
-            stream.seek(0)
-            log = stream.read()
-            assert "foo" in log
-            assert "bar" in log
-            assert "Traceback" in log
-            assert "Exception: bar" in log
-            logger.removeHandler(stream_handler)

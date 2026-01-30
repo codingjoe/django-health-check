@@ -27,7 +27,6 @@ class HealthCheck:
 
         This method should be overridden by subclasses to implement
         specific health check logic. If the check fails, it should
-        call `self.add_error` with an appropriate error message or
         raise a `HealthCheckException`.
 
         Raises:
@@ -43,18 +42,13 @@ class HealthCheck:
         try:
             self.check_status()
         except HealthCheckException as e:
-            self.add_error(e)
+            self.errors.append(e)
+            logger.exception(str(e))
         except BaseException:
             logger.exception("Unexpected Error!")
             raise
         finally:
             self.time_taken = timer() - start
-
-    def add_error(self, error: str | HealthCheckException):
-        if isinstance(error, str):
-            error = HealthCheckException(error)
-        logger.exception(error.message)
-        self.errors.append(error)
 
     def pretty_status(self):
         if self.errors:

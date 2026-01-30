@@ -62,8 +62,7 @@ class MyHealthCheckBackend(HealthCheck):
 
     def check_status(self):
         # The test code goes here.
-        # You can use `self.add_error` or
-        # raise a `HealthCheckException`,
+        # Raise a `HealthCheckException` if the check fails,
         # similar to Django's form validation.
         pass
 ```

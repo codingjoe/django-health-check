@@ -38,9 +38,8 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
-            check.run_check()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     def test_check_status__authentication_error(self):
         """Raise ServiceUnavailable on authentication failure."""
@@ -51,9 +50,8 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
-            check.run_check()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     def test_check_status__os_error(self):
         """Raise ServiceUnavailable on OS error."""
@@ -64,9 +62,8 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
-            check.run_check()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable on unexpected exceptions."""
@@ -77,9 +74,8 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
-            check.run_check()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     @pytest.mark.integration
     def test_check_status__real_rabbitmq(self):

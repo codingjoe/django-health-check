@@ -5,7 +5,7 @@ import pytest
 from django.test import RequestFactory
 
 from health_check.base import HealthCheck
-from health_check.exceptions import ServiceWarning
+from health_check.exceptions import HealthCheckException, ServiceWarning
 from health_check.views import HealthCheckView, MediaType
 
 
@@ -113,7 +113,7 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             def check_status(self):
-                self.add_error("Super Fail!")
+                raise HealthCheckException("Super Fail!")
 
         response = health_check_view([FailingBackend])
         assert response.status_code == 500
@@ -162,7 +162,7 @@ class TestHealthCheckView:
             critical_service = False
 
             def check_status(self):
-                self.add_error("Super Fail!")
+                raise HealthCheckException("Super Fail!")
 
         response = health_check_view([NonCriticalBackend])
         assert response.status_code == 200
@@ -295,7 +295,7 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             def check_status(self):
-                self.add_error("JSON Error")
+                raise HealthCheckException("JSON Error")
 
         response = health_check_view([FailingBackend], accept_header="application/json")
         assert response.status_code == 500
@@ -326,7 +326,7 @@ class TestHealthCheckView:
         @dataclasses.dataclass
         class FailingBackend(HealthCheck):
             def check_status(self):
-                self.add_error("JSON Error")
+                raise HealthCheckException("JSON Error")
 
         response = health_check_view([FailingBackend], format_param="json")
         assert response.status_code == 500

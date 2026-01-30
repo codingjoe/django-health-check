@@ -27,21 +27,17 @@ class Ping(HealthCheck):
     def check_status(self):
         try:
             ping_result = app.control.ping(timeout=self.timeout.total_seconds())
-        except OSError:
-            self.add_error(ServiceUnavailable("IOError"))
-        except NotImplementedError:
-            self.add_error(
-                ServiceUnavailable(
-                    "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
-                )
-            )
-        except BaseException:
-            self.add_error(ServiceUnavailable("Unknown error"))
+        except OSError as e:
+            raise ServiceUnavailable("IOError") from e
+        except NotImplementedError as e:
+            raise ServiceUnavailable(
+                "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
+            ) from e
+        except BaseException as e:
+            raise ServiceUnavailable("Unknown error") from e
         else:
             if not ping_result:
-                self.add_error(
-                    ServiceUnavailable("Celery workers unavailable"),
-                )
+                raise ServiceUnavailable("Celery workers unavailable")
             else:
                 self._check_ping_result(ping_result)
 
@@ -51,12 +47,9 @@ class Ping(HealthCheck):
         for result in ping_result:
             worker, response = list(result.items())[0]
             if response != self.CORRECT_PING_RESPONSE:
-                self.add_error(
-                    ServiceUnavailable(
-                        f"Celery worker {worker} response was incorrect"
-                    ),
+                raise ServiceUnavailable(
+                    f"Celery worker {worker} response was incorrect"
                 )
-                continue
             active_workers.append(worker)
 
         if not self.errors:
@@ -74,6 +67,4 @@ class Ping(HealthCheck):
             active_queues.update([queue.get("name") for queue in queues])
 
         for queue in defined_queues.difference(active_queues):
-            self.add_error(
-                ServiceUnavailable(f"No worker for Celery task queue {queue}"),
-            )
+            raise ServiceUnavailable(f"No worker for Celery task queue {queue}")

@@ -114,43 +114,40 @@ class TestCacheExceptionHandling(TestCase):
     """Test Cache exception handling for uncovered code paths."""
 
     def test_check_status__cache_key_warning(self):
-        """Add error when CacheKeyWarning is raised during set."""
+        """Raise ServiceReturnedUnexpectedResult when CacheKeyWarning is raised during set."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
             mock_cache.set.side_effect = CacheKeyWarning("Invalid key")
 
             check = Cache()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
-            assert "Cache key warning" in str(check.errors[0])
+            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
+                check.check_status()
+            assert "Cache key warning" in str(exc_info.value)
 
     def test_check_status__value_error(self):
-        """Add error when ValueError is raised during cache operation."""
+        """Raise ServiceReturnedUnexpectedResult when ValueError is raised during cache operation."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
             mock_cache.set.side_effect = ValueError("Invalid value")
 
             check = Cache()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
-            assert "ValueError" in str(check.errors[0])
+            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
+                check.check_status()
+            assert "ValueError" in str(exc_info.value)
 
     def test_check_status__connection_error(self):
-        """Add error when ConnectionError is raised during cache operation."""
+        """Raise ServiceReturnedUnexpectedResult when ConnectionError is raised during cache operation."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
             mock_cache.set.side_effect = ConnectionError("Connection failed")
 
             check = Cache()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
-            assert "Connection Error" in str(check.errors[0])
+            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
+                check.check_status()
+            assert "Connection Error" in str(exc_info.value)
 
     def test_check_status__cache_value_mismatch(self):
         """Raise ServiceUnavailable when cached value does not match set value."""
@@ -228,14 +225,13 @@ class TestDiskExceptionHandling(TestCase):
             assert check.errors == []
 
     def test_check_status__disk_value_error(self):
-        """Add error when ValueError is raised during disk check."""
+        """Raise ServiceReturnedUnexpectedResult when ValueError is raised during disk check."""
         with mock.patch("health_check.checks.psutil.disk_usage") as mock_disk_usage:
             mock_disk_usage.side_effect = ValueError("Invalid path")
 
             check = Disk()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
+            with pytest.raises(ServiceReturnedUnexpectedResult):
+                check.check_status()
 
 
 class TestMailExceptionHandling(TestCase):
@@ -243,7 +239,7 @@ class TestMailExceptionHandling(TestCase):
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__smtp_exception(self):
-        """Add error when SMTPException is raised."""
+        """Raise ServiceUnavailable when SMTPException is raised."""
         import smtplib
 
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
@@ -252,14 +248,14 @@ class TestMailExceptionHandling(TestCase):
             mock_connection.open.side_effect = smtplib.SMTPException("SMTP error")
 
             check = Mail()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert "SMTP server" in str(check.errors[0])
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "SMTP server" in str(exc_info.value)
             mock_connection.close.assert_called_once()
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__connection_refused_error(self):
-        """Add error when ConnectionRefusedError is raised."""
+        """Raise ServiceUnavailable when ConnectionRefusedError is raised."""
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
@@ -268,23 +264,23 @@ class TestMailExceptionHandling(TestCase):
             )
 
             check = Mail()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert "Connection refused" in str(check.errors[0])
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "Connection refused" in str(exc_info.value)
             mock_connection.close.assert_called_once()
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__mail_unknown_exception(self):
-        """Add error for unknown exceptions during mail check."""
+        """Raise ServiceUnavailable for unknown exceptions during mail check."""
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.side_effect = RuntimeError("Unknown error")
 
             check = Mail()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert "Unknown error" in str(check.errors[0])
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "Unknown error" in str(exc_info.value)
             mock_connection.close.assert_called_once()
 
 
@@ -339,16 +335,15 @@ class TestMemoryExceptionHandling(TestCase):
             assert check.errors == []
 
     def test_check_status__memory_value_error(self):
-        """Add error when ValueError is raised during memory check."""
+        """Raise ServiceReturnedUnexpectedResult when ValueError is raised during memory check."""
         with mock.patch(
             "health_check.checks.psutil.virtual_memory"
         ) as mock_virtual_memory:
             mock_virtual_memory.side_effect = ValueError("Invalid memory call")
 
             check = Memory()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
+            with pytest.raises(ServiceReturnedUnexpectedResult):
+                check.check_status()
 
 
 class TestStorageExceptionHandling(TestCase):

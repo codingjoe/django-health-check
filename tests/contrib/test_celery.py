@@ -25,53 +25,50 @@ class TestCelery:
             assert check.errors == []
 
     def test_check_status__no_workers(self):
-        """Add error when no workers respond."""
+        """Raise ServiceUnavailable when no workers respond."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.return_value = {}
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert "unavailable" in str(check.errors[0]).lower()
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "unavailable" in str(exc_info.value).lower()
 
     def test_check_status__unexpected_response(self):
-        """Add error when worker response is incorrect."""
+        """Raise ServiceUnavailable when worker response is incorrect."""
         mock_result = {"celery@worker1": {"bad": "response"}}
 
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.return_value = [mock_result]
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert "incorrect" in str(check.errors[0]).lower()
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "incorrect" in str(exc_info.value).lower()
 
     def test_check_status__oserror(self):
-        """Add error on OS error."""
+        """Raise ServiceUnavailable on OS error."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = OSError("os error")
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     def test_check_status__not_implemented_error(self):
-        """Add error when result backend is not configured."""
+        """Raise ServiceUnavailable when result backend is not configured."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = NotImplementedError("no result backend")
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
 
     def test_check_status__unknown_error(self):
-        """Add error for unexpected exceptions."""
+        """Raise ServiceUnavailable for unexpected exceptions."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = RuntimeError("unexpected")
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert len(check.errors) == 1
-            assert isinstance(check.errors[0], ServiceUnavailable)
+            with pytest.raises(ServiceUnavailable):
+                check.check_status()
