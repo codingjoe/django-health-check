@@ -58,6 +58,3 @@ class HealthCheck:
     @property
     def status(self):
         return int(not self.errors)
-
-    def __repr__(self):
-        return self.__class__.__name__
