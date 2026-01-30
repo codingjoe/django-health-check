@@ -22,64 +22,56 @@ class TestHealthCheck:
 
         check = SuccessCheck()
         check.run_check()
-        assert check.errors == [], "Should have no errors after successful run"
+        assert check.errors == []
 
     def test_status__healthy(self):
         """Return 1 when no errors are present."""
         ht = HealthCheck()
-        assert ht.status == 1, "Status should be 1 for healthy check"
+        assert ht.status == 1
 
     def test_status__unhealthy(self):
         """Return 0 when errors are present."""
         ht = HealthCheck()
         ht.errors = [1]
-        assert ht.status == 0, "Status should be 0 when errors exist"
+        assert ht.status == 0
 
     def test_pretty_status__no_errors(self):
         """Return 'OK' when no errors are present."""
         ht = HealthCheck()
-        assert ht.pretty_status() == "OK", "Should display 'OK' status"
+        assert ht.pretty_status() == "OK"
 
     def test_pretty_status__single_error(self):
         """Return error string when single error exists."""
         ht = HealthCheck()
         ht.errors = ["foo"]
-        assert ht.pretty_status() == "foo", "Should display single error"
+        assert ht.pretty_status() == "foo"
 
     def test_pretty_status__multiple_errors(self):
         """Return newline-separated errors when multiple errors exist."""
         ht = HealthCheck()
         ht.errors = ["foo", "bar", 123]
-        assert ht.pretty_status() == "foo\nbar\n123", "Should join errors with newlines"
+        assert ht.pretty_status() == "foo\nbar\n123"
 
     def test_add_error__with_exception(self):
         """Store HealthCheckException as-is when passed."""
         ht = HealthCheck()
         e = HealthCheckException("foo")
         ht.add_error(e)
-        assert ht.errors[0] is e, "Should store exception instance"
+        assert ht.errors[0] is e
 
     def test_add_error__with_string(self):
         """Convert string to HealthCheckException."""
         ht = HealthCheck()
         ht.add_error("bar")
-        assert isinstance(ht.errors[0], HealthCheckException), (
-            "Should wrap string in exception"
-        )
-        assert str(ht.errors[0]) == "unknown error: bar", (
-            "Should create correct error message"
-        )
+        assert isinstance(ht.errors[0], HealthCheckException)
+        assert str(ht.errors[0]) == "unknown error: bar"
 
     def test_add_error__with_non_string_non_exception(self):
         """Convert non-string/non-exception to HealthCheckException with generic message."""
         ht = HealthCheck()
         ht.add_error(type)
-        assert isinstance(ht.errors[0], HealthCheckException), (
-            "Should wrap object in exception"
-        )
-        assert str(ht.errors[0]) == "unknown error: unknown error", (
-            "Should use generic message"
-        )
+        assert isinstance(ht.errors[0], HealthCheckException)
+        assert str(ht.errors[0]) == "unknown error: unknown error"
 
     def test_add_error__with_exception_cause(self):
         """Log exception details when cause is provided."""
@@ -95,10 +87,10 @@ class TestHealthCheck:
 
             stream.seek(0)
             log = stream.read()
-            assert "foo" in log, "Should log error message"
-            assert "bar" in log, "Should log exception message"
-            assert "Traceback" in log, "Should log traceback"
-            assert "Exception: bar" in log, "Should log exception type and message"
+            assert "foo" in log
+            assert "bar" in log
+            assert "Traceback" in log
+            assert "Exception: bar" in log
             logger.removeHandler(stream_handler)
 
     def test_add_error__without_exception_cause(self):
@@ -115,8 +107,8 @@ class TestHealthCheck:
 
             stream.seek(0)
             log = stream.read()
-            assert "foo" in log, "Should log error message"
-            assert "bar" not in log, "Should not log exception message"
-            assert "Traceback" not in log, "Should not log traceback"
-            assert "Exception: bar" not in log, "Should not log exception details"
+            assert "foo" in log
+            assert "bar" not in log
+            assert "Traceback" not in log
+            assert "Exception: bar" not in log
             logger.removeHandler(stream_handler)

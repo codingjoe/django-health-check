@@ -22,7 +22,7 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert check.errors == [], "Should have no errors with correct response"
+            assert check.errors == []
 
     def test_check_status__no_workers(self):
         """Add error when no workers respond."""
@@ -31,10 +31,8 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert "unavailable" in str(check.errors[0]).lower(), (
-                "Should indicate unavailability"
-            )
+            assert len(check.errors) == 1
+            assert "unavailable" in str(check.errors[0]).lower()
 
     def test_check_status__unexpected_response(self):
         """Add error when worker response is incorrect."""
@@ -45,10 +43,8 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert "incorrect" in str(check.errors[0]).lower(), (
-                "Should indicate incorrect response"
-            )
+            assert len(check.errors) == 1
+            assert "incorrect" in str(check.errors[0]).lower()
 
     def test_check_status__oserror(self):
         """Add error on OS error."""
@@ -57,10 +53,8 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__not_implemented_error(self):
         """Add error when result backend is not configured."""
@@ -69,10 +63,8 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should indicate unavailability"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__unknown_error(self):
         """Add error for unexpected exceptions."""
@@ -81,7 +73,5 @@ class TestCelery:
 
             check = CeleryPingHealthCheck()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)

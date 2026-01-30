@@ -27,7 +27,7 @@ class TestRabbitMQ:
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
             check.check_status()
-            assert check.errors == [], "Should have no errors on successful connect"
+            assert check.errors == []
 
     def test_check_status__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
@@ -39,10 +39,8 @@ class TestRabbitMQ:
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
             check.run_check()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__authentication_error(self):
         """Raise ServiceUnavailable on authentication failure."""
@@ -54,10 +52,8 @@ class TestRabbitMQ:
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
             check.run_check()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__os_error(self):
         """Raise ServiceUnavailable on OS error."""
@@ -69,10 +65,8 @@ class TestRabbitMQ:
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
             check.run_check()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable on unexpected exceptions."""
@@ -84,10 +78,8 @@ class TestRabbitMQ:
 
             check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
             check.run_check()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     @pytest.mark.integration
     def test_check_status__real_rabbitmq(self):
@@ -98,4 +90,4 @@ class TestRabbitMQ:
 
         check = RabbitMQHealthCheck(url=broker_url)
         check.check_status()
-        assert check.errors == [], "Should connect successfully to real RabbitMQ"
+        assert check.errors == []

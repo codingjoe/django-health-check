@@ -37,10 +37,10 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             output = stdout.getvalue()
-            assert "Cache" in output, "Should display Cache check"
-            assert "Database" in output, "Should display Database check"
-            assert "Disk" in output, "Should display Disk check"
-            assert "OK" in output, "Should show OK status"
+            assert "Cache" in output
+            assert "Database" in output
+            assert "Disk" in output
+            assert "OK" in output
 
     def test_handle__with_error(self):
         """Return exit code 1 when checks fail."""
@@ -65,9 +65,9 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 1, "Should exit with code 1 on errors"
+            assert exc_info.value.code == 1
             output = stdout.getvalue()
-            assert "Database" in output, "Should display failed check"
+            assert "Database" in output
 
     def test_handle__custom_host_port(self):
         """Accept custom host and port."""
@@ -93,7 +93,7 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             call_args = mock_urlopen.call_args[0][0]
-            assert "9000" in call_args.full_url, "Should use custom port"
+            assert "9000" in call_args.full_url
 
     def test_handle__custom_host_only(self):
         """Accept custom host without port."""
@@ -119,7 +119,7 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             call_args = mock_urlopen.call_args[0][0]
-            assert "192.168.1.1" in call_args.full_url, "Should use custom host"
+            assert "192.168.1.1" in call_args.full_url
 
     def test_handle__malformed_response_data(self):
         """Handle case when response contains non-string JSON values."""
@@ -144,9 +144,9 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 1, "Should exit with code 1 on error"
+            assert exc_info.value.code == 1
             output = stdout.getvalue()
-            assert "Cache" in output, "Should display Cache check"
+            assert "Cache" in output
 
     def test_handle__invalid_json_response(self):
         """Return exit code 2 when response is not valid JSON."""
@@ -164,9 +164,9 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 2, "Should exit with code 2 on invalid JSON"
+            assert exc_info.value.code == 2
             error_output = stderr.getvalue()
-            assert "valid JSON" in error_output, "Should indicate JSON is invalid"
+            assert "valid JSON" in error_output
 
     def test_handle__url_error__connection_refused(self):
         """Return exit code 2 when URL cannot be reached (connection refused)."""
@@ -183,14 +183,10 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 2, "Should exit with code 2 on URLError"
+            assert exc_info.value.code == 2
             error_output = stderr.getvalue()
-            assert "not reachable" in error_output, (
-                "Should indicate URL is not reachable"
-            )
-            assert "ALLOWED_HOSTS" in error_output, (
-                "Should suggest checking ALLOWED_HOSTS"
-            )
+            assert "not reachable" in error_output
+            assert "ALLOWED_HOSTS" in error_output
 
     def test_handle__url_error__name_resolution_failed(self):
         """Return exit code 2 when hostname cannot be resolved."""
@@ -209,13 +205,9 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 2, (
-                "Should exit with code 2 on name resolution failure"
-            )
+            assert exc_info.value.code == 2
             error_output = stderr.getvalue()
-            assert "not reachable" in error_output, (
-                "Should indicate URL is not reachable"
-            )
+            assert "not reachable" in error_output
 
     def test_handle__http_error_response(self):
         """Handle HTTP error responses with valid error JSON."""
@@ -246,9 +238,7 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 1, (
-                "Should exit with code 1 when database error"
-            )
+            assert exc_info.value.code == 1
 
     def test_handle__multiple_checks_all_ok(self):
         """Display all checks when they all pass."""
@@ -276,7 +266,7 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             output = stdout.getvalue()
-            assert output.count("OK") == 5, "Should display 5 OK statuses"
+            assert output.count("OK") == 5
 
     def test_handle__multiple_checks_with_mixed_status(self):
         """Display all checks with mixed success and error status."""
@@ -303,12 +293,10 @@ class TestHealthCheckCommand(TestCase):
                     stdout=stdout,
                     stderr=stderr,
                 )
-            assert exc_info.value.code == 1, "Should exit with code 1 on any error"
+            assert exc_info.value.code == 1
             output = stdout.getvalue()
-            assert "Cache" in output and "OK" in output, "Should show successful checks"
-            assert "Database" in output and "unavailable" in output, (
-                "Should show failed checks"
-            )
+            assert "Cache" in output and "OK" in output
+            assert "Database" in output and "unavailable" in output
 
     def test_handle__default_localhost(self):
         """Use default localhost:8000 when no address provided."""
@@ -333,9 +321,7 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             call_args = mock_urlopen.call_args[0][0]
-            assert "localhost:8000" in call_args.full_url, (
-                "Should default to localhost:8000"
-            )
+            assert "localhost:8000" in call_args.full_url
 
     def test_handle__json_accept_header(self):
         """Send Accept: application/json header."""
@@ -357,6 +343,4 @@ class TestHealthCheckCommand(TestCase):
                 stderr=stderr,
             )
             call_args = mock_urlopen.call_args[0][0]
-            assert "application/json" in call_args.headers["Accept"], (
-                "Should send JSON Accept header"
-            )
+            assert "application/json" in call_args.headers["Accept"]

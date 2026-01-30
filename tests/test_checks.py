@@ -22,7 +22,7 @@ class TestCache(TestCase):
         """Cache backend successfully sets and retrieves values."""
         check = Cache()
         check.run_check()
-        assert check.errors == [], "Cache should have no errors"
+        assert check.errors == []
 
 
 class TestDatabase(TestCase):
@@ -33,7 +33,7 @@ class TestDatabase(TestCase):
         """Database connection returns successful query result."""
         check = Database()
         check.run_check()
-        assert check.errors == [], "Database should have no errors"
+        assert check.errors == []
 
 
 class TestDisk(TestCase):
@@ -43,14 +43,14 @@ class TestDisk(TestCase):
         """Disk space check completes successfully."""
         check = Disk()
         check.run_check()
-        assert check.errors == [], "Disk should have no errors"
+        assert check.errors == []
 
     def test_run_check__custom_path(self):
         """Disk check succeeds with custom path."""
         with tempfile.TemporaryDirectory() as tmpdir:
             check = Disk(path=tmpdir)
             check.run_check()
-            assert check.errors == [], "Custom path should have no errors"
+            assert check.errors == []
 
 
 class TestMemory(TestCase):
@@ -60,7 +60,7 @@ class TestMemory(TestCase):
         """Memory check completes successfully."""
         check = Memory()
         check.run_check()
-        assert check.errors == [], "Memory should have no errors"
+        assert check.errors == []
 
 
 class TestMail(TestCase):
@@ -90,9 +90,7 @@ class TestServiceUnavailable(TestCase):
     def test_str__exception_message(self):
         """Format exception with message type prefix."""
         exc = ServiceUnavailable("Test error")
-        assert str(exc) == "unavailable: Test error", (
-            "Should format with 'unavailable' prefix"
-        )
+        assert str(exc) == "unavailable: Test error"
 
 
 class TestCheckStatus(TestCase):
@@ -102,14 +100,14 @@ class TestCheckStatus(TestCase):
         """Status returns 1 when no errors are present."""
         check = Cache()
         check.run_check()
-        assert check.status == 1, "Status should be 1 for healthy check"
-        assert len(check.errors) == 0, "Should have no errors"
+        assert check.status == 1
+        assert len(check.errors) == 0
 
     def test_pretty_status__no_errors(self):
         """Return 'OK' when no errors are present."""
         check = Cache()
         check.errors = []
-        assert check.pretty_status() == "OK", "Should display 'OK' for healthy check"
+        assert check.pretty_status() == "OK"
 
 
 class TestCacheExceptionHandling(TestCase):
@@ -124,13 +122,9 @@ class TestCacheExceptionHandling(TestCase):
 
             check = Cache()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult), (
-                "Should be ServiceReturnedUnexpectedResult"
-            )
-            assert "Cache key warning" in str(check.errors[0]), (
-                "Should mention cache key warning"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
+            assert "Cache key warning" in str(check.errors[0])
 
     def test_check_status__value_error(self):
         """Add error when ValueError is raised during cache operation."""
@@ -141,11 +135,9 @@ class TestCacheExceptionHandling(TestCase):
 
             check = Cache()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult), (
-                "Should be ServiceReturnedUnexpectedResult"
-            )
-            assert "ValueError" in str(check.errors[0]), "Should mention ValueError"
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
+            assert "ValueError" in str(check.errors[0])
 
     def test_check_status__connection_error(self):
         """Add error when ConnectionError is raised during cache operation."""
@@ -156,13 +148,9 @@ class TestCacheExceptionHandling(TestCase):
 
             check = Cache()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult), (
-                "Should be ServiceReturnedUnexpectedResult"
-            )
-            assert "Connection Error" in str(check.errors[0]), (
-                "Should mention connection error"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
+            assert "Connection Error" in str(check.errors[0])
 
     def test_check_status__cache_value_mismatch(self):
         """Raise ServiceUnavailable when cached value does not match set value."""
@@ -175,9 +163,7 @@ class TestCacheExceptionHandling(TestCase):
             check = Cache()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "does not match" in str(exc_info.value), (
-                "Should indicate value mismatch"
-            )
+            assert "does not match" in str(exc_info.value)
 
 
 class TestDatabaseExceptionHandling(TestCase):
@@ -199,9 +185,7 @@ class TestDatabaseExceptionHandling(TestCase):
             check = Database()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "did not return the expected result" in str(exc_info.value), (
-                "Should indicate unexpected result"
-            )
+            assert "did not return the expected result" in str(exc_info.value)
 
     @pytest.mark.django_db
     def test_check_status__database_exception(self):
@@ -214,9 +198,7 @@ class TestDatabaseExceptionHandling(TestCase):
             check = Database()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "Database health check failed" in str(exc_info.value), (
-                "Should mention database check failed"
-            )
+            assert "Database health check failed" in str(exc_info.value)
 
 
 class TestDiskExceptionHandling(TestCase):
@@ -232,7 +214,7 @@ class TestDiskExceptionHandling(TestCase):
             check = Disk(max_disk_usage_percent=90.0)
             with pytest.raises(ServiceWarning) as exc_info:
                 check.check_status()
-            assert "95.5" in str(exc_info.value), "Should include disk usage percentage"
+            assert "95.5" in str(exc_info.value)
 
     def test_check_status__disk_check_disabled(self):
         """No warning when disk usage check is disabled."""
@@ -243,7 +225,7 @@ class TestDiskExceptionHandling(TestCase):
 
             check = Disk(max_disk_usage_percent=None)
             check.check_status()
-            assert check.errors == [], "Should have no errors when check disabled"
+            assert check.errors == []
 
     def test_check_status__disk_value_error(self):
         """Add error when ValueError is raised during disk check."""
@@ -252,10 +234,8 @@ class TestDiskExceptionHandling(TestCase):
 
             check = Disk()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult), (
-                "Should be ServiceReturnedUnexpectedResult"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
 
 
 class TestMailExceptionHandling(TestCase):
@@ -273,9 +253,9 @@ class TestMailExceptionHandling(TestCase):
 
             check = Mail()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert "SMTP server" in str(check.errors[0]), "Should mention SMTP server"
-            mock_connection.close.assert_called_once(), "Should close connection"
+            assert len(check.errors) == 1
+            assert "SMTP server" in str(check.errors[0])
+            mock_connection.close.assert_called_once()
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__connection_refused_error(self):
@@ -289,11 +269,9 @@ class TestMailExceptionHandling(TestCase):
 
             check = Mail()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert "Connection refused" in str(check.errors[0]), (
-                "Should mention connection refused"
-            )
-            mock_connection.close.assert_called_once(), "Should close connection"
+            assert len(check.errors) == 1
+            assert "Connection refused" in str(check.errors[0])
+            mock_connection.close.assert_called_once()
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__mail_unknown_exception(self):
@@ -305,11 +283,9 @@ class TestMailExceptionHandling(TestCase):
 
             check = Mail()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert "Unknown error" in str(check.errors[0]), (
-                "Should mention unknown error"
-            )
-            mock_connection.close.assert_called_once(), "Should close connection"
+            assert len(check.errors) == 1
+            assert "Unknown error" in str(check.errors[0])
+            mock_connection.close.assert_called_once()
 
 
 class TestMemoryExceptionHandling(TestCase):
@@ -329,7 +305,7 @@ class TestMemoryExceptionHandling(TestCase):
             check = Memory(min_gibibytes_available=1.0)
             with pytest.raises(ServiceWarning) as exc_info:
                 check.check_status()
-            assert "RAM" in str(exc_info.value), "Should include RAM info"
+            assert "RAM" in str(exc_info.value)
 
     def test_check_status__max_memory_usage_exceeded(self):
         """Raise ServiceWarning when memory usage exceeds threshold."""
@@ -345,7 +321,7 @@ class TestMemoryExceptionHandling(TestCase):
             check = Memory(max_memory_usage_percent=90.0)
             with pytest.raises(ServiceWarning) as exc_info:
                 check.check_status()
-            assert "95" in str(exc_info.value), "Should include usage percentage"
+            assert "95" in str(exc_info.value)
 
     def test_check_status__memory_checks_disabled(self):
         """No warning when memory checks are disabled."""
@@ -360,7 +336,7 @@ class TestMemoryExceptionHandling(TestCase):
 
             check = Memory(min_gibibytes_available=None, max_memory_usage_percent=None)
             check.check_status()
-            assert check.errors == [], "Should have no errors when checks disabled"
+            assert check.errors == []
 
     def test_check_status__memory_value_error(self):
         """Add error when ValueError is raised during memory check."""
@@ -371,10 +347,8 @@ class TestMemoryExceptionHandling(TestCase):
 
             check = Memory()
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult), (
-                "Should be ServiceReturnedUnexpectedResult"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceReturnedUnexpectedResult)
 
 
 class TestStorageExceptionHandling(TestCase):
@@ -391,9 +365,7 @@ class TestStorageExceptionHandling(TestCase):
             check = Storage()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "does not exist" in str(exc_info.value), (
-                "Should indicate file does not exist"
-            )
+            assert "does not exist" in str(exc_info.value)
 
     def test_check_status__file_content_mismatch(self):
         """Raise ServiceUnavailable when file content does not match."""
@@ -409,9 +381,7 @@ class TestStorageExceptionHandling(TestCase):
             check = Storage()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "does not match" in str(exc_info.value), (
-                "Should indicate content mismatch"
-            )
+            assert "does not match" in str(exc_info.value)
 
     def test_check_status__storage_unknown_exception(self):
         """Raise ServiceUnavailable for unknown exceptions."""
@@ -423,9 +393,7 @@ class TestStorageExceptionHandling(TestCase):
             check = Storage()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "Unknown exception" in str(exc_info.value), (
-                "Should indicate unknown exception"
-            )
+            assert "Unknown exception" in str(exc_info.value)
 
     def test_check_status__service_unavailable_passthrough(self):
         """Re-raise ServiceUnavailable exceptions."""
@@ -437,9 +405,7 @@ class TestStorageExceptionHandling(TestCase):
             check = Storage()
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
-            assert "Service down" in str(exc_info.value), (
-                "Should pass through original error"
-            )
+            assert "Service down" in str(exc_info.value)
 
 
 class TestSelectOneExpression(TestCase):
@@ -457,8 +423,8 @@ class TestSelectOneExpression(TestCase):
         mock_connection = MagicMock()
 
         sql, params = expr.as_oracle(mock_compiler, mock_connection)
-        assert sql == "SELECT 1 FROM DUAL", "Should generate Oracle-specific query"
-        assert params == [], "Should have no parameters"
+        assert sql == "SELECT 1 FROM DUAL"
+        assert params == []
 
     @pytest.mark.django_db
     def test_standard_query__generates_correct_sql(self):
@@ -472,5 +438,5 @@ class TestSelectOneExpression(TestCase):
         mock_connection = MagicMock()
 
         sql, params = expr.as_sql(mock_compiler, mock_connection)
-        assert sql == "SELECT 1", "Should generate standard query"
-        assert params == [], "Should have no parameters"
+        assert sql == "SELECT 1"
+        assert params == []

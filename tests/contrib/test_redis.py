@@ -26,7 +26,7 @@ class TestRedis:
 
             check = RedisHealthCheck(url="redis://localhost:6379")
             check.check_status()
-            assert check.errors == [], "Should have no errors on successful ping"
+            assert check.errors == []
 
     def test_check_status__connection_refused(self):
         """Add error when connection is refused."""
@@ -37,10 +37,8 @@ class TestRedis:
 
             check = RedisHealthCheck(url="redis://localhost:6379")
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__timeout(self):
         """Add error when connection times out."""
@@ -51,10 +49,8 @@ class TestRedis:
 
             check = RedisHealthCheck(url="redis://localhost:6379")
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__connection_error(self):
         """Add error when connection fails."""
@@ -65,10 +61,8 @@ class TestRedis:
 
             check = RedisHealthCheck(url="redis://localhost:6379")
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     def test_check_status__unknown_error(self):
         """Add error for unexpected exceptions."""
@@ -79,10 +73,8 @@ class TestRedis:
 
             check = RedisHealthCheck(url="redis://localhost:6379")
             check.check_status()
-            assert len(check.errors) == 1, "Should have one error"
-            assert isinstance(check.errors[0], ServiceUnavailable), (
-                "Should be ServiceUnavailable"
-            )
+            assert len(check.errors) == 1
+            assert isinstance(check.errors[0], ServiceUnavailable)
 
     @pytest.mark.integration
     def test_check_status__real_redis(self):
@@ -93,4 +85,4 @@ class TestRedis:
 
         check = RedisHealthCheck(url=redis_url)
         check.check_status()
-        assert check.errors == [], "Should connect successfully to real Redis"
+        assert check.errors == []
