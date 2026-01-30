@@ -11,7 +11,7 @@ DATABASES = {
     },
     "other": {  # 2nd database connection to ensure proper connection handling
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":backup",
+        "NAME": ":memory:",
     },
 }
 
