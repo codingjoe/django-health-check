@@ -1,11 +1,12 @@
 """Integration tests for health check implementations."""
 
+import logging
 import tempfile
 from unittest import mock
 
 import pytest
 from django.core.cache import CacheKeyWarning
-from django.test import TestCase, override_settings
+from django.test import override_settings
 
 from health_check.checks import Cache, Database, Disk, Mail, Memory, Storage
 from health_check.exceptions import (
@@ -15,7 +16,7 @@ from health_check.exceptions import (
 )
 
 
-class TestCache(TestCase):
+class TestCache:
     """Test the Cache health check."""
 
     def test_run_check__cache_working(self):
@@ -25,7 +26,7 @@ class TestCache(TestCase):
         assert check.errors == []
 
 
-class TestDatabase(TestCase):
+class TestDatabase:
     """Test the Database health check."""
 
     @pytest.mark.django_db
@@ -36,7 +37,7 @@ class TestDatabase(TestCase):
         assert check.errors == []
 
 
-class TestDisk(TestCase):
+class TestDisk:
     """Test the Disk health check."""
 
     def test_run_check__disk_accessible(self):
@@ -53,7 +54,7 @@ class TestDisk(TestCase):
             assert check.errors == []
 
 
-class TestMemory(TestCase):
+class TestMemory:
     """Test the Memory health check."""
 
     def test_run_check__memory_available(self):
@@ -63,7 +64,7 @@ class TestMemory(TestCase):
         assert check.errors == []
 
 
-class TestMail(TestCase):
+class TestMail:
     """Test the Mail health check."""
 
     def test_run_check__locmem_backend(self):
@@ -75,7 +76,7 @@ class TestMail(TestCase):
             check.run_check()
 
 
-class TestStorage(TestCase):
+class TestStorage:
     """Test the Storage health check."""
 
     def test_run_check__default_storage(self):
@@ -84,7 +85,7 @@ class TestStorage(TestCase):
         check.run_check()
 
 
-class TestServiceUnavailable(TestCase):
+class TestServiceUnavailable:
     """Test ServiceUnavailable exception formatting."""
 
     def test_str__exception_message(self):
@@ -93,7 +94,7 @@ class TestServiceUnavailable(TestCase):
         assert str(exc) == "Unavailable: Test error"
 
 
-class TestCheckStatus(TestCase):
+class TestCheckStatus:
     """Test check status and rendering."""
 
     def test_status__without_errors(self):
@@ -110,7 +111,7 @@ class TestCheckStatus(TestCase):
         assert check.pretty_status() == "OK"
 
 
-class TestCacheExceptionHandling(TestCase):
+class TestCacheExceptionHandling:
     """Test Cache exception handling for uncovered code paths."""
 
     def test_check_status__cache_key_warning(self):
@@ -163,7 +164,7 @@ class TestCacheExceptionHandling(TestCase):
             assert "does not match" in str(exc_info.value)
 
 
-class TestDatabaseExceptionHandling(TestCase):
+class TestDatabaseExceptionHandling:
     """Test Database exception handling for uncovered code paths."""
 
     @pytest.mark.django_db
@@ -198,7 +199,7 @@ class TestDatabaseExceptionHandling(TestCase):
             assert "Database health check failed" in str(exc_info.value)
 
 
-class TestDiskExceptionHandling(TestCase):
+class TestDiskExceptionHandling:
     """Test Disk exception handling for uncovered code paths."""
 
     def test_check_status__disk_usage_exceeds_threshold(self):
@@ -234,25 +235,27 @@ class TestDiskExceptionHandling(TestCase):
                 check.check_status()
 
 
-class TestMailExceptionHandling(TestCase):
+class TestMailExceptionHandling:
     """Test Mail exception handling for uncovered code paths."""
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_check_status__success(self):
+    def test_check_status__success(self, caplog):
         """Successfully open and close connection logs debug message."""
-        with (
-            mock.patch("health_check.checks.get_connection") as mock_get_connection,
-            mock.patch("health_check.checks.logger") as mock_logger,
-        ):
+        with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.return_value = None
 
             check = Mail()
-            check.check_status()
+            with caplog.at_level(logging.DEBUG, logger="health_check.checks"):
+                check.check_status()
             assert check.errors == []
             # Verify debug logging was called
-            assert mock_logger.debug.called
+            assert any(
+                "Trying to open connection to mail backend" in record.message
+                or "Connection established" in record.message
+                for record in caplog.records
+            )
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_check_status__smtp_exception(self):
@@ -301,7 +304,7 @@ class TestMailExceptionHandling(TestCase):
             mock_connection.close.assert_called_once()
 
 
-class TestMemoryExceptionHandling(TestCase):
+class TestMemoryExceptionHandling:
     """Test Memory exception handling for uncovered code paths."""
 
     def test_check_status__min_memory_available_exceeded(self):
@@ -363,7 +366,7 @@ class TestMemoryExceptionHandling(TestCase):
                 check.check_status()
 
 
-class TestStorageExceptionHandling(TestCase):
+class TestStorageExceptionHandling:
     """Test Storage exception handling for uncovered code paths."""
 
     def test_check_status__success(self):
@@ -465,7 +468,7 @@ class TestStorageExceptionHandling(TestCase):
             assert "Service down" in str(exc_info.value)
 
 
-class TestSelectOneExpression(TestCase):
+class TestSelectOneExpression:
     """Test _SelectOne expression for database queries."""
 
     @pytest.mark.django_db

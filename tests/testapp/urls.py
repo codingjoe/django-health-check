@@ -6,6 +6,9 @@ from health_check.views import HealthCheckView
 # For test compatibility - main endpoint uses plugin_dir for flexibility
 urlpatterns = [
     path("ht/", HealthCheckView.as_view(), name="health_check_home"),
+    path(
+        "health/", HealthCheckView.as_view(), name="health_check"
+    ),  # For management command tests
 ]
 
 # Add Celery check if celery is available
@@ -76,5 +79,8 @@ else:
 health_check_patterns = (urlpatterns, "health_check")
 
 urlpatterns = [
+    # Management command endpoint (outside namespace for direct access)
+    path("health/", HealthCheckView.as_view(), name="health_check"),
+    # Namespaced patterns for view tests
     path("", include(health_check_patterns)),
 ]

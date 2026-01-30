@@ -7,10 +7,9 @@ from unittest import mock
 
 import pytest
 from django.core.management import call_command
-from django.test import TestCase
 
 
-class TestHealthCheckCommand(TestCase):
+class TestHealthCheckCommand:
     """Test health_check management command."""
 
     def test_handle__success(self):
@@ -73,10 +72,7 @@ class TestHealthCheckCommand(TestCase):
         """Accept custom host and port."""
         mock_response_data = {"Cache": "OK"}
 
-        with (
-            mock.patch("urllib.request.urlopen") as mock_urlopen,
-            mock.patch("django.urls.reverse", return_value="/health/"),
-        ):
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = mock.MagicMock()
             mock_response.read.return_value = json.dumps(mock_response_data).encode(
                 "utf-8"
@@ -99,10 +95,7 @@ class TestHealthCheckCommand(TestCase):
         """Accept custom host without port."""
         mock_response_data = {"Cache": "OK"}
 
-        with (
-            mock.patch("urllib.request.urlopen") as mock_urlopen,
-            mock.patch("django.urls.reverse", return_value="/health/"),
-        ):
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = mock.MagicMock()
             mock_response.read.return_value = json.dumps(mock_response_data).encode(
                 "utf-8"
@@ -302,10 +295,7 @@ class TestHealthCheckCommand(TestCase):
         """Use default localhost:8000 when no address provided."""
         mock_response_data = {"Cache": "OK"}
 
-        with (
-            mock.patch("urllib.request.urlopen") as mock_urlopen,
-            mock.patch("django.urls.reverse", return_value="/health/"),
-        ):
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = mock.MagicMock()
             mock_response.read.return_value = json.dumps(mock_response_data).encode(
                 "utf-8"
