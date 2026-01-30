@@ -60,10 +60,20 @@
       color: white;
     }
 
+    table thead tr.thead-error {
+      background-color: darkred;
+    }
 
     table .shrink {
       width: min-content;
       white-space: nowrap;
+    }
+
+    footer .footer-text {
+      text-align: center;
+      font-size: small;
+      color: gray;
+      margin-top: 2em;
     }
 
     @media screen and (max-width: 700px) {
@@ -114,16 +124,16 @@
     {% block content %}
       <h1>
         {% if errors %}
-          🔥
+          <span aria-label="Error">🔥</span>
         {% endif %}
         System status
         {% if errors %}
-          🔥
+          <span aria-label="Error">🔥</span>
         {% endif %}
       </h1>
       <table>
         <thead>
-          <tr style="background-color:{% if errors %}darkred{% else %}darkslategray{% endif %}">
+          <tr {% if errors %}class="thead-error"{% endif %}>
             <th>
               Service
             </th>
@@ -152,10 +162,7 @@
         </tbody>
       </table>
       <footer>
-        <p style="text-align: center;
-                  font-size: small;
-                  color: gray;
-                  margin-top: 2em">
+        <p class="footer-text">
           Generated at {% now "SHORT_DATETIME_FORMAT" %} with <a href="https://codingjoe.dev/django-health-check/">Django Health Check</a>.
         </p>
       </footer>
