@@ -1,9 +1,5 @@
 # Migration to version 4.x
 
-Change: View-based
-
-Upgrade (what to do)
-
 1. Remove these `health_check.*` sub‑apps from `INSTALLED_APPS` but keep `health_check`!
 
 1. Remove all `HEALTH_CHECK_*` settings from your settings file.
