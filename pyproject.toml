@@ -85,12 +85,6 @@ write_to = "health_check/_version.py"
 
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
-filterwarnings = [
-  # Ignore deprecation warnings from our own migration path (apps being deprecated)
-  "ignore:The `health_check.*` app is deprecated:DeprecationWarning:health_check",
-  # Ignore explicit endpoint argument deprecation in management commands
-  "ignore:Explicit endpoint argument will be required:DeprecationWarning:health_check",
-]
 testpaths = [
   "tests",
 ]
@@ -98,6 +92,9 @@ DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
 norecursedirs = ".git"
 python_files = "test_*.py"
 xfail_strict = true
+markers = [
+  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
 
 [tool.coverage.run]
 source = ["health_check"]
@@ -107,7 +104,7 @@ show_missing = true
 skip_covered = true
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 
 [tool.ruff.lint]
 select = [

@@ -51,7 +51,7 @@ and implementing the `check_status` method. For example:
 
 ```python
 import dataclasses
-from health_check.backends import HealthCheck
+from health_check import HealthCheck
 
 
 @dataclasses.dataclass
@@ -62,8 +62,7 @@ class MyHealthCheckBackend(HealthCheck):
 
     def check_status(self):
         # The test code goes here.
-        # You can use `self.add_error` or
-        # raise a `HealthCheckException`,
+        # Raise a `HealthCheckException` if the check fails,
         # similar to Django's form validation.
         pass
 ```
@@ -73,8 +72,7 @@ class MyHealthCheckBackend(HealthCheck):
 ## Customizing output
 
 You can customize HTML or JSON rendering by inheriting from [HealthCheckView][health_check.views.HealthCheckView]
-and customizing the `template_name`, `get`,
-`render_to_response` and `render_to_response_json` properties:
+and customizing the [template_name][django.views.generic.base.TemplateView], [render_to_response_json][health_check.views.HealthCheckView] properties:
 
 ```python
 # views.py
@@ -86,19 +84,14 @@ from health_check.views import HealthCheckView
 class HealthCheckCustomView(HealthCheckView):
     template_name = "myapp/health_check_dashboard.html"  # customize the used templates
 
-    def get(self, request, *args, **kwargs):
-        plugins = []
-        status = 200  # needs to be filled status you need
-        # …
-        if "application/json" in request.META.get("HTTP_ACCEPT", ""):
-            return self.render_to_response_json(plugins, status)
-        return self.render_to_response(plugins, status)
-
-    def render_to_response(self, plugins, status):  # customize HTML output
-        return HttpResponse("COOL" if status == 200 else "SWEATY", status=status)
-
-    def render_to_response_json(self, plugins, status):  # customize JSON output
-        return JsonResponse({repr(p): "COOL" if status == 200 else "SWEATY" for p in plugins}, status=status)
+    def render_to_response_json(self, status):  # customize JSON output
+        return JsonResponse(
+            {
+                label: "COOL" if status == 200 else "SWEATY"
+                for label, check in self.results.items()
+            },
+            status=status,
+        )
 
 
 # urls.py
@@ -110,7 +103,9 @@ urlpatterns = [
     # …
     path(
         "ht/",
-        views.HealthCheckCustomView.as_view(checks=["myapp.health_checks.MyHealthCheckBackend"]),
+        views.HealthCheckCustomView.as_view(
+            checks=["myapp.health_checks.MyHealthCheckBackend"]
+        ),
         name="health_check_custom",
     ),
 ]
@@ -131,7 +126,7 @@ This should yield the following output:
 
 ```
 Database                 ... OK
-CustomHealthCheck        ... unavailable: Something went wrong!
+CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
 
 Similar to the http version, a critical error will cause the command to
