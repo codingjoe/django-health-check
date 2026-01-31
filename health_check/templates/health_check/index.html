@@ -8,8 +8,18 @@
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="?format=atom">
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="?format=rss">
+    <link rel="alternate"
+          type="application/json"
+          title="JSON"
+          href="?format=json">
+    <link rel="alternate"
+          type="application/atom+xml"
+          title="Atom Feed"
+          href="?format=atom">
+    <link rel="alternate"
+          type="application/rss+xml"
+          title="RSS Feed"
+          href="?format=rss">
     <style>
     :root {
       color-scheme: light dark;
@@ -166,6 +176,7 @@
       <footer>
         <p class="footer-text">
           Generated at {% now "SHORT_DATETIME_FORMAT" %} with <a href="https://codingjoe.dev/django-health-check/">Django Health Check</a>.
+          <br>
           Subscribe: <a href="?format=atom">Atom</a> | <a href="?format=rss">RSS</a>
         </p>
       </footer>

@@ -6,7 +6,6 @@ from functools import cached_property
 
 from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
@@ -137,12 +136,12 @@ class HealthCheckView(TemplateView):
             with ThreadPoolExecutor(
                 max_workers=len(self.results.values()) or 1
             ) as executor:
-                for plugin in executor.map(_run, self.results.values()):
-                    _collect_errors(plugin)
+                for result in executor.map(_run, self.results.values()):
+                    _collect_errors(result)
         else:
-            for plugin in self.results.values():
-                _run(plugin)
-                _collect_errors(plugin)
+            for result in self.results.values():
+                _run(result)
+                _collect_errors(result)
         return errors
 
     @method_decorator(never_cache)
@@ -160,20 +159,16 @@ class HealthCheckView(TemplateView):
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
-            if media.mime_type in (
-                "text/html",
-                "application/xhtml+xml",
-                "text/*",
-                "*/*",
-            ):
-                context = self.get_context_data(**kwargs)
-                return self.render_to_response(context, status=status_code)
-            elif media.mime_type in ("application/json", "application/*"):
-                return self.render_to_response_json(status_code)
-            elif media.mime_type in ("application/atom+xml",):
-                return self.render_to_response_atom(status_code)
-            elif media.mime_type in ("application/rss+xml",):
-                return self.render_to_response_rss(status_code)
+            match media.mime_type:
+                case "text/html" | "application/xhtml+xml" | "text/*" | "*/*":
+                    context = self.get_context_data(**kwargs)
+                    return self.render_to_response(context, status=status_code)
+                case "application/json" | "application/*":
+                    return self.render_to_response_json(status_code)
+                case "application/atom+xml":
+                    return self.render_to_response_atom(status_code)
+                case "application/rss+xml":
+                    return self.render_to_response_rss(status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
             status=406,
@@ -206,20 +201,20 @@ class HealthCheckView(TemplateView):
         """Generate RSS or Atom feed with health check results."""
         feed = feed_class(
             title="Health Check Status",
-            link=self.request.build_absolute_uri(reverse("health_check")),
+            link=self.request.build_absolute_uri(),
             description="Current status of system health checks",
             feed_url=self.request.build_absolute_uri(),
         )
 
-        for plugin in self.results.values():
+        for result in self.results.values():
             feed.add_item(
-                title=str(plugin),
-                link=self.request.build_absolute_uri(reverse("health_check")),
-                description=f"{plugin.pretty_status()}\nResponse time: {plugin.time_taken:.3f}s",
+                title=str(result),
+                link=self.request.build_absolute_uri(),
+                description=f"{result.pretty_status()}\nResponse time: {result.time_taken:.3f}s",
                 pubdate=timezone.now(),
                 updateddate=timezone.now(),
                 author_name=self.feed_author,
-                categories=["error", "unhealthy"] if plugin.errors else ["healthy"],
+                categories=["error", "unhealthy"] if result.errors else ["healthy"],
             )
 
         response = HttpResponse(
@@ -237,8 +232,8 @@ class HealthCheckView(TemplateView):
                 options = {}
             if isinstance(check, str):
                 check = import_string(check)
-            plugin_instance = check(**options)
-            yield repr(plugin_instance), plugin_instance
+            check_instance = check(**options)
+            yield repr(check_instance), check_instance
 
     @cached_property
     def results(self):
