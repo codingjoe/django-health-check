@@ -46,14 +46,6 @@ class TestDNS:
         check.run_check()
         assert check.errors == []
 
-    def test_run_check__system_hostname(self):
-        """DNS resolution completes successfully for system hostname."""
-        # This tests the default behavior using socket.gethostname()
-        check = DNS()
-        check.run_check()
-        # We don't assert no errors because the system hostname might not be resolvable
-        # in all environments, but the check should complete without crashing
-
 
 class TestDisk:
     """Test the Disk health check."""

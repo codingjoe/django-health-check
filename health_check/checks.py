@@ -148,10 +148,7 @@ class DNS(HealthCheck):
 
         try:
             # Perform DNS resolution (A record by default)
-            if not (answers := resolver.resolve(self.hostname, "A")):
-                raise ServiceUnavailable(
-                    f"DNS resolution returned no results for {self.hostname}"
-                )
+            answers = resolver.resolve(self.hostname, "A")
         except dns.resolver.NXDOMAIN as e:
             raise ServiceUnavailable(
                 f"DNS resolution failed: hostname {self.hostname} does not exist"
