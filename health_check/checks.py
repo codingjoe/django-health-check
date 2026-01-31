@@ -139,12 +139,15 @@ class DNS(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=5), repr=False
     )
+    nameserver: str | None = dataclasses.field(default=None, repr=False)
 
     def check_status(self):
         logger.debug("Attempting to resolve hostname: %s", self.hostname)
 
         resolver = dns.resolver.Resolver()
         resolver.lifetime = self.timeout.total_seconds()
+        if self.nameserver:
+            resolver.nameservers = [self.nameserver]
 
         try:
             # Perform DNS resolution (A record by default)
