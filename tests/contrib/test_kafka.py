@@ -19,7 +19,9 @@ class TestKafka:
 
     def test_check_status__success(self):
         """Connect to Kafka successfully when topics are retrieved."""
-        with mock.patch("health_check.contrib.kafka.KafkaConsumer") as mock_consumer_cls:
+        with mock.patch(
+            "health_check.contrib.kafka.KafkaConsumer"
+        ) as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
 
@@ -35,12 +37,12 @@ class TestKafka:
 
     def test_check_status__kafka_exception(self):
         """Raise ServiceUnavailable when KafkaError is raised."""
-        with mock.patch("health_check.contrib.kafka.KafkaConsumer") as mock_consumer_cls:
+        with mock.patch(
+            "health_check.contrib.kafka.KafkaConsumer"
+        ) as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
-            mock_consumer.topics.side_effect = KafkaError(
-                "Failed to connect to broker"
-            )
+            mock_consumer.topics.side_effect = KafkaError("Failed to connect to broker")
 
             check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             with pytest.raises(ServiceUnavailable) as exc_info:
@@ -53,7 +55,9 @@ class TestKafka:
 
     def test_check_status__topics_is_none(self):
         """Raise ServiceUnavailable when topics is None."""
-        with mock.patch("health_check.contrib.kafka.KafkaConsumer") as mock_consumer_cls:
+        with mock.patch(
+            "health_check.contrib.kafka.KafkaConsumer"
+        ) as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.topics.return_value = None
@@ -69,7 +73,9 @@ class TestKafka:
 
     def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable on unexpected exceptions."""
-        with mock.patch("health_check.contrib.kafka.KafkaConsumer") as mock_consumer_cls:
+        with mock.patch(
+            "health_check.contrib.kafka.KafkaConsumer"
+        ) as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.topics.side_effect = RuntimeError("unexpected")
@@ -85,7 +91,9 @@ class TestKafka:
 
     def test_check_status__custom_timeout(self):
         """Use custom timeout when provided."""
-        with mock.patch("health_check.contrib.kafka.KafkaConsumer") as mock_consumer_cls:
+        with mock.patch(
+            "health_check.contrib.kafka.KafkaConsumer"
+        ) as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
 
