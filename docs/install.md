@@ -42,7 +42,7 @@ urlpatterns = [
                 "health_check.contrib.celery.Ping",
                 (
                     "health_check.contrib.kafka.Kafka",
-                    {"bootstrap_servers": "localhost:9092"},
+                    {"bootstrap_servers": ["localhost:9092"]},
                 ),
                 (  # tuple with options
                     "health_check.contrib.rabbitmq.RabbitMQ",

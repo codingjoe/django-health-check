@@ -1,5 +1,6 @@
 """Tests for Kafka health check."""
 
+import datetime
 import os
 from unittest import mock
 
@@ -27,7 +28,7 @@ class TestKafka:
             mock_metadata.topics = {"test-topic": mock.MagicMock()}
             mock_consumer.list_topics.return_value = mock_metadata
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             check.check_status()
             assert check.errors == []
 
@@ -43,7 +44,7 @@ class TestKafka:
                 "Failed to connect to broker"
             )
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
 
@@ -59,7 +60,7 @@ class TestKafka:
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.list_topics.return_value = None
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
 
@@ -75,7 +76,7 @@ class TestKafka:
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.list_topics.side_effect = RuntimeError("unexpected")
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
 
@@ -94,7 +95,10 @@ class TestKafka:
             mock_metadata.topics = {}
             mock_consumer.list_topics.return_value = mock_metadata
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092", timeout=5)
+            check = KafkaHealthCheck(
+                bootstrap_servers=["localhost:9092"],
+                timeout=datetime.timedelta(seconds=5),
+            )
             check.check_status()
 
             # Verify timeout was used in consumer configuration
@@ -112,6 +116,6 @@ class TestKafka:
         if not kafka_servers:
             pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test")
 
-        check = KafkaHealthCheck(bootstrap_servers=kafka_servers)
+        check = KafkaHealthCheck(bootstrap_servers=[kafka_servers])
         check.check_status()
         assert check.errors == []
