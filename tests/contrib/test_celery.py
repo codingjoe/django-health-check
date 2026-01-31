@@ -92,3 +92,35 @@ class TestCelery:
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
             assert "missing_queue" in str(exc_info.value)
+
+    def test_check_status__with_limit(self):
+        """Verify that limit parameter is passed to ping when specified."""
+        mock_result = {"celery@worker1": {"ok": "pong"}}
+
+        with mock.patch("health_check.contrib.celery.app") as mock_app:
+            mock_app.control.ping.return_value = [mock_result]
+
+            check = CeleryPingHealthCheck(limit=2)
+            check.check_status()
+
+            # Verify ping was called with both timeout and limit
+            mock_app.control.ping.assert_called_once()
+            call_kwargs = mock_app.control.ping.call_args.kwargs
+            assert "timeout" in call_kwargs
+            assert call_kwargs["limit"] == 2
+
+    def test_check_status__without_limit(self):
+        """Verify that limit parameter is not passed to ping when not specified."""
+        mock_result = {"celery@worker1": {"ok": "pong"}}
+
+        with mock.patch("health_check.contrib.celery.app") as mock_app:
+            mock_app.control.ping.return_value = [mock_result]
+
+            check = CeleryPingHealthCheck()
+            check.check_status()
+
+            # Verify ping was called with only timeout, not limit
+            mock_app.control.ping.assert_called_once()
+            call_kwargs = mock_app.control.ping.call_args.kwargs
+            assert "timeout" in call_kwargs
+            assert "limit" not in call_kwargs
