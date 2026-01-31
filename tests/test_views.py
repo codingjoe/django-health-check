@@ -349,7 +349,7 @@ class TestHealthCheckView:
         assert response.status_code == 200
         assert "application/atom+xml" in response["content-type"]
         assert b"<feed" in response.content
-        assert b"xmlns=\"http://www.w3.org/2005/Atom\"" in response.content
+        assert b'xmlns="http://www.w3.org/2005/Atom"' in response.content
 
     def test_get__rss_format_parameter(self, health_check_view):
         """Return RSS feed when format parameter is 'rss'."""
