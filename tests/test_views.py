@@ -563,7 +563,7 @@ class TestHealthCheckView:
         assert "FailingBackend" in content
         # Check that both status metrics exist (we can't easily verify exact values without complex regex)
         lines = content.split("\n")
-        status_lines = [l for l in lines if "django_health_check_status{" in l]
+        status_lines = [line for line in lines if "django_health_check_status{" in line]
         assert len(status_lines) == 2
 
     def test_get__prometheus_label_sanitization(self, health_check_view):
