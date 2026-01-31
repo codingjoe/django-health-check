@@ -5,7 +5,12 @@
 You can use tools like Pingdom, StatusCake or other uptime robots to
 monitor service status. The `/health/` endpoint will respond with an HTTP
 200 if all checks passed and with an HTTP 500 if any of the tests
-failed. Getting machine-readable JSON reports
+failed.
+
+For integration with Prometheus, Grafana, and other monitoring platforms,
+see the [Monitoring Integration](monitoring.md) guide.
+
+## Getting machine-readable JSON reports
 
 If you want machine-readable status reports you can request the `/health/`
 endpoint with the `Accept` HTTP header set to `application/json` or pass
