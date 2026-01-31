@@ -172,7 +172,9 @@ class HealthCheckView(TemplateView):
                     return self.render_to_response_atom(status_code)
                 case "application/rss+xml":
                     return self.render_to_response_rss(status_code)
-                case "application/openmetrics-text" | "text/plain":
+                case "application/openmetrics-text":
+                    return self.render_to_response_prometheus(status_code)
+                case "text/plain":
                     return self.render_to_response_prometheus(status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text, text/plain",

@@ -497,6 +497,8 @@ class TestHealthCheckView:
         response = health_check_view([SuccessBackend], accept_header="text/plain")
         assert response.status_code == 200
         assert "text/plain" in response["content-type"]
+        content = response.content.decode("utf-8")
+        assert "django_health_check_status" in content
 
     def test_get__prometheus_healthy_status(self, health_check_view):
         """Prometheus metrics show healthy status when all checks pass."""
