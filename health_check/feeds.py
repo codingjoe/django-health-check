@@ -10,7 +10,7 @@ from health_check.views import HealthCheckView
 
 class BaseHealthCheckFeed(Feed):
     """Base class for health check feeds.
-    
+
     Provides shared functionality for health check status feeds,
     similar to cloud providers like Google Cloud, AWS, and Azure.
     This allows monitoring services to subscribe to health status updates.

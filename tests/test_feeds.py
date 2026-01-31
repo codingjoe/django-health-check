@@ -4,7 +4,6 @@ import dataclasses
 from xml.etree import ElementTree
 
 import pytest
-from django.test import RequestFactory
 from django.urls import reverse
 
 from health_check.base import HealthCheck
