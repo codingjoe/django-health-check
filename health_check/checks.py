@@ -48,6 +48,8 @@ class Cache(HealthCheck):
     """
     Check that the cache backend is able to set and get a value.
 
+    It can be setup multiple times for different cache aliases if needed.
+
     Args:
         alias: The cache alias to test against.
         cache_key: The cache key to use for the test.
@@ -156,10 +158,6 @@ class Mail(HealthCheck):
     """
     Check that mail backend is able to open and close connection.
 
-    Exceeding the thresholds will result warnings, not errors.
-
-    See also [HealthCheckView][health_check.views.HealthCheckView].warnings_as_errors.
-
     Args:
         backend: The email backend to test against.
         timeout: Timeout for connection to mail server in seconds.
@@ -197,6 +195,10 @@ class Memory(HealthCheck):
     """
     Check system memory usage.
 
+    Exceeding the thresholds will result warnings, not errors.
+
+    See also [HealthCheckView][health_check.views.HealthCheckView].warnings_as_errors.
+
     Args:
         min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
         max_memory_usage_percent: Maximum memory usage in percent or None to disable the check.
@@ -231,6 +233,8 @@ class Memory(HealthCheck):
 class Storage(HealthCheck):
     """
     Check file storage backends by saving, reading, and deleting a test file.
+
+    It can be setup multiple times for different storage backends if needed.
 
     Args:
         alias: The alias of the storage backend to check.
