@@ -1,10 +1,12 @@
 from django.conf import settings
 from django.urls import path
 
+from health_check.feeds import HealthCheckFeed
 from health_check.views import HealthCheckView
 
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health_check"),
+    path("health/feed/", HealthCheckFeed(), name="health_check_feed"),
 ]
 
 try:
