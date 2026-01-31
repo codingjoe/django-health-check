@@ -7,6 +7,7 @@ from functools import cached_property
 from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
@@ -89,7 +90,6 @@ class MediaType:
         return self.weight.__lt__(other.weight)
 
 
-@method_decorator(transaction.non_atomic_requests, name="dispatch")
 class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
@@ -144,6 +144,12 @@ class HealthCheckView(TemplateView):
                 _run(result)
                 _collect_errors(result)
         return errors
+
+    @method_decorator(transaction.non_atomic_requests)
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        patch_vary_headers(response, ["Accept"])
+        return response
 
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
