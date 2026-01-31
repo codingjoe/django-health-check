@@ -16,6 +16,9 @@ class Ping(HealthCheck):
 
     Args:
         timeout: Timeout duration for the ping command.
+        limit: Maximum number of workers to wait for before returning. If not
+            specified, waits for the full timeout duration. When set, returns
+            immediately after receiving responses from this many workers.
 
     """
 
@@ -23,10 +26,14 @@ class Ping(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
+    limit: int | None = dataclasses.field(default=None, repr=False)
 
     def check_status(self):
         try:
-            ping_result = app.control.ping(timeout=self.timeout.total_seconds())
+            ping_kwargs = {"timeout": self.timeout.total_seconds()}
+            if self.limit is not None:
+                ping_kwargs["limit"] = self.limit
+            ping_result = app.control.ping(**ping_kwargs)
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         except NotImplementedError as e:
