@@ -6,7 +6,9 @@ from functools import cached_property
 
 from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
@@ -92,6 +94,7 @@ class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
+    feed_author = "Django Health Check"
 
     use_threading: bool = True
     warnings_as_errors: bool = True
@@ -134,12 +137,12 @@ class HealthCheckView(TemplateView):
             with ThreadPoolExecutor(
                 max_workers=len(self.results.values()) or 1
             ) as executor:
-                for plugin in executor.map(_run, self.results.values()):
-                    _collect_errors(plugin)
+                for result in executor.map(_run, self.results.values()):
+                    _collect_errors(result)
         else:
-            for plugin in self.results.values():
-                _run(plugin)
-                _collect_errors(plugin)
+            for result in self.results.values():
+                _run(result)
+                _collect_errors(result)
         return errors
 
     @method_decorator(never_cache)
@@ -150,21 +153,25 @@ class HealthCheckView(TemplateView):
 
         if format_override == "json":
             return self.render_to_response_json(status_code)
+        elif format_override == "atom":
+            return self.render_to_response_atom(status_code)
+        elif format_override == "rss":
+            return self.render_to_response_rss(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
-            if media.mime_type in (
-                "text/html",
-                "application/xhtml+xml",
-                "text/*",
-                "*/*",
-            ):
-                context = self.get_context_data(**kwargs)
-                return self.render_to_response(context, status=status_code)
-            elif media.mime_type in ("application/json", "application/*"):
-                return self.render_to_response_json(status_code)
+            match media.mime_type:
+                case "text/html" | "application/xhtml+xml" | "text/*" | "*/*":
+                    context = self.get_context_data(**kwargs)
+                    return self.render_to_response(context, status=status_code)
+                case "application/json" | "application/*":
+                    return self.render_to_response_json(status_code)
+                case "application/atom+xml":
+                    return self.render_to_response_atom(status_code)
+                case "application/rss+xml":
+                    return self.render_to_response_rss(status_code)
         return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json",
+            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
             status=406,
             content_type="text/plain",
         )
@@ -183,6 +190,41 @@ class HealthCheckView(TemplateView):
             status=status,
         )
 
+    def render_to_response_atom(self, status):
+        """Return Atom feed response with health check results."""
+        return self._render_feed(Atom1Feed, status)
+
+    def render_to_response_rss(self, status):
+        """Return RSS 2.0 feed response with health check results."""
+        return self._render_feed(Rss201rev2Feed, status)
+
+    def _render_feed(self, feed_class, status):
+        """Generate RSS or Atom feed with health check results."""
+        feed = feed_class(
+            title="Health Check Status",
+            link=self.request.build_absolute_uri(),
+            description="Current status of system health checks",
+            feed_url=self.request.build_absolute_uri(),
+        )
+
+        for result in self.results.values():
+            feed.add_item(
+                title=str(result),
+                link=self.request.build_absolute_uri(),
+                description=f"{result.pretty_status()}\nResponse time: {result.time_taken:.3f}s",
+                pubdate=timezone.now(),
+                updateddate=timezone.now(),
+                author_name=self.feed_author,
+                categories=["error", "unhealthy"] if result.errors else ["healthy"],
+            )
+
+        response = HttpResponse(
+            feed.writeString("utf-8"),
+            content_type=feed.content_type,
+            status=status,
+        )
+        return response
+
     def get_results(self):
         for check in self.checks:
             try:
@@ -191,8 +233,8 @@ class HealthCheckView(TemplateView):
                 options = {}
             if isinstance(check, str):
                 check = import_string(check)
-            plugin_instance = check(**options)
-            yield repr(plugin_instance), plugin_instance
+            check_instance = check(**options)
+            yield repr(check_instance), check_instance
 
     @cached_property
     def results(self):

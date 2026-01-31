@@ -222,7 +222,7 @@ class TestHealthCheckView:
         assert response.status_code == 406
         assert (
             response.content
-            == b"Not Acceptable: Supported content types: text/html, application/json"
+            == b"Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml"
         )
 
     def test_get__unsupported_with_fallback(self, health_check_view):
@@ -336,6 +336,59 @@ class TestHealthCheckView:
             "JSON Error"
             in json.loads(response.content.decode("utf-8"))[repr(FailingBackend())]
         )
+
+    def test_get__atom_format_parameter(self, health_check_view):
+        """Return Atom feed when format parameter is 'atom'."""
+
+        @dataclasses.dataclass
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="atom")
+        assert response.status_code == 200
+        assert "application/atom+xml" in response["content-type"]
+        assert b"<feed" in response.content
+        assert b'xmlns="http://www.w3.org/2005/Atom"' in response.content
+
+    def test_get__rss_format_parameter(self, health_check_view):
+        """Return RSS feed when format parameter is 'rss'."""
+
+        @dataclasses.dataclass
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="rss")
+        assert response.status_code == 200
+        assert "application/rss+xml" in response["content-type"]
+        assert b"<rss" in response.content
+
+    def test_get__atom_accept_header(self, health_check_view):
+        """Return Atom feed when Accept header requests it."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view(
+            [SuccessBackend], accept_header="application/atom+xml"
+        )
+        assert "application/atom+xml" in response["content-type"]
+        assert response.status_code == 200
+
+    def test_get__rss_accept_header(self, health_check_view):
+        """Return RSS feed when Accept header requests it."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view(
+            [SuccessBackend], accept_header="application/rss+xml"
+        )
+        assert "application/rss+xml" in response["content-type"]
+        assert response.status_code == 200
 
     def test_threading_enabled(self, health_check_view):
         """Use ThreadPoolExecutor when use_threading is True."""
