@@ -8,14 +8,6 @@ uv add django-health-check
 pip install django-health-check
 ```
 
-For 3rd party service checks (Kafka, Redis, RabbitMQ, Celery), install the corresponding extras:
-
-```shell
-uv add django-health-check[kafka]
-# or
-pip install django-health-check[kafka]
-```
-
 Add `health_check` and any desired plugins to your `INSTALLED_APPS` in `settings.py`:
 
 ```python
