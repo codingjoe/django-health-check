@@ -18,7 +18,7 @@ class RabbitMQ(HealthCheck):
     Check RabbitMQ service by opening and closing a broker channel.
 
     Args:
-        amqp_url (str): The URL of the RabbitMQ broker to connect to (required), e.g., 'amqp://guest:guest@localhost:5672//'.
+        amqp_url (str): The URL of the RabbitMQ broker to connect to, e.g., 'amqp://guest:guest@localhost:5672//'.
 
     """
 

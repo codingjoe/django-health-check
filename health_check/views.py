@@ -106,9 +106,6 @@ class HealthCheckView(TemplateView):
         "health_check.checks.Storage",
     )
 
-    def check(self):
-        return self.run_check()
-
     def run_check(self):
         errors = []
 
@@ -146,7 +143,7 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
-        health_check_has_error = self.check()
+        health_check_has_error = self.run_check()
         status_code = 500 if health_check_has_error else 200
         format_override = request.GET.get("format")
 

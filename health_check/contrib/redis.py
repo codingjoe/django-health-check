@@ -18,8 +18,9 @@ class Redis(HealthCheck):
     Check Redis service by pinging the redis instance with a redis connection.
 
     Args:
-        redis_url: The Redis connection URL (required), e.g., 'redis://localhost:6379/0'.
-        redis_url_options: Additional options for the Redis connection, e.g., {'socket_connect_timeout': 5}.
+        redis_url: The Redis connection URL, e.g., 'redis://localhost:6379/0'.
+        redis_url_options: Additional options for the Redis connection,
+                           e.g., {'socket_connect_timeout': 5}.
 
     """
 
