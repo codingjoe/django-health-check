@@ -456,3 +456,43 @@ class TestHealthCheckView:
         if hasattr(response, "render"):
             response.render()
         assert response.status_code == 200
+
+    def test_vary_header_on_accept(self, health_check_view):
+        """Response includes Vary: Accept header for content negotiation."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend])
+        assert "Accept" in response.get("Vary", "")
+        assert response.status_code == 200
+
+    def test_vary_header_with_different_accept_headers(self, health_check_view):
+        """Vary: Accept header is present for all response formats."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        # Test with HTML response
+        html_response = health_check_view([SuccessBackend], accept_header="text/html")
+        assert "Accept" in html_response.get("Vary", "")
+
+        # Test with JSON response
+        json_response = health_check_view(
+            [SuccessBackend], accept_header="application/json"
+        )
+        assert "Accept" in json_response.get("Vary", "")
+
+        # Test with Atom response
+        atom_response = health_check_view(
+            [SuccessBackend], accept_header="application/atom+xml"
+        )
+        assert "Accept" in atom_response.get("Vary", "")
+
+        # Test with RSS response
+        rss_response = health_check_view(
+            [SuccessBackend], accept_header="application/rss+xml"
+        )
+        assert "Accept" in rss_response.get("Vary", "")
