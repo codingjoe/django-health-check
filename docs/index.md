@@ -28,6 +28,7 @@ The following health checks are bundled with this project:
 - caches
 - databases
 - disk and memory utilization
+- DNS
 - email servers
 - storages
 - Celery

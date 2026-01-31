@@ -125,9 +125,8 @@ class DNS(HealthCheck):
     """
     Check DNS resolution by resolving the server's hostname.
 
-    This health check verifies that DNS resolution is working properly,
-    which is critical for outgoing API calls, database connections,
-    and other network services that rely on DNS.
+    Verifies that DNS resolution is working on the systems DNSs server,
+    as well as the nameserver resolution for the provided hostname.
 
     Args:
         hostname: The hostname to resolve.
