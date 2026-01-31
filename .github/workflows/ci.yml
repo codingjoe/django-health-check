@@ -66,9 +66,21 @@ jobs:
         ports:
           - 5672:5672
           - 15672:15672
+      kafka:
+        image: bitnami/kafka:latest
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_CFG_NODE_ID: 0
+          KAFKA_CFG_PROCESS_ROLES: controller,broker
+          KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+          KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+          KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+          KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
     env:
       REDIS_URL: redis://localhost:6379/0
       RABBITMQ_URL: amqp://guest:guest@localhost:5672//
+      KAFKA_BOOTSTRAP_SERVERS: localhost:9092
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -80,6 +92,7 @@ jobs:
           - "redis"
           - "celery"
           - "rabbitmq"
+          - "kafka"
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7

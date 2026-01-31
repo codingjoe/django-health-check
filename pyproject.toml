@@ -46,6 +46,7 @@ dependencies = [
 
 [project.optional-dependencies]
 celery = ["celery>=5.0.0"]
+kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["kombu>=5.0.0"]
 redis = ["redis>=3.0.0"]
 
