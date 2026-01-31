@@ -62,8 +62,10 @@ class Kafka(HealthCheck):
 
         except KafkaError as e:
             raise ServiceUnavailable(f"Unable to connect to Kafka: {e}") from e
+        except ServiceUnavailable:
+            raise
         except BaseException as e:
-            raise ServiceUnavailable(f"Unknown error connecting to Kafka: {e}") from e
+            raise ServiceUnavailable("Unknown error") from e
         finally:
             if consumer is not None:
                 consumer.close()

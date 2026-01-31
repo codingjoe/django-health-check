@@ -84,7 +84,7 @@ class TestKafka:
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
 
-            assert "Unknown error connecting to Kafka" in str(exc_info.value)
+            assert "Unknown error" in str(exc_info.value)
 
             # Verify consumer was closed
             mock_consumer.close.assert_called_once()
