@@ -40,6 +40,7 @@ dynamic = [
 ]
 dependencies = [
   "Django>=4.2",
+  "dnspython>=2.0.0",
   "psutil",
 ]
 
@@ -47,7 +48,6 @@ dependencies = [
 celery = ["celery>=5.0.0"]
 rabbitmq = ["kombu>=5.0.0"]
 redis = ["redis>=3.0.0"]
-dns = ["dnspython>=2.0.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels

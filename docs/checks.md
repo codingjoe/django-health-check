@@ -4,6 +4,8 @@
 
 ::: health_check.Cache
 
+::: health_check.DNS
+
 ::: health_check.Database
 
 ::: health_check.Disk
@@ -19,8 +21,6 @@
 To use the checks, you will need to install and set up their corresponding dependencies.
 
 ::: health_check.contrib.celery.Ping
-
-::: health_check.contrib.dns.DNS
 
 ::: health_check.contrib.rabbitmq.RabbitMQ
 

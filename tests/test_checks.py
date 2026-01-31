@@ -8,7 +8,7 @@ import pytest
 from django.core.cache import CacheKeyWarning
 from django.test import override_settings
 
-from health_check.checks import Cache, Database, Disk, Mail, Memory, Storage
+from health_check.checks import DNS, Cache, Database, Disk, Mail, Memory, Storage
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -35,6 +35,24 @@ class TestDatabase:
         check = Database()
         check.run_check()
         assert check.errors == []
+
+
+class TestDNS:
+    """Test the DNS health check."""
+
+    def test_run_check__dns_working(self):
+        """DNS resolution completes successfully for localhost."""
+        check = DNS(hostname="localhost")
+        check.run_check()
+        assert check.errors == []
+
+    def test_run_check__system_hostname(self):
+        """DNS resolution completes successfully for system hostname."""
+        # This tests the default behavior using socket.gethostname()
+        check = DNS()
+        check.run_check()
+        # We don't assert no errors because the system hostname might not be resolvable
+        # in all environments, but the check should complete without crashing
 
 
 class TestDisk:
@@ -197,6 +215,17 @@ class TestDatabaseExceptionHandling:
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
             assert "Database health check failed" in str(exc_info.value)
+
+
+class TestDNSExceptionHandling:
+    """Test DNS exception handling for uncovered code paths."""
+
+    def test_check_status__nonexistent_hostname(self):
+        """Raise ServiceUnavailable when hostname does not exist."""
+        check = DNS(hostname="this-domain-does-not-exist-12345.invalid")
+        check.run_check()
+        assert len(check.errors) == 1
+        assert "does not exist" in str(check.errors[0])
 
 
 class TestDiskExceptionHandling:

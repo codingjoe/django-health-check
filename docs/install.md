@@ -32,6 +32,7 @@ urlpatterns = [
         HealthCheckView.as_view(
             checks=[  # optional, default is all but 3rd party checks
                 "health_check.Cache",
+                "health_check.DNS",
                 "health_check.Database",
                 "health_check.Disk",
                 "health_check.Mail",
@@ -39,10 +40,6 @@ urlpatterns = [
                 "health_check.Storage",
                 # 3rd party checks
                 "health_check.contrib.celery.Ping",
-                (  # tuple with options
-                    "health_check.contrib.dns.DNS",
-                    {"hostname": "example.com"},
-                ),
                 (  # tuple with options
                     "health_check.contrib.rabbitmq.RabbitMQ",
                     {"amqp_url": "amqp://guest:guest@localhost:5672//"},
