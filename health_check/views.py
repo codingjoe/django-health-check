@@ -95,6 +95,7 @@ class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
+    feed_author = "Django Health Check"
 
     use_threading: bool = True
     warnings_as_errors: bool = True
@@ -217,7 +218,7 @@ class HealthCheckView(TemplateView):
                 description=f"{plugin.pretty_status()}\nResponse time: {plugin.time_taken:.3f}s",
                 pubdate=timezone.now(),
                 updateddate=timezone.now(),
-                author_name="Django Health Check",
+                author_name=self.feed_author,
                 categories=["error", "unhealthy"] if plugin.errors else ["healthy"],
             )
 
