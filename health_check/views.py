@@ -110,6 +110,10 @@ class HealthCheckView(TemplateView):
         "health_check.checks.Storage",
     )
 
+    # Regex pattern to sanitize metric names for Server-Timing headers
+    # Only allow alphanumeric characters, underscores, and hyphens per MDN spec
+    METRIC_NAME_SANITIZE_PATTERN = re.compile(r"[^a-zA-Z0-9_-]")
+
     def run_check(self):
         errors = []
 
@@ -194,13 +198,28 @@ class HealthCheckView(TemplateView):
         }
 
     def get_server_timing_header(self):
-        """Generate Server-Timing header value from health check results."""
+        """
+        Generate Server-Timing header value from health check results.
+
+        Returns a comma-separated list of timing entries following the MDN Server-Timing
+        specification format: metric-name;dur=duration_ms;desc="description"
+
+        Metric names are sanitized to only include alphanumeric characters, underscores,
+        and hyphens. Descriptions are escaped to prevent header injection vulnerabilities.
+
+        Returns:
+            str: Server-Timing header value suitable for HTTP response headers.
+
+        See Also:
+            https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing
+
+        """
         timings = []
         for label, result in self.results.items():
             # Convert seconds to milliseconds and format the timing entry
             duration_ms = result.time_taken * 1000
             # Sanitize metric name: only allow alphanumeric, underscores, and hyphens
-            metric_name = re.sub(r"[^a-zA-Z0-9_-]", "-", label)
+            metric_name = self.METRIC_NAME_SANITIZE_PATTERN.sub("-", label)
             # Escape quotes in description to prevent header injection
             safe_label = label.replace('"', '\\"')
             timings.append(f'{metric_name};dur={duration_ms:.2f};desc="{safe_label}"')

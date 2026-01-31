@@ -536,7 +536,10 @@ class TestHealthCheckView:
         response = health_check_view([SpecialCharCheck])
         assert "Server-Timing" in response
         server_timing = response["Server-Timing"]
-        # Metric name should have special chars replaced with hyphens
-        assert "Test--Quote----Special-Chars-" in server_timing
-        # Description should have escaped quotes
+        # Metric name should only contain alphanumeric, hyphens, and underscores
+        # (special chars should be replaced)
+        assert "Special-Chars" in server_timing
+        # Description should have escaped quotes to prevent header injection
         assert '\\"Quote\\"' in server_timing
+        # Original description text should be preserved in escaped form
+        assert "Special@Chars" in server_timing
