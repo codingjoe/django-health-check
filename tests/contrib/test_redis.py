@@ -24,7 +24,7 @@ class TestRedis:
             mock_from_url.return_value.__enter__.return_value = mock_conn
             mock_conn.ping.return_value = True
 
-            check = RedisHealthCheck(url="redis://localhost:6379")
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
             check.check_status()
             assert check.errors == []
 
@@ -35,7 +35,7 @@ class TestRedis:
                 "refused"
             )
 
-            check = RedisHealthCheck(url="redis://localhost:6379")
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -46,7 +46,7 @@ class TestRedis:
                 "timeout"
             )
 
-            check = RedisHealthCheck(url="redis://localhost:6379")
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -57,7 +57,7 @@ class TestRedis:
                 "connection error"
             )
 
-            check = RedisHealthCheck(url="redis://localhost:6379")
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -68,7 +68,7 @@ class TestRedis:
                 "unexpected"
             )
 
-            check = RedisHealthCheck(url="redis://localhost:6379")
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -79,6 +79,6 @@ class TestRedis:
         if not redis_url:
             pytest.skip("REDIS_URL not set; skipping integration test")
 
-        check = RedisHealthCheck(url=redis_url)
+        check = RedisHealthCheck(redis_url=redis_url)
         check.check_status()
         assert check.errors == []

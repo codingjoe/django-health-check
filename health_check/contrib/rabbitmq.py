@@ -18,17 +18,17 @@ class RabbitMQ(HealthCheck):
     Check RabbitMQ service by opening and closing a broker channel.
 
     Args:
-        url (str): The URL of the RabbitMQ broker to connect to, e.g., 'amqp://guest:guest@localhost:5672//'.
+        amqp_url (str): The URL of the RabbitMQ broker to connect to (required), e.g., 'amqp://guest:guest@localhost:5672//'.
 
     """
 
-    url: str
+    amqp_url: str
 
     def check_status(self):
-        logger.debug("Attempting to connect to %r...", self.url)
+        logger.debug("Attempting to connect to %r...", self.amqp_url)
         try:
             # conn is used as a context to release opened resources later
-            with Connection(self.url) as conn:
+            with Connection(self.amqp_url) as conn:
                 conn.connect()  # exceptions may be raised upon calling connect
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(

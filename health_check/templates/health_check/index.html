@@ -78,44 +78,44 @@
 
     @media screen and (max-width: 700px) {
 
-            table,
-            thead,
-            tbody,
-            th,
-            td,
-            tr {
-                display: block;
-            }
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+          display: block;
+      }
 
-            thead tr {
-                position: absolute;
-                top: -9999px;
-                left: -9999px;
-            }
+      thead tr {
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+      }
 
-            tr {
-                margin-bottom: 1.5em;
-              box-shadow: 0 0 5px light-dark(#ccc, #000);
-              overflow-x: auto;
-            }
+      tr {
+          margin-bottom: 1.5em;
+        box-shadow: 0 0 5px light-dark(#ccc, #000);
+        overflow-x: auto;
+      }
 
-            td {
-                border: none;
-                position: relative;
-                padding: 1em 0.5em 1em 6em;
-            }
+      td {
+          border: none;
+          position: relative;
+          padding: 1em 0.5em 1em 6em;
+      }
 
-            td:before {
-                position: absolute;
-                left: 1.5em;
-                content: attr(data-label);
-                font-weight: bold;
-            }
+      td:before {
+          position: absolute;
+          left: 1.5em;
+          content: attr(data-label);
+          font-weight: bold;
+      }
 
-            .align-right {
-              text-align: unset;
-            }
-        }
+      .align-right {
+        text-align: unset;
+      }
+    }
     </style>
     {% block extra_head %}
     {% endblock extra_head %}

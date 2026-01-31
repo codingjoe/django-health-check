@@ -11,15 +11,15 @@ from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
-from health_check import HealthCheck
-from health_check.exceptions import HealthCheckException, ServiceWarning
+from health_check.base import HealthCheck
+from health_check.exceptions import ServiceWarning
 
 
 class MediaType:
     """
     Sortable object representing HTTP's accept header.
 
-    .. seealso:: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
+    See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
     """
 
     pattern = re.compile(
@@ -93,11 +93,8 @@ class HealthCheckView(TemplateView):
 
     template_name = "health_check/index.html"
 
-    _errors: list[HealthCheckException] | None = None
-    _plugins = None
-
     use_threading: bool = True
-    warnings_as_errors: bool = False
+    warnings_as_errors: bool = True
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
     ] = (
@@ -115,23 +112,25 @@ class HealthCheckView(TemplateView):
     def run_check(self):
         errors = []
 
-        def _run(plugin):
-            plugin.run_check()
+        def _run(check_instance):
+            check_instance.run_check()
             try:
-                return plugin
+                return check_instance
             finally:
                 if self.use_threading:
                     # DB connections are thread-local so we need to close them here
                     connections.close_all()
 
-        def _collect_errors(plugin):
-            if plugin.critical_service:
+        def _collect_errors(check_instance):
+            if check_instance.critical_service:
                 if not self.warnings_as_errors:
                     errors.extend(
-                        e for e in plugin.errors if not isinstance(e, ServiceWarning)
+                        e
+                        for e in check_instance.errors
+                        if not isinstance(e, ServiceWarning)
                     )
                 else:
-                    errors.extend(plugin.errors)
+                    errors.extend(check_instance.errors)
 
         if self.use_threading:
             with ThreadPoolExecutor(
@@ -187,17 +186,15 @@ class HealthCheckView(TemplateView):
         )
 
     def get_results(self):
-        # If checks are explicitly set, use them
-        if self.checks is not None:
-            for check in self.checks:
-                try:
-                    check, options = check
-                except (ValueError, TypeError):
-                    options = {}
-                if isinstance(check, str):
-                    check = import_string(check)
-                plugin_instance = check(**options)
-                yield repr(plugin_instance), plugin_instance
+        for check in self.checks:
+            try:
+                check, options = check
+            except (ValueError, TypeError):
+                options = {}
+            if isinstance(check, str):
+                check = import_string(check)
+            plugin_instance = check(**options)
+            yield repr(plugin_instance), plugin_instance
 
     @cached_property
     def results(self):

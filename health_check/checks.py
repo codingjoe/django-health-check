@@ -5,6 +5,7 @@ import datetime
 import logging
 import os
 import pathlib
+import smtplib
 import socket
 import uuid
 
@@ -102,13 +103,13 @@ class Database(HealthCheck):
             with connection.cursor() as cursor:
                 cursor.execute(*compiler.compile(_SelectOne()))
                 result = cursor.fetchone()
-
+        except Exception as e:
+            raise ServiceUnavailable(f"Database health check failed: {e}")
+        else:
             if result != (1,):
                 raise ServiceUnavailable(
                     "Health Check query did not return the expected result."
                 )
-        except Exception as e:
-            raise ServiceUnavailable(f"Database health check failed: {e}")
 
 
 @dataclasses.dataclass()
@@ -158,17 +159,14 @@ class Mail(HealthCheck):
         logger.debug("Trying to open connection to mail backend.")
         try:
             connection.open()
-        except Exception as error:
-            import smtplib
-
-            if isinstance(error, smtplib.SMTPException):
-                raise ServiceUnavailable(
-                    "Failed to open connection with SMTP server"
-                ) from error
-            elif isinstance(error, ConnectionRefusedError):
-                raise ServiceUnavailable("Connection refused error") from error
-            else:
-                raise ServiceUnavailable(f"Unknown error {error.__class__}") from error
+        except smtplib.SMTPException as e:
+            raise ServiceUnavailable(
+                "Failed to open connection with SMTP server"
+            ) from e
+        except ConnectionRefusedError as e:
+            raise ServiceUnavailable("Connection refused error") from e
+        except Exception as e:
+            raise ServiceUnavailable(f"Unknown error {e.__class__}") from e
         finally:
             connection.close()
         logger.debug(
@@ -260,7 +258,7 @@ class Storage(HealthCheck):
             file_content = self.get_file_content()
             file_name = self.check_save(file_name, file_content)
             self.check_delete(file_name)
-        except ServiceUnavailable as e:
-            raise e
+        except ServiceUnavailable:
+            raise
         except Exception as e:
             raise ServiceUnavailable("Unknown exception") from e

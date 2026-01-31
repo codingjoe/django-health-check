@@ -25,7 +25,7 @@ class TestRabbitMQ:
             mock_conn.connect.return_value = True
             mock_conn_cls.return_value = mock_conn
 
-            check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
+            check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             check.check_status()
             assert check.errors == []
 
@@ -37,7 +37,7 @@ class TestRabbitMQ:
             mock_conn.__exit__.return_value = False
             mock_conn_cls.return_value = mock_conn
 
-            check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
+            check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -49,7 +49,7 @@ class TestRabbitMQ:
             mock_conn.__exit__.return_value = False
             mock_conn_cls.return_value = mock_conn
 
-            check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
+            check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -61,7 +61,7 @@ class TestRabbitMQ:
             mock_conn.__exit__.return_value = False
             mock_conn_cls.return_value = mock_conn
 
-            check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
+            check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -73,7 +73,7 @@ class TestRabbitMQ:
             mock_conn.__exit__.return_value = False
             mock_conn_cls.return_value = mock_conn
 
-            check = RabbitMQHealthCheck(url="amqp://guest:guest@localhost:5672//")
+            check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
@@ -84,6 +84,6 @@ class TestRabbitMQ:
         if not broker_url:
             pytest.skip("BROKER_URL/RABBITMQ_URL not set; skipping integration test")
 
-        check = RabbitMQHealthCheck(url=broker_url)
+        check = RabbitMQHealthCheck(amqp_url=broker_url)
         check.check_status()
         assert check.errors == []
