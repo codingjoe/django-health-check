@@ -5,24 +5,6 @@ on:
       - main
   pull_request:
 jobs:
-  pre-commit:
-    if: startsWith(github.head_ref, 'dependabot/') != true
-    name: pre-commit
-    runs-on: ubuntu-latest
-    outputs:
-      file-names: ${{ steps.diff.outputs.file-names }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - run: echo "file-names=$(git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD | grep '\.py$' | tr '\n' ' ' || true)" >> "$GITHUB_OUTPUT"
-        id: diff
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/pre-commit/
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - run: SKIP=$(yq '.ci.skip' -o csv .pre-commit-config.yaml) uvx pre-commit run --all-files --show-diff-on-failure
   dist:
     runs-on: ubuntu-latest
     steps:
@@ -38,10 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - run: uv run --group docs sphinx-build -W -b doctest -b html docs docs/_build
-  PyTest:
+      - run: uv run mkdocs build --strict
+  pytest:
+    name: pytest
     runs-on: ubuntu-latest
-    needs: [pre-commit]
     strategy:
       matrix:
         python-version:
@@ -71,3 +53,40 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}
+  pytest-contrib:
+    name: pytest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+    env:
+      REDIS_URL: redis://localhost:6379/0
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672//
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.13"
+        django-version:
+          - "5.2"
+        extra:
+          - "redis"
+          - "celery"
+          - "rabbitmq"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv run --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}-${{ matrix.extra }}

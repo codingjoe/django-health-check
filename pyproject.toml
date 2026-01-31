@@ -40,16 +40,23 @@ dynamic = [
 ]
 dependencies = [
   "Django>=4.2",
+  "dnspython>=2.0.0",
+  "psutil",
 ]
+
+[project.optional-dependencies]
+celery = ["celery>=5.0.0"]
+rabbitmq = ["kombu>=5.0.0"]
+redis = ["redis>=3.0.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
-Homepage = "https://django-health-check.readthedocs.io/"
-Changelog = "https://github.com/revsys/django-health-check/releases"
-Source = "https://github.com/revsys/django-health-check"
-Releasenotes = "https://github.com/revsys/django-health-check/releases/latest"
-Documentation = "https://django-health-check.readthedocs.io/"
-Issues = "https://github.com/revsys/django-health-check/issues"
+Homepage = "https://codingjoe.dev/django-health-check/"
+Changelog = "https://github.com/codingjoe/django-health-check/releases"
+Source = "https://github.com/codingjoe/django-health-check"
+Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
+Documentation = "https://codingjoe.dev/django-health-check/"
+Issues = "https://github.com/codingjoe/django-health-check/issues"
 
 [dependency-groups]
 dev = [
@@ -60,12 +67,16 @@ test = [
   "pytest",
   "pytest-cov",
   "pytest-django",
-  "celery",
-  "redis",
   "django-storages",
   "boto3",
 ]
-docs = ["sphinx", "furo"]
+docs = [
+  "mkdocs",
+  "mkdocstrings[python]>=0.18",
+  "mkdocs-material",
+  "markdown-callouts",
+  "Pygments",
+]
 
 [tool.flit.module]
 name = "health_check"
@@ -82,14 +93,19 @@ DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
 norecursedirs = ".git"
 python_files = "test_*.py"
 xfail_strict = true
+markers = [
+  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+[tool.coverage.run]
+source = ["health_check"]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
 
 [tool.ruff]
-line-length = 120
-target-version = "py39"
+line-length = 88
 
 [tool.ruff.lint]
 select = [
@@ -103,10 +119,16 @@ select = [
     "UP", # pyupgrade
     "W", # pycodestyle warnings
 ]
-ignore = ["D1", "D203", "D212"]
+ignore = ["D1", "D203", "D212", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101", "S105", "PLR2004"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["measurement", "tests"]
+
+[tool.djlint]
+profile="django"
+indent=2
+max_line_length=120
+line_break_after_multiline_tag=true

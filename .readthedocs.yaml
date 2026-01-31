@@ -11,4 +11,6 @@ build:
       - curl -LsSf https://astral.sh/uv/install.sh | sh
     build:
       html:
-        - $HOME/.local/bin/uv run --group docs sphinx-build -b html docs $READTHEDOCS_OUTPUT/html
+        - $HOME/.local/bin/uv run mkdocs build --site-dir $READTHEDOCS_OUTPUT/html
+mkdocs:
+  configuration: mkdocs.yml

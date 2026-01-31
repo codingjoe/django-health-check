@@ -1,79 +1,185 @@
-<html>
-<head>
-  <title>{% block title %}System status{% endblock title %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <style>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>
+      {% block title %}
+        System status
+      {% endblock title %}
+    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <link rel="alternate"
+          type="application/json"
+          title="JSON"
+          href="?format=json">
+    <link rel="alternate"
+          type="application/atom+xml"
+          title="Atom Feed"
+          href="?format=atom">
+    <link rel="alternate"
+          type="application/rss+xml"
+          title="RSS Feed"
+          href="?format=rss">
+    <style>
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+    }
     html, body {
       margin: 0 auto;
-      font-family: sans-serif;
-      line-height: 1.5;
-      max-width: 900px;
+      max-width: 1200px;
+      background: light-dark(#dadada, black);
     }
 
     h1 {
       text-align: center;
-      margin: 10px;
-      font-weight: lighter;
+      font-weight: normal;
     }
 
     table {
       border-collapse: collapse;
       width: 100%;
       text-align: left;
+      table-layout: auto;
+    }
+
+    table tr {
+      background-color: light-dark(white, #121212);
     }
 
     table tr:nth-child(2n) {
-      background-color: #f1f1f1;
+      background-color: light-dark(#f1f1f1, #1e1e1e);
     }
 
     td, th {
-      padding: 8px;
+      padding: 0.5em 1.5em;
     }
 
     .align-right {
       text-align: right;
     }
 
-    table thead {
-      background-color: lightskyblue;
+    .mono {
+      font-family: Menlo, Consolas, Monaco, Adwaita Mono, Liberation Mono, Lucida Console, monospace;
     }
 
-    table .icons {
-      text-align: center;
-      width: 50px;
+    tr.error {
+      background: light-dark(lightcoral, #440000);
     }
-  </style>
-  {% block extra_head %}{% endblock extra_head %}
-</head>
-<body>
-  {% block content %}
-    <h1>System status</h1>
-    <table>
-      <thead>
-        <th colspan="2">Service</th>
-        <th>Status</th>
-        <th class="align-right">Time Taken</th>
-      </thead>
-      <tbody>
-        {% for plugin in plugins %}
-          <tr>
-            <td class="icons">
-              <span aria-hidden="true">
-                {% if plugin.status %}
-                  &#9989;
-                {% else %}
-                  &#10060;
-                {% endif %}
-              </span>
-            </td>
-            <td>{{ plugin.identifier }}</td>
-            <td>{{ plugin.pretty_status | linebreaks }}</td>
-            <td class="align-right">{{ plugin.time_taken|floatformat:4 }} seconds</td>
+
+    table thead tr {
+      background-color: darkslategray;
+      color: white;
+    }
+
+    table thead tr.thead-error {
+      background-color: darkred;
+    }
+
+    table .shrink {
+      width: min-content;
+      white-space: nowrap;
+    }
+
+    footer .footer-text {
+      text-align: center;
+      font-size: small;
+      color: light-dark(#444, #888);
+      margin-top: 2em;
+    }
+
+    @media screen and (max-width: 700px) {
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+          display: block;
+      }
+
+      thead tr {
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+      }
+
+      tr {
+          margin-bottom: 1.5em;
+        box-shadow: 0 0 5px light-dark(#ccc, #000);
+        overflow-x: auto;
+      }
+
+      td {
+          border: none;
+          position: relative;
+          padding: 1em 0.5em 1em 6em;
+      }
+
+      td:before {
+          position: absolute;
+          left: 1.5em;
+          content: attr(data-label);
+          font-weight: bold;
+      }
+
+      .align-right {
+        text-align: unset;
+      }
+    }
+    </style>
+    {% block extra_head %}
+    {% endblock extra_head %}
+  </head>
+  <body>
+    {% block content %}
+      <h1>
+        {% if errors %}
+          <span role="img" aria-label="Error">🔥</span>
+        {% endif %}
+        System status
+        {% if errors %}
+          <span role="img" aria-label="Error">🔥</span>
+        {% endif %}
+      </h1>
+      <table>
+        <thead>
+          <tr {% if errors %}class="thead-error"{% endif %}>
+            <th>
+              Service
+            </th>
+            <th>
+              Status
+            </th>
+            <th class="align-right shrink">
+              Timing
+            </th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endblock content %}
-</body>
+        </thead>
+        <tbody>
+          {% for plugin in plugins %}
+            <tr {% if not plugin.status %}class="error"{% endif %}>
+              <td data-label="Service">
+                {{ plugin }}
+              </td>
+              <td data-label="Status" class="mono">
+                {{ plugin.pretty_status | linebreaks }}
+              </td>
+              <td data-label="Timing" class="align-right mono">
+                {{ plugin.time_taken|floatformat:3 }}&#x202F;s
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <footer>
+        <p class="footer-text">
+          Generated at {% now "SHORT_DATETIME_FORMAT" %} with <a href="https://codingjoe.dev/django-health-check/">Django Health Check</a>.
+          <br>
+          Subscribe: <a href="?format=atom">Atom</a> | <a href="?format=rss">RSS</a>
+        </p>
+      </footer>
+    {% endblock content %}
+  </body>
 </html>

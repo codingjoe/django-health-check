@@ -4,6 +4,27 @@ on:
     types: [published]
   workflow_dispatch:
 jobs:
+  gh-page-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - run: uv run mkdocs build
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+  gh-page-deploy:
+    needs: gh-page-build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
   pypi-build:
     runs-on: ubuntu-latest
     steps:

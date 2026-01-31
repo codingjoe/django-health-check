@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" font-family="Segoe UI, system-ui, sans-serif" viewBox="0 0 1280 640">
+  <circle cx="260" cy="320" r="200" fill="#092e20"/>
+  <g fill="none" stroke="#f1fff7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+    <path stroke="none" d="M104 156h312v312H104z"/>
+    <path stroke-width="26" d="M357.5 332.436 260 429l-37.648-37.284m-79.521-105.352A65 65 0 0 1 260 247.078a65 65 0 1 1 97.5 85.436"/>
+    <path stroke-width="26" d="M143 325h26l26 39 26-78 13 39h39"/>
+  </g>
+  <text x="240" y="90" fill="#092e20" font-size="64" font-weight="bold" transform="matrix(1.6 0 0 1.6 120 120)">
+    Django
+  </text>
+  <text x="240" y="160" font-size="72" font-weight="bold" transform="matrix(1.6 0 0 1.6 120 120)">
+    HealthCheck
+  </text>
+  <text x="244" y="210" font-size="20" font-style="italic" transform="matrix(1.6 0 0 1.6 120 120)">
+    Pluggable health checks for Django applications
+  </text>
+</svg>
