@@ -24,7 +24,8 @@ uv pre-commit install
 ```bash
 export REDIS_URL=redis://localhost:6379
 export BROKER_URL=amqp://guest:guest@localhost:5672//
-uv run --extra=redis --extra=rabbitmq --extra=celery pytest
+export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+uv run --extra=redis --extra=rabbitmq --extra=celery --extra=kafka pytest
 ```
 
 ## Writing documentation

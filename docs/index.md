@@ -25,15 +25,11 @@ anomalous behavior is detected.
 
 The following health checks are bundled with this project:
 
-- caches
-- databases
-- disk and memory utilization
-- DNS
-- email servers
+- caches & databases
+- disk & memory utilization
+- DNS & email servers
 - storages
-- Celery
-- RabbitMQ
-- Redis
+- Celery, RabbitMQ, Redis, Kafka
 
 Writing your own custom health checks is also very quick and easy.
 
