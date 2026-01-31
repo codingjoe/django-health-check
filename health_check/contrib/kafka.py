@@ -4,7 +4,8 @@ import dataclasses
 import datetime
 import logging
 
-from confluent_kafka import Consumer, KafkaException
+from kafka import KafkaConsumer
+from kafka.errors import KafkaError
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -19,7 +20,7 @@ class Kafka(HealthCheck):
 
     Args:
         bootstrap_servers: List of Kafka bootstrap servers, e.g., ['localhost:9092'].
-        timeout: Timeout in seconds for the connection check.
+        timeout: Timeout duration for the connection check as a datetime.timedelta.
 
     """
 
@@ -37,30 +38,30 @@ class Kafka(HealthCheck):
         consumer = None
         try:
             # Create a consumer with minimal configuration for health check
-            consumer = Consumer(
-                {
-                    "bootstrap.servers": self.bootstrap_servers,
-                    "group.id": "health-check",
-                    "session.timeout.ms": self.timeout.total_seconds() * 1000,
-                    "socket.timeout.ms": self.timeout.total_seconds() * 1000,
-                }
+            timeout_ms = int(self.timeout.total_seconds() * 1000)
+            consumer = KafkaConsumer(
+                bootstrap_servers=self.bootstrap_servers,
+                client_id="health-check",
+                request_timeout_ms=timeout_ms,
+                session_timeout_ms=timeout_ms,
+                connections_max_idle_ms=timeout_ms,
             )
 
             # Try to list topics to verify connection
             # This will raise an exception if Kafka is not available
-            metadata = consumer.list_topics(timeout=self.timeout.total_seconds())
+            topics = consumer.topics()
 
-            if metadata is None:
-                raise ServiceUnavailable("Failed to retrieve Kafka metadata.")
+            if topics is None:
+                raise ServiceUnavailable("Failed to retrieve Kafka topics.")
 
             logger.debug(
                 "Connection established. Kafka is healthy. Found %d topics.",
-                len(metadata.topics),
+                len(topics),
             )
 
-        except KafkaException as e:
+        except KafkaError as e:
             raise ServiceUnavailable(f"Unable to connect to Kafka: {e}") from e
-        except Exception as e:
+        except BaseException as e:
             raise ServiceUnavailable(f"Unknown error connecting to Kafka: {e}") from e
         finally:
             if consumer is not None:
