@@ -9,6 +9,7 @@ import smtplib
 import socket
 import uuid
 
+import dns.resolver
 import psutil
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
@@ -117,6 +118,65 @@ class Database(HealthCheck):
                 raise ServiceUnavailable(
                     "Health Check query did not return the expected result."
                 )
+
+
+@dataclasses.dataclass
+class DNS(HealthCheck):
+    """
+    Check DNS resolution by resolving the server's hostname.
+
+    Verifies that DNS resolution is working using the system's configured
+    DNS servers, as well as nameserver resolution for the provided hostname.
+
+    Args:
+        hostname: The hostname to resolve.
+        timeout: DNS query timeout.
+
+    """
+
+    hostname: str = dataclasses.field(default_factory=socket.gethostname)
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=5), repr=False
+    )
+    nameservers: list[str] | None = dataclasses.field(default=None, repr=False)
+
+    def check_status(self):
+        logger.debug("Attempting to resolve hostname: %s", self.hostname)
+
+        resolver = dns.resolver.Resolver()
+        resolver.lifetime = self.timeout.total_seconds()
+        if self.nameservers is not None:
+            resolver.nameservers = self.nameservers
+
+        try:
+            # Perform DNS resolution (A record by default)
+            answers = resolver.resolve(self.hostname, "A")
+        except dns.resolver.NXDOMAIN as e:
+            raise ServiceUnavailable(
+                f"DNS resolution failed: hostname {self.hostname} does not exist"
+            ) from e
+        except dns.resolver.NoAnswer as e:
+            raise ServiceUnavailable(
+                f"DNS resolution failed: no answer for {self.hostname}"
+            ) from e
+        except dns.resolver.Timeout as e:
+            raise ServiceUnavailable(
+                f"DNS resolution failed: timeout resolving {self.hostname}"
+            ) from e
+        except dns.resolver.NoNameservers as e:
+            raise ServiceUnavailable(
+                "DNS resolution failed: no nameservers available"
+            ) from e
+        except dns.exception.DNSException as e:
+            raise ServiceUnavailable(f"DNS resolution failed: {e}") from e
+        except Exception as e:
+            raise ServiceUnavailable("Unknown DNS error") from e
+        else:
+            logger.debug(
+                "Successfully resolved %s to %s",
+                self.hostname,
+                [str(rdata) for rdata in answers],
+            )
 
 
 @dataclasses.dataclass()

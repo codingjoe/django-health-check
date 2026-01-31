@@ -1,5 +1,6 @@
 """Integration tests for health check implementations."""
 
+import datetime
 import logging
 import tempfile
 from unittest import mock
@@ -8,7 +9,7 @@ import pytest
 from django.core.cache import CacheKeyWarning
 from django.test import override_settings
 
-from health_check.checks import Cache, Database, Disk, Mail, Memory, Storage
+from health_check.checks import DNS, Cache, Database, Disk, Mail, Memory, Storage
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -33,6 +34,16 @@ class TestDatabase:
     def test_run_check__database_available(self):
         """Database connection returns successful query result."""
         check = Database()
+        check.run_check()
+        assert check.errors == []
+
+
+class TestDNS:
+    """Test the DNS health check."""
+
+    def test_run_check__dns_working(self):
+        """DNS resolution completes successfully for localhost."""
+        check = DNS(hostname="github.com")
         check.run_check()
         assert check.errors == []
 
@@ -197,6 +208,89 @@ class TestDatabaseExceptionHandling:
             with pytest.raises(ServiceUnavailable) as exc_info:
                 check.check_status()
             assert "Database health check failed" in str(exc_info.value)
+
+
+class TestDNSExceptionHandling:
+    """Test DNS exception handling for uncovered code paths."""
+
+    def test_check_status__nonexistent_hostname(self):
+        """Raise ServiceUnavailable when hostname does not exist."""
+        check = DNS(hostname="this-domain-does-not-exist-12345.invalid")
+        check.run_check()
+        assert len(check.errors) == 1
+        assert "does not exist" in str(check.errors[0])
+
+    def test_check_status__no_answer(self):
+        """Raise ServiceUnavailable when DNS returns no answer for A record."""
+        # Test with a hostname that has no A record (MX-only domain for example)
+        # Using a TXT-only record subdomain or similar
+        check = DNS(hostname="_dmarc.github.com")
+        check.run_check()
+        assert len(check.errors) == 1
+        # Will get either no answer or NXDOMAIN
+        error_msg = str(check.errors[0]).lower()
+        assert "no answer" in error_msg or "does not exist" in error_msg
+
+    def test_check_status__timeout(self):
+        """Raise ServiceUnavailable when DNS query times out."""
+        # Use a very short timeout to trigger timeout error
+        check = DNS(
+            hostname="example.com",
+            timeout=datetime.timedelta(microseconds=1),
+        )
+        check.run_check()
+        assert len(check.errors) == 1
+        assert "timeout" in str(check.errors[0]).lower()
+
+    def test_check_status__not_a_nameserver(self):
+        """Raise ServiceUnavailable when nameserver is unreachable."""
+        # Use an invalid/unreachable nameserver
+        check = DNS(hostname="example.com", nameservers=["192.0.2.1"])
+        check.run_check()
+        assert len(check.errors) == 1
+        # Could be timeout or no nameservers error
+        error_msg = str(check.errors[0]).lower()
+        assert "timeout" in error_msg or "nameserver" in error_msg
+
+    def test_check_status__no_nameservers(self):
+        """Raise ServiceUnavailable when nameserver is unreachable."""
+        # Use an invalid/unreachable nameserver
+        check = DNS(hostname="example.com", nameservers=[])
+        check.run_check()
+        assert len(check.errors) == 1
+        # Could be timeout or no nameservers error
+        error_msg = str(check.errors[0]).lower()
+        assert "timeout" in error_msg or "nameserver" in error_msg
+
+    def test_check_status__dns_exception(self):
+        """Raise ServiceUnavailable on general DNS exception."""
+        import dns.exception
+
+        with mock.patch(
+            "health_check.checks.dns.resolver.Resolver"
+        ) as mock_resolver_class:
+            mock_resolver = mock.MagicMock()
+            mock_resolver_class.return_value = mock_resolver
+            mock_resolver.resolve.side_effect = dns.exception.DNSException("DNS error")
+
+            check = DNS(hostname="example.com")
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "DNS resolution failed" in str(exc_info.value)
+
+    def test_check_status__unknown_exception(self):
+        """Raise ServiceUnavailable on unknown exception."""
+        with mock.patch(
+            "health_check.checks.dns.resolver.Resolver"
+        ) as mock_resolver_class:
+            mock_resolver = mock.MagicMock()
+            mock_resolver_class.return_value = mock_resolver
+            mock_resolver.resolve.side_effect = RuntimeError("Unexpected error")
+
+            check = DNS(hostname="example.com")
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+            assert "Unknown DNS error" in str(exc_info.value)
 
 
 class TestDiskExceptionHandling:

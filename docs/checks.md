@@ -4,6 +4,8 @@
 
 ::: health_check.Cache
 
+::: health_check.DNS
+
 ::: health_check.Database
 
 ::: health_check.Disk
