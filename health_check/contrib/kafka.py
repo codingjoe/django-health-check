@@ -32,7 +32,6 @@ class Kafka(HealthCheck):
             self.bootstrap_servers,
         )
 
-        logger.debug("Attempting to connect to Kafka...")
         consumer = None
         try:
             # Create a consumer with minimal configuration for health check
