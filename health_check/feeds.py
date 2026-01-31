@@ -44,11 +44,19 @@ class BaseHealthCheckFeed(Feed):
         return reverse("health_check")
 
     def item_pubdate(self, item):
-        """Return the publication date (current time)."""
+        """Return the publication date (current time).
+
+        Health checks are run fresh on each feed request, so we return
+        the current time to reflect when this status was checked.
+        """
         return timezone.now()
 
     def item_updateddate(self, item):
-        """Return the updated date (current time)."""
+        """Return the updated date (current time).
+
+        Health checks are run fresh on each feed request, so we return
+        the current time to reflect when this status was checked.
+        """
         return timezone.now()
 
     def item_author_name(self, item):
