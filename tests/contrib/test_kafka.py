@@ -110,9 +110,7 @@ class TestKafka:
         """Connect to real Kafka server when KAFKA_BOOTSTRAP_SERVERS is configured."""
         kafka_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
         if not kafka_servers:
-            pytest.skip(
-                "KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test"
-            )
+            pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test")
 
         check = KafkaHealthCheck(bootstrap_servers=kafka_servers)
         check.check_status()

@@ -67,7 +67,7 @@ jobs:
           - 5672:5672
           - 15672:15672
       kafka:
-        image: bitnami/kafka:3.6
+        image: apache/kafka
         ports:
           - 9092:9092
         env:
