@@ -9,11 +9,11 @@ from django.urls import reverse
 
 from health_check.base import HealthCheck
 from health_check.exceptions import HealthCheckException
-from health_check.feeds import HealthCheckFeed
+from health_check.feeds import HealthCheckFeed, HealthCheckRSSFeed
 
 
 class TestHealthCheckFeed:
-    """Tests for the HealthCheckFeed class."""
+    """Tests for the HealthCheckFeed class (Atom)."""
 
     def test_feed_attributes(self):
         """Verify feed has required attributes."""
@@ -143,6 +143,17 @@ class TestHealthCheckFeed:
         assert updated is not None
 
 
+class TestHealthCheckRSSFeed:
+    """Tests for the HealthCheckRSSFeed class (RSS 2.0)."""
+
+    def test_feed_attributes(self):
+        """Verify RSS feed has required attributes."""
+        feed = HealthCheckRSSFeed()
+        assert feed.title == "Health Check Status"
+        assert feed.description == "Current status of system health checks"
+        assert feed.link() == reverse("health_check")
+
+
 @pytest.mark.django_db
 class TestHealthCheckFeedIntegration:
     """Integration tests for the health check feed endpoint."""
@@ -152,6 +163,18 @@ class TestHealthCheckFeedIntegration:
         response = client.get(reverse("health_check_feed"))
         assert response.status_code == 200
         assert "application/atom+xml" in response["Content-Type"]
+
+    def test_atom_feed_endpoint(self, client):
+        """Atom feed endpoint is accessible."""
+        response = client.get(reverse("health_check_feed_atom"))
+        assert response.status_code == 200
+        assert "application/atom+xml" in response["Content-Type"]
+
+    def test_rss_feed_endpoint(self, client):
+        """RSS feed endpoint is accessible."""
+        response = client.get(reverse("health_check_feed_rss"))
+        assert response.status_code == 200
+        assert "application/rss+xml" in response["Content-Type"]
 
     def test_feed_valid_xml(self, client):
         """Feed returns valid XML."""
@@ -165,6 +188,18 @@ class TestHealthCheckFeedIntegration:
         except ElementTree.ParseError:
             pytest.fail("Feed did not return valid XML")
 
+    def test_rss_feed_valid_xml(self, client):
+        """RSS feed returns valid XML."""
+        response = client.get(reverse("health_check_feed_rss"))
+        assert response.status_code == 200
+
+        # Parse XML to verify it's valid
+        try:
+            root = ElementTree.fromstring(response.content)
+            assert root is not None
+        except ElementTree.ParseError:
+            pytest.fail("RSS feed did not return valid XML")
+
     def test_feed_contains_entries(self, client):
         """Feed contains entry elements for health checks."""
         response = client.get(reverse("health_check_feed"))
@@ -175,6 +210,16 @@ class TestHealthCheckFeedIntegration:
         namespace = {"atom": "http://www.w3.org/2005/Atom"}
         entries = root.findall("atom:entry", namespace)
         assert len(entries) > 0
+
+    def test_rss_feed_contains_items(self, client):
+        """RSS feed contains item elements for health checks."""
+        response = client.get(reverse("health_check_feed_rss"))
+        assert response.status_code == 200
+
+        root = ElementTree.fromstring(response.content)
+        # RSS items are under channel
+        items = root.findall(".//item")
+        assert len(items) > 0
 
     def test_feed_entry_structure(self, client):
         """Feed entries have required Atom elements."""
@@ -191,3 +236,19 @@ class TestHealthCheckFeedIntegration:
             assert entry.find("atom:title", namespace) is not None
             assert entry.find("atom:link", namespace) is not None
             assert entry.find("atom:updated", namespace) is not None
+
+    def test_rss_feed_item_structure(self, client):
+        """RSS feed items have required elements."""
+        response = client.get(reverse("health_check_feed_rss"))
+        assert response.status_code == 200
+
+        root = ElementTree.fromstring(response.content)
+        items = root.findall(".//item")
+
+        # Check first item has required fields
+        if items:
+            item = items[0]
+            assert item.find("title") is not None
+            assert item.find("link") is not None
+            assert item.find("description") is not None
+            assert item.find("pubDate") is not None

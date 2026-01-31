@@ -3,22 +3,21 @@
 from django.contrib.syndication.views import Feed
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.feedgenerator import Atom1Feed
+from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 
 from health_check.views import HealthCheckView
 
 
-class HealthCheckFeed(Feed):
-    """RSS feed for health check status monitoring.
+class BaseHealthCheckFeed(Feed):
+    """Base class for health check feeds.
     
-    Provides an RSS/Atom feed of health check results, similar to cloud
-    providers like Google Cloud, AWS, and Azure. This allows monitoring
-    services to subscribe to health status updates.
+    Provides shared functionality for health check status feeds,
+    similar to cloud providers like Google Cloud, AWS, and Azure.
+    This allows monitoring services to subscribe to health status updates.
     """
 
     title = "Health Check Status"
     description = "Current status of system health checks"
-    feed_type = Atom1Feed
 
     def link(self):
         """Return the link to the health check page."""
@@ -61,3 +60,15 @@ class HealthCheckFeed(Feed):
         if item.errors:
             return ["error", "unhealthy"]
         return ["healthy"]
+
+
+class HealthCheckFeed(BaseHealthCheckFeed):
+    """Atom feed for health check status monitoring."""
+
+    feed_type = Atom1Feed
+
+
+class HealthCheckRSSFeed(BaseHealthCheckFeed):
+    """RSS 2.0 feed for health check status monitoring."""
+
+    feed_type = Rss201rev2Feed
