@@ -8,6 +8,7 @@ nav:
   - Installation: install.md
   - Usage: usage.md
   - Checks: checks.md
+  - Monitoring: monitoring.md
   - Containers: container.md
   - Migration to v4.x: migrate-to-v4.md
   - Changelog: https://github.com/codingjoe/django-health-check/releases

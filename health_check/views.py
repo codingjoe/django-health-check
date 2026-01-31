@@ -157,6 +157,8 @@ class HealthCheckView(TemplateView):
             return self.render_to_response_atom(status_code)
         elif format_override == "rss":
             return self.render_to_response_rss(status_code)
+        elif format_override == "prometheus":
+            return self.render_to_response_prometheus(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -170,8 +172,10 @@ class HealthCheckView(TemplateView):
                     return self.render_to_response_atom(status_code)
                 case "application/rss+xml":
                     return self.render_to_response_rss(status_code)
+                case "application/openmetrics-text" | "text/plain":
+                    return self.render_to_response_prometheus(status_code)
         return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
+            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text, text/plain",
             status=406,
             content_type="text/plain",
         )
@@ -197,6 +201,45 @@ class HealthCheckView(TemplateView):
     def render_to_response_rss(self, status):
         """Return RSS 2.0 feed response with health check results."""
         return self._render_feed(Rss201rev2Feed, status)
+
+    def render_to_response_prometheus(self, status):
+        """Return Prometheus metrics response with health check results."""
+        lines = []
+        
+        # Add metadata
+        lines.append("# HELP django_health_check_status Health check status (1 = healthy, 0 = unhealthy)")
+        lines.append("# TYPE django_health_check_status gauge")
+        
+        # Add status metrics for each check
+        for label, result in self.results.items():
+            # Sanitize label for Prometheus (replace spaces and special chars with underscores)
+            safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
+            status_value = 1 if not result.errors else 0
+            lines.append(f'django_health_check_status{{check="{safe_label}"}} {status_value}')
+        
+        # Add response time metrics
+        lines.append("")
+        lines.append("# HELP django_health_check_response_time_seconds Health check response time in seconds")
+        lines.append("# TYPE django_health_check_response_time_seconds gauge")
+        
+        for label, result in self.results.items():
+            safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
+            lines.append(f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}')
+        
+        # Add overall health status
+        lines.append("")
+        lines.append("# HELP django_health_check_overall_status Overall health check status (1 = all healthy, 0 = at least one unhealthy)")
+        lines.append("# TYPE django_health_check_overall_status gauge")
+        overall_status = 1 if status == 200 else 0
+        lines.append(f"django_health_check_overall_status {overall_status}")
+        
+        content = "\n".join(lines) + "\n"
+        
+        return HttpResponse(
+            content,
+            content_type="text/plain; version=0.0.4; charset=utf-8",
+            status=200,  # Prometheus expects 200 even if checks fail
+        )
 
     def _render_feed(self, feed_class, status):
         """Generate RSS or Atom feed with health check results."""
