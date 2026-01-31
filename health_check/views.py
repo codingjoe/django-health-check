@@ -152,29 +152,39 @@ class HealthCheckView(TemplateView):
         format_override = request.GET.get("format")
 
         if format_override == "json":
-            return self.render_to_response_json(status_code)
+            response = self.render_to_response_json(status_code)
         elif format_override == "atom":
-            return self.render_to_response_atom(status_code)
+            response = self.render_to_response_atom(status_code)
         elif format_override == "rss":
-            return self.render_to_response_rss(status_code)
+            response = self.render_to_response_rss(status_code)
+        else:
+            accept_header = request.headers.get("accept", "*/*")
+            response = None
+            for media in MediaType.parse_header(accept_header):
+                match media.mime_type:
+                    case "text/html" | "application/xhtml+xml" | "text/*" | "*/*":
+                        context = self.get_context_data(**kwargs)
+                        response = self.render_to_response(context, status=status_code)
+                        break
+                    case "application/json" | "application/*":
+                        response = self.render_to_response_json(status_code)
+                        break
+                    case "application/atom+xml":
+                        response = self.render_to_response_atom(status_code)
+                        break
+                    case "application/rss+xml":
+                        response = self.render_to_response_rss(status_code)
+                        break
+            if response is None:
+                response = HttpResponse(
+                    "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
+                    status=406,
+                    content_type="text/plain",
+                )
 
-        accept_header = request.headers.get("accept", "*/*")
-        for media in MediaType.parse_header(accept_header):
-            match media.mime_type:
-                case "text/html" | "application/xhtml+xml" | "text/*" | "*/*":
-                    context = self.get_context_data(**kwargs)
-                    return self.render_to_response(context, status=status_code)
-                case "application/json" | "application/*":
-                    return self.render_to_response_json(status_code)
-                case "application/atom+xml":
-                    return self.render_to_response_atom(status_code)
-                case "application/rss+xml":
-                    return self.render_to_response_rss(status_code)
-        return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
-            status=406,
-            content_type="text/plain",
-        )
+        # Add Server-Timing header to all responses
+        response["Server-Timing"] = self.get_server_timing_header()
+        return response
 
     def get_context_data(self, **kwargs):
         return {
@@ -182,6 +192,17 @@ class HealthCheckView(TemplateView):
             "plugins": self.results.values(),
             "errors": any(p.errors for p in self.results.values()),
         }
+
+    def get_server_timing_header(self):
+        """Generate Server-Timing header value from health check results."""
+        timings = []
+        for label, result in self.results.items():
+            # Convert seconds to milliseconds and format the timing entry
+            duration_ms = result.time_taken * 1000
+            # Use label as metric name, sanitize by replacing spaces with dashes
+            metric_name = label.replace(" ", "-")
+            timings.append(f'{metric_name};dur={duration_ms:.2f};desc="{label}"')
+        return ", ".join(timings)
 
     def render_to_response_json(self, status):
         """Return JSON response with health check results."""

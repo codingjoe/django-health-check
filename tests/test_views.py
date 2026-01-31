@@ -456,3 +456,68 @@ class TestHealthCheckView:
         if hasattr(response, "render"):
             response.render()
         assert response.status_code == 200
+
+    def test_server_timing_header__html_response(self, health_check_view):
+        """Server-Timing header is present in HTML responses."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend])
+        assert "Server-Timing" in response
+        assert "dur=" in response["Server-Timing"]
+
+    def test_server_timing_header__json_response(self, health_check_view):
+        """Server-Timing header is present in JSON responses."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], accept_header="application/json")
+        assert "Server-Timing" in response
+        assert "dur=" in response["Server-Timing"]
+
+    def test_server_timing_header__atom_response(self, health_check_view):
+        """Server-Timing header is present in Atom feed responses."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="atom")
+        assert "Server-Timing" in response
+        assert "dur=" in response["Server-Timing"]
+
+    def test_server_timing_header__rss_response(self, health_check_view):
+        """Server-Timing header is present in RSS feed responses."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="rss")
+        assert "Server-Timing" in response
+        assert "dur=" in response["Server-Timing"]
+
+    def test_server_timing_header__multiple_checks(self, health_check_view):
+        """Server-Timing header contains entries for all checks."""
+
+        @dataclasses.dataclass
+        class FirstBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        @dataclasses.dataclass
+        class SecondBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([FirstBackend, SecondBackend])
+        assert "Server-Timing" in response
+        server_timing = response["Server-Timing"]
+        # Should have two timing entries separated by comma
+        assert server_timing.count("dur=") == 2
+        # Should contain descriptions
+        assert "desc=" in server_timing
