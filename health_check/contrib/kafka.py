@@ -43,8 +43,9 @@ class Kafka(HealthCheck):
                 bootstrap_servers=self.bootstrap_servers,
                 client_id="health-check",
                 request_timeout_ms=timeout_ms,
-                session_timeout_ms=timeout_ms,
-                connections_max_idle_ms=timeout_ms,
+                # Note: connections_max_idle_ms must be larger than request_timeout_ms
+                # We use a value slightly larger than request_timeout_ms
+                connections_max_idle_ms=timeout_ms + 1000,
             )
 
             # Try to list topics to verify connection

@@ -100,8 +100,7 @@ class TestKafka:
             # Verify timeout was used in consumer configuration
             call_kwargs = mock_consumer_cls.call_args[1]
             assert call_kwargs["request_timeout_ms"] == 5000
-            assert call_kwargs["session_timeout_ms"] == 5000
-            assert call_kwargs["connections_max_idle_ms"] == 5000
+            assert call_kwargs["connections_max_idle_ms"] == 6000
 
     @pytest.mark.integration
     def test_check_status__real_kafka(self):
