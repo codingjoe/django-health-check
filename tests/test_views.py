@@ -504,12 +504,10 @@ class TestHealthCheckView:
     def test_server_timing_header__multiple_checks(self, health_check_view):
         """Server-Timing header contains entries for all checks."""
 
-        @dataclasses.dataclass
         class FirstBackend(HealthCheck):
             def check_status(self):
                 pass
 
-        @dataclasses.dataclass
         class SecondBackend(HealthCheck):
             def check_status(self):
                 pass
@@ -525,7 +523,6 @@ class TestHealthCheckView:
     def test_server_timing_header__sanitization(self, health_check_view):
         """Server-Timing header properly sanitizes metric names and escapes descriptions."""
 
-        @dataclasses.dataclass
         class SpecialCharCheck(HealthCheck):
             def check_status(self):
                 pass
