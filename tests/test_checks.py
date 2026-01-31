@@ -43,7 +43,7 @@ class TestDNS:
 
     def test_run_check__dns_working(self):
         """DNS resolution completes successfully for localhost."""
-        check = DNS(hostname="localhost")
+        check = DNS(hostname="github.com")
         check.run_check()
         assert check.errors == []
 
@@ -242,10 +242,20 @@ class TestDNSExceptionHandling:
         assert len(check.errors) == 1
         assert "timeout" in str(check.errors[0]).lower()
 
+    def test_check_status__not_a_nameserver(self):
+        """Raise ServiceUnavailable when nameserver is unreachable."""
+        # Use an invalid/unreachable nameserver
+        check = DNS(hostname="example.com", nameservers=["192.0.2.1"])
+        check.run_check()
+        assert len(check.errors) == 1
+        # Could be timeout or no nameservers error
+        error_msg = str(check.errors[0]).lower()
+        assert "timeout" in error_msg or "nameserver" in error_msg
+
     def test_check_status__no_nameservers(self):
         """Raise ServiceUnavailable when nameserver is unreachable."""
         # Use an invalid/unreachable nameserver
-        check = DNS(hostname="example.com", nameserver="192.0.2.1")
+        check = DNS(hostname="example.com", nameservers=[])
         check.run_check()
         assert len(check.errors) == 1
         # Could be timeout or no nameservers error
