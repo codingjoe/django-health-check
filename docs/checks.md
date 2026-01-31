@@ -20,6 +20,8 @@ To use the checks, you will need to install and set up their corresponding depen
 
 ::: health_check.contrib.celery.Ping
 
+::: health_check.contrib.dns.DNS
+
 ::: health_check.contrib.rabbitmq.RabbitMQ
 
 ::: health_check.contrib.redis.Redis
