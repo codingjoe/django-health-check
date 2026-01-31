@@ -35,18 +35,18 @@ urlpatterns = [
                 "health_check.Database",
                 "health_check.Disk",
                 "health_check.Mail",
-                (
-                    "health_check.Memory",
-                    {  # tuple with options
-                        "min_gibibytes_available": 0.1,  # 0.1 GiB (~100 MiB)
-                        "max_memory_usage_percent": 80.0,
-                    },
-                ),
+                "health_check.Memory",
                 "health_check.Storage",
                 # 3rd party checks
                 "health_check.contrib.celery.Ping",
-                "health_check.contrib.rabbitmq.RabbitMQ",
-                "health_check.contrib.redis.Redis",
+                (  # tuple with options
+                    "health_check.contrib.rabbitmq.RabbitMQ",
+                    {"amqp_url": "amqp://guest:guest@localhost:5672//"},
+                ),
+                (
+                    "health_check.contrib.redis.Redis",
+                    {"redis_url": "redis://localhost:6379"},
+                ),
             ],
             use_threading=True,  # optional, default is True
             warnings_as_errors=True,  # optional, default is True

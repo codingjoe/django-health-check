@@ -1,22 +1,25 @@
 import re
+import typing
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 
-from django.db import transaction
+from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
-from health_check.deprecation import deprecated
-from health_check.mixins import CheckMixin
+from health_check.base import HealthCheck
+from health_check.exceptions import ServiceWarning
 
 
 class MediaType:
     """
     Sortable object representing HTTP's accept header.
 
-    .. seealso:: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
+    See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
     """
 
     pattern = re.compile(
@@ -53,20 +56,21 @@ class MediaType:
 
     @classmethod
     def from_string(cls, value):
-        """Return single instance parsed from given accept header string."""
+        """Return single instance parsed from the given Accept-header string."""
         match = cls.pattern.search(value)
         if match is None:
             raise ValueError(f'"{value}" is not a valid media type')
-        try:
-            return cls(match.group("mime_type"), float(match.group("weight") or 1))
-        except ValueError:
-            return cls(value)
+        return cls(match.group("mime_type"), float(match.group("weight") or 1))
 
     @classmethod
     def parse_header(cls, value="*/*"):
         """Parse HTTP accept header and return instances sorted by weight."""
         yield from sorted(
-            (cls.from_string(token.strip()) for token in value.split(",") if token.strip()),
+            (
+                cls.from_string(token.strip())
+                for token in value.split(",")
+                if token.strip()
+            ),
             reverse=True,
         )
 
@@ -84,20 +88,67 @@ class MediaType:
 
 
 @method_decorator(transaction.non_atomic_requests, name="dispatch")
-class _MainView(CheckMixin, TemplateView):
-    """Deprecated: Use HealthCheckView instead."""
+class HealthCheckView(TemplateView):
+    """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
 
+    use_threading: bool = True
+    warnings_as_errors: bool = True
+    checks: typing.Iterable[
+        type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
+    ] = (
+        "health_check.checks.Cache",
+        "health_check.checks.Database",
+        "health_check.checks.Disk",
+        "health_check.checks.Mail",
+        "health_check.checks.Memory",
+        "health_check.checks.Storage",
+    )
+
+    def run_check(self):
+        errors = []
+
+        def _run(check_instance):
+            check_instance.run_check()
+            try:
+                return check_instance
+            finally:
+                if self.use_threading:
+                    # DB connections are thread-local so we need to close them here
+                    connections.close_all()
+
+        def _collect_errors(check_instance):
+            if check_instance.critical_service:
+                if not self.warnings_as_errors:
+                    errors.extend(
+                        e
+                        for e in check_instance.errors
+                        if not isinstance(e, ServiceWarning)
+                    )
+                else:
+                    errors.extend(check_instance.errors)
+
+        if self.use_threading:
+            with ThreadPoolExecutor(
+                max_workers=len(self.results.values()) or 1
+            ) as executor:
+                for plugin in executor.map(_run, self.results.values()):
+                    _collect_errors(plugin)
+        else:
+            for plugin in self.results.values():
+                _run(plugin)
+                _collect_errors(plugin)
+        return errors
+
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
-        subset = kwargs.get("subset")
-        health_check_has_error = self.check(subset)
+        health_check_has_error = self.run_check()
         status_code = 500 if health_check_has_error else 200
         format_override = request.GET.get("format")
 
         if format_override == "json":
-            return self.render_to_response_json(self.filter_plugins(subset=subset), status_code)
+            return self.render_to_response_json(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -110,7 +161,7 @@ class _MainView(CheckMixin, TemplateView):
                 context = self.get_context_data(**kwargs)
                 return self.render_to_response(context, status=status_code)
             elif media.mime_type in ("application/json", "application/*"):
-                return self.render_to_response_json(self.filter_plugins(subset=subset), status_code)
+                return self.render_to_response_json(status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json",
             status=406,
@@ -118,46 +169,24 @@ class _MainView(CheckMixin, TemplateView):
         )
 
     def get_context_data(self, **kwargs):
-        subset = kwargs.get("subset")
         return {
             **super().get_context_data(**kwargs),
-            "plugins": self.filter_plugins(subset=subset).values(),
-            "errors": any(p.errors for p in self.filter_plugins(subset=subset).values()),
+            "plugins": self.results.values(),
+            "errors": any(p.errors for p in self.results.values()),
         }
 
-    def render_to_response_json(self, plugins, status):
+    def render_to_response_json(self, status):
+        """Return JSON response with health check results."""
         return JsonResponse(
-            {label: str(p.pretty_status()) for label, p in plugins.items()},
+            {label: str(p.pretty_status()) for label, p in self.results.items()},
             status=status,
         )
 
-
-@deprecated(
-    "MainView is deprecated: use `HealthCheckView` instead (view-based API). Action: replace `MainView` usage with `HealthCheckView.as_view(checks=...)`. See migration guide: https://codingjoe.dev/django-health-check/migrate-to-v4/ (docs/migrate-to-v4.md)."
-)
-class MainView(_MainView):
-    """Deprecated: Use HealthCheckView instead."""
-
-    pass
-
-
-class HealthCheckView(_MainView):
-    """Perform health checks and return results in various formats."""
-
-    checks: list[str | tuple[str, dict]] | None = None
-
-    def get_plugins(self):
-        for check in self.checks or [
-            "health_check.Cache",
-            "health_check.Database",
-            "health_check.Disk",
-            "health_check.Mail",
-            "health_check.Memory",
-            "health_check.Storage",
-        ]:
+    def get_results(self):
+        for check in self.checks:
             try:
                 check, options = check
-            except ValueError:
+            except (ValueError, TypeError):
                 options = {}
             if isinstance(check, str):
                 check = import_string(check)
@@ -165,5 +194,5 @@ class HealthCheckView(_MainView):
             yield repr(plugin_instance), plugin_instance
 
     @cached_property
-    def plugins(self):
-        return dict(self.get_plugins())
+    def results(self):
+        return OrderedDict(self.get_results())

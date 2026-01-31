@@ -1,9 +1,8 @@
 site_name: Django HealthCheck
 repo_url: https://github.com/codingjoe/django-health-check
 watch:
-  - docs/
-  - mkdocs.yml
-  - health_check/
+  - docs
+  - health_check
 nav:
   - Home: index.md
   - Installation: install.md

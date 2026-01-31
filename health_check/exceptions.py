@@ -1,8 +1,5 @@
-from django.utils.translation import gettext_lazy as _  # noqa: N812
-
-
 class HealthCheckException(Exception):
-    message_type = _("unknown error")
+    message_type: str = "Unknown Error"
 
     def __init__(self, message):
         self.message = message
@@ -15,16 +12,16 @@ class ServiceWarning(HealthCheckException):
     """
     Warning of service misbehavior.
 
-    If the ``HEALTH_CHECK['WARNINGS_AS_ERRORS']`` is set to ``False``,
-    these exceptions will not case a 500 status response.
+    If the `HealthCheckView.warnings_as_errors` is set to True,
+    this will be treated as and fail the health check.
     """
 
-    message_type = _("warning")
+    message_type = "Warning"
 
 
 class ServiceUnavailable(HealthCheckException):
-    message_type = _("unavailable")
+    message_type = "Unavailable"
 
 
 class ServiceReturnedUnexpectedResult(HealthCheckException):
-    message_type = _("unexpected result")
+    message_type = "Unexpected Result"

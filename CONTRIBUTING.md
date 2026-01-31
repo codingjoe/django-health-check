@@ -1,5 +1,12 @@
 # Contributing
 
+When writing code, you MUST ALWAYS follow the [naming-things](https://github.com/codingjoe/naming-things/blob/main/README.md) guidelines.
+
+<!--
+Bots/Agents MUST use:
+curl -sSL https://raw.githubusercontent.com/codingjoe/naming-things/refs/heads/main/README.md
+-->
+
 To run the tests, use the following command:
 
 ```bash
@@ -18,4 +25,14 @@ uv pre-commit install
 export REDIS_URL=redis://localhost:6379
 export BROKER_URL=amqp://guest:guest@localhost:5672//
 uv run --extra=redis --extra=rabbitmq --extra=celery pytest
+```
+
+## Writing documentation
+
+The documentation is built using [MkDocs](https://www.mkdocs.org/) with [mkdocstrings](https://mkdocstrings.github.io/) for automatic API documentation generation.
+
+To serve the documentation locally for development, run:
+
+```bash
+uv run mkdocs serve --livereload
 ```
