@@ -1,17 +1,12 @@
 from django.conf import settings
-from django.urls import include, path
+from django.urls import path
 
 from health_check.views import HealthCheckView
 
-# For test compatibility - main endpoint uses plugin_dir for flexibility
 urlpatterns = [
-    path("ht/", HealthCheckView.as_view(), name="health_check_home"),
-    path(
-        "health/", HealthCheckView.as_view(), name="health_check"
-    ),  # For management command tests
+    path("health/", HealthCheckView.as_view(), name="health_check"),
 ]
 
-# Add Celery check if celery is available
 try:
     import celery  # noqa: F401
 except ImportError:
@@ -19,7 +14,7 @@ except ImportError:
 else:
     urlpatterns.append(
         path(
-            "ht/celery/",
+            "health/celery/",
             HealthCheckView.as_view(
                 checks=[
                     "health_check.contrib.celery.Ping",
@@ -31,7 +26,6 @@ else:
         )
     )
 
-# Add Redis check if redis is available
 try:
     import redis  # noqa: F401
 except ImportError:
@@ -39,12 +33,12 @@ except ImportError:
 else:
     urlpatterns.append(
         path(
-            "ht/redis/",
+            "health/redis/",
             HealthCheckView.as_view(
                 checks=[
                     (
                         "health_check.contrib.redis.Redis",
-                        {"url": settings.REDIS_URL},
+                        {"redis_url": settings.REDIS_URL},
                     )
                 ]
             ),
@@ -52,7 +46,6 @@ else:
         )
     )
 
-# Add RabbitMQ check if kombu is available
 try:
     import kombu  # noqa: F401
 except ImportError:
@@ -60,13 +53,13 @@ except ImportError:
 else:
     urlpatterns.append(
         path(
-            "ht/rabbitmq/",
+            "health/rabbitmq/",
             HealthCheckView.as_view(
                 checks=[
                     (
                         "health_check.contrib.rabbitmq.RabbitMQ",
                         {
-                            "url": settings.BROKER_URL,
+                            "ampq_url": settings.BROKER_URL,
                         },
                     )
                 ]
@@ -74,13 +67,3 @@ else:
             name="health_check_rabbitmq",
         )
     )
-
-# For backwards compatibility with tests, wrap in a namespace
-health_check_patterns = (urlpatterns, "health_check")
-
-urlpatterns = [
-    # Management command endpoint (outside namespace for direct access)
-    path("health/", HealthCheckView.as_view(), name="health_check"),
-    # Namespaced patterns for view tests
-    path("", include(health_check_patterns)),
-]

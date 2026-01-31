@@ -240,7 +240,7 @@ class Storage(HealthCheck):
     alias: str = "default"
 
     @property
-    def get_storage(self) -> DjangoStorage:
+    def storage(self) -> DjangoStorage:
         return storages[self.alias]
 
     def get_file_name(self):
