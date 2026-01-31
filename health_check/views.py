@@ -199,9 +199,11 @@ class HealthCheckView(TemplateView):
         for label, result in self.results.items():
             # Convert seconds to milliseconds and format the timing entry
             duration_ms = result.time_taken * 1000
-            # Use label as metric name, sanitize by replacing spaces with dashes
-            metric_name = label.replace(" ", "-")
-            timings.append(f'{metric_name};dur={duration_ms:.2f};desc="{label}"')
+            # Sanitize metric name: only allow alphanumeric, underscores, and hyphens
+            metric_name = re.sub(r"[^a-zA-Z0-9_-]", "-", label)
+            # Escape quotes in description to prevent header injection
+            safe_label = label.replace('"', '\\"')
+            timings.append(f'{metric_name};dur={duration_ms:.2f};desc="{safe_label}"')
         return ", ".join(timings)
 
     def render_to_response_json(self, status):

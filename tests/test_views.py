@@ -521,3 +521,22 @@ class TestHealthCheckView:
         assert server_timing.count("dur=") == 2
         # Should contain descriptions
         assert "desc=" in server_timing
+
+    def test_server_timing_header__sanitization(self, health_check_view):
+        """Server-Timing header properly sanitizes metric names and escapes descriptions."""
+
+        @dataclasses.dataclass
+        class SpecialCharCheck(HealthCheck):
+            def check_status(self):
+                pass
+
+            def __repr__(self):
+                return 'Test "Quote" & Special@Chars!'
+
+        response = health_check_view([SpecialCharCheck])
+        assert "Server-Timing" in response
+        server_timing = response["Server-Timing"]
+        # Metric name should have special chars replaced with hyphens
+        assert "Test--Quote----Special-Chars-" in server_timing
+        # Description should have escaped quotes
+        assert '\\"Quote\\"' in server_timing
