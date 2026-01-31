@@ -59,7 +59,7 @@ else:
                     (
                         "health_check.contrib.rabbitmq.RabbitMQ",
                         {
-                            "ampq_url": settings.BROKER_URL,
+                            "amqp_url": settings.BROKER_URL,
                         },
                     )
                 ]
