@@ -256,7 +256,9 @@ class TestDNSExceptionHandling:
         """Raise ServiceUnavailable on general DNS exception."""
         import dns.exception
 
-        with mock.patch("health_check.checks.dns.resolver.Resolver") as mock_resolver_class:
+        with mock.patch(
+            "health_check.checks.dns.resolver.Resolver"
+        ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
             mock_resolver.resolve.side_effect = dns.exception.DNSException("DNS error")
@@ -268,7 +270,9 @@ class TestDNSExceptionHandling:
 
     def test_check_status__unknown_exception(self):
         """Raise ServiceUnavailable on unknown exception."""
-        with mock.patch("health_check.checks.dns.resolver.Resolver") as mock_resolver_class:
+        with mock.patch(
+            "health_check.checks.dns.resolver.Resolver"
+        ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
             mock_resolver.resolve.side_effect = RuntimeError("Unexpected error")
