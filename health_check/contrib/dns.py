@@ -83,5 +83,5 @@ class DNS(HealthCheck):
             ) from e
         except dns.exception.DNSException as e:
             raise ServiceUnavailable(f"DNS resolution failed: {e}") from e
-        except BaseException as e:
+        except Exception as e:
             raise ServiceUnavailable("Unknown DNS error") from e
