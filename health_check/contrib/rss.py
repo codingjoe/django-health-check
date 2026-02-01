@@ -5,8 +5,8 @@ import datetime
 import logging
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET
-from typing import Callable
+import xml.etree.ElementTree as ET  # noqa: S405
+from collections.abc import Callable
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -43,11 +43,11 @@ class RSSFeed(HealthCheck):
         logger.debug("Fetching RSS feed from %s", self.feed_url)
 
         try:
-            request = urllib.request.Request(
+            request = urllib.request.Request(  # noqa: S310
                 self.feed_url,
                 headers={"User-Agent": "django-health-check"},
             )
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # noqa: S310
                 request, timeout=self.timeout.total_seconds()
             ) as response:
                 content = response.read()
@@ -63,7 +63,7 @@ class RSSFeed(HealthCheck):
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
-            root = ET.fromstring(content)
+            root = ET.fromstring(content)  # noqa: S314
         except ET.ParseError as e:
             raise ServiceUnavailable("Failed to parse RSS feed") from e
 
