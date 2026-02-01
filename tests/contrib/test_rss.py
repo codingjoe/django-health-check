@@ -8,9 +8,9 @@ from unittest import mock
 import pytest
 
 from health_check.contrib.rss import (
-    AWSServiceStatus,
-    AzureStatus,
-    GoogleCloudStatus,
+    AWS,
+    Azure,
+    GCloud,
     RSSFeed,
 )
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -403,7 +403,7 @@ class TestGoogleCloudStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            check = GoogleCloudStatus()
+            check = GCloud()
             check.check_status()
             assert check.errors == []
 
@@ -431,7 +431,7 @@ class TestGoogleCloudStatus:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = GoogleCloudStatus()
+                check = GCloud()
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -465,7 +465,7 @@ class TestGoogleCloudStatus:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = GoogleCloudStatus(service_name="Cloud Storage")
+                check = GCloud(service="Cloud Storage")
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -475,7 +475,7 @@ class TestGoogleCloudStatus:
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
         """Fetch and parse live Google Cloud status feed."""
-        check = GoogleCloudStatus()
+        check = GCloud()
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()
@@ -483,7 +483,7 @@ class TestGoogleCloudStatus:
     @pytest.mark.integration
     def test_check_status__live_endpoint_with_service_filter(self):
         """Fetch and parse live Google Cloud status feed with service filter."""
-        check = GoogleCloudStatus(service_name="Compute Engine")
+        check = GCloud(service="Compute Engine")
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()
@@ -511,7 +511,7 @@ class TestAWSServiceStatus:
             mock_urlopen.return_value = mock_response
 
             # Normal operation message should not trigger incident
-            check = AWSServiceStatus(region="us-east-1", service="ec2")
+            check = AWS(region="us-east-1", service="ec2")
             check.check_status()
             assert check.errors == []
 
@@ -542,7 +542,7 @@ class TestAWSServiceStatus:
                 mock_datetime.timezone = datetime.timezone
 
                 # Error in title should trigger incident
-                check = AWSServiceStatus(region="us-east-1", service="ec2")
+                check = AWS(region="us-east-1", service="ec2")
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -567,33 +567,33 @@ class TestAWSServiceStatus:
             mock_urlopen.return_value = mock_response
 
             # Resolved incidents should not trigger warning
-            check = AWSServiceStatus(region="us-east-1", service="ec2")
+            check = AWS(region="us-east-1", service="ec2")
             check.check_status()
             assert check.errors == []
 
     def test_feed_url_format(self):
         """Verify correct feed URL format for AWS."""
-        check = AWSServiceStatus(region="eu-west-1", service="s3")
+        check = AWS(region="eu-west-1", service="s3")
         assert check.feed_url == "https://status.aws.amazon.com/rss/s3-eu-west-1.rss"
 
     def test_init__missing_region(self):
         """Raise ValueError when region is missing."""
         with pytest.raises(ValueError) as exc_info:
-            AWSServiceStatus(region="", service="s3")
+            AWS(region="", service="s3")
 
         assert "Both 'region' and 'service' are required" in str(exc_info.value)
 
     def test_init__missing_service(self):
         """Raise ValueError when service is missing."""
         with pytest.raises(ValueError) as exc_info:
-            AWSServiceStatus(region="us-east-1", service="")
+            AWS(region="us-east-1", service="")
 
         assert "Both 'region' and 'service' are required" in str(exc_info.value)
 
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
         """Fetch and parse live AWS status feed."""
-        check = AWSServiceStatus(region="us-east-1", service="ec2")
+        check = AWS(region="us-east-1", service="ec2")
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()
@@ -620,7 +620,7 @@ class TestAzureStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            check = AzureStatus()
+            check = Azure()
             check.check_status()
             assert check.errors == []
 
@@ -650,7 +650,7 @@ class TestAzureStatus:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = AzureStatus()
+                check = Azure()
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -686,7 +686,7 @@ class TestAzureStatus:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = AzureStatus(service_name="Virtual Machines")
+                check = Azure(service="Virtual Machines")
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -696,7 +696,7 @@ class TestAzureStatus:
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
         """Fetch and parse live Azure status feed."""
-        check = AzureStatus()
+        check = Azure()
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()
@@ -704,7 +704,7 @@ class TestAzureStatus:
     @pytest.mark.integration
     def test_check_status__live_endpoint_with_service_filter(self):
         """Fetch and parse live Azure status feed with service filter."""
-        check = AzureStatus(service_name="Virtual Machines")
+        check = Azure(service="Virtual Machines")
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()

@@ -3,6 +3,7 @@
 import dataclasses
 import datetime
 import logging
+import typing
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET  # noqa: S405
@@ -15,22 +16,9 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class RSSFeed(HealthCheck):
-    """
-    Check service status by parsing an RSS or Atom feed.
+    """Check service status by parsing an RSS or Atom feed."""
 
-    Args:
-        timeout: Timeout duration for the HTTP request.
-        max_age: Maximum age for incidents to be considered current.
-
-    """
-
-    feed_url: str
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(hours=2), repr=False
-    )
+    feed_url: typing.ClassVar[str]
 
     def check_status(self):
         """Check the RSS/Atom feed for incidents."""
@@ -156,72 +144,30 @@ class RSSFeed(HealthCheck):
 
 
 @dataclasses.dataclass
-class GoogleCloudStatus(RSSFeed):
-    """
-    Check Google Cloud Platform service status.
-
-    Example:
-        Check all GCP services::
-
-            >>> check = GoogleCloudStatus()
-            >>> check.run_check()
-
-        Or filter by specific service::
-
-            >>> check = GoogleCloudStatus(service_name="Cloud Storage")
-            >>> check.run_check()
-
-    Args:
-        service_name: Optional service name to filter incidents.
-                     If not specified, checks all services.
-
-    """
-
-    feed_url: str = dataclasses.field(
-        default="https://status.cloud.google.com/en/feed.atom", init=False, repr=False
-    )
-    service_name: str | None = None
-
-    def is_incident(self, entry: ET.Element) -> bool:
-        """Detect if entry is an incident for Google Cloud."""
-        title = self._extract_title(entry)
-        title_lower = title.lower()
-
-        # Filter by service if specified
-        if self.service_name and self.service_name.lower() not in title_lower:
-            return False
-
-        # Check for incident keywords
-        incident_keywords = ["outage", "disruption", "incident", "issue"]
-        return any(keyword in title_lower for keyword in incident_keywords)
-
-
-@dataclasses.dataclass
-class AWSServiceStatus(RSSFeed):
+class AWS(RSSFeed):
     """
     Check AWS service status.
-
-    Example:
-        Check S3 in eu-west-1::
-
-            >>> check = AWSServiceStatus(region="eu-west-1", service="s3")
-            >>> check.run_check()
 
     Args:
         region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
         service: AWS service name (e.g., 'ec2', 's3', 'rds').
+        timeout: Request timeout duration.
+        max_age: Maximum age of incidents to consider.
 
     """
 
-    feed_url: str = dataclasses.field(default="", init=False, repr=False)
-    region: dataclasses.InitVar[str] = ""
-    service: dataclasses.InitVar[str] = ""
+    region: str
+    service: str
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=2), repr=False
+    )
 
-    def __post_init__(self, region: str, service: str):
-        """Initialize feed URL."""
-        if not region or not service:
-            raise ValueError("Both 'region' and 'service' are required")
-        self.feed_url = f"https://status.aws.amazon.com/rss/{service}-{region}.rss"
+    @property
+    def feed_url(self) -> str:
+        return f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
 
     def is_incident(self, entry: ET.Element) -> bool:
         """Detect if entry is an incident for AWS."""
@@ -241,47 +187,4 @@ class AWSServiceStatus(RSSFeed):
             "outage",
             "unavailable",
         ]
-        return any(keyword in title_lower for keyword in incident_keywords)
-
-
-@dataclasses.dataclass
-class AzureStatus(RSSFeed):
-    """
-    Check Microsoft Azure service status.
-
-    Example:
-        Check all Azure services::
-
-            >>> check = AzureStatus()
-            >>> check.run_check()
-
-        Or filter by specific service::
-
-            >>> check = AzureStatus(service_name="Storage")
-            >>> check.run_check()
-
-    Args:
-        service_name: Optional service name to filter incidents.
-                     If not specified, checks all services.
-
-    """
-
-    feed_url: str = dataclasses.field(
-        default="https://rssfeed.azure.status.microsoft.com/en-us/status/feed/",
-        init=False,
-        repr=False,
-    )
-    service_name: str | None = None
-
-    def is_incident(self, entry: ET.Element) -> bool:
-        """Detect if entry is an incident for Azure."""
-        title = self._extract_title(entry)
-        title_lower = title.lower()
-
-        # Filter by service if specified
-        if self.service_name and self.service_name.lower() not in title_lower:
-            return False
-
-        # Check for incident keywords
-        incident_keywords = ["outage", "degradation", "incident", "issue", "down"]
         return any(keyword in title_lower for keyword in incident_keywords)
