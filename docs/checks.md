@@ -27,3 +27,15 @@ To use the checks, you will need to install and set up their corresponding depen
 ::: health_check.contrib.rabbitmq.RabbitMQ
 
 ::: health_check.contrib.redis.Redis
+
+## Cloud Provider Status
+
+Monitor cloud provider service health using their public RSS/Atom status feeds.
+
+::: health_check.contrib.rss.RSSFeed
+
+::: health_check.contrib.rss.GoogleCloudStatus
+
+::: health_check.contrib.rss.AWSServiceStatus
+
+::: health_check.contrib.rss.AzureStatus
