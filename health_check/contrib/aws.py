@@ -3,10 +3,9 @@
 import dataclasses
 import datetime
 import logging
-import typing
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET  # noqa: S405
+from xml.etree import ElementTree
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -15,10 +14,31 @@ logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
-class RSSFeed(HealthCheck):
-    """Check service status by parsing an RSS or Atom feed."""
+class AWS(HealthCheck):
+    """
+    Check AWS service status.
 
-    feed_url: typing.ClassVar[str]
+    Args:
+        region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
+        service: AWS service name (e.g., 'ec2', 's3', 'rds').
+        timeout: Request timeout duration.
+        max_age: Maximum age of incidents to consider.
+
+    """
+
+    region: str
+    service: str
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(days=1), repr=False
+    )
+
+    def __post_init__(self):
+        self.feed_url: str = (
+            f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
+        )
 
     def check_status(self):
         """Check the RSS/Atom feed for incidents."""
@@ -44,8 +64,8 @@ class RSSFeed(HealthCheck):
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
-            root = ET.fromstring(content)  # noqa: S314
-        except ET.ParseError as e:
+            root = ElementTree.fromstring(content)  # noqa: S314
+        except ElementTree.ParseError as e:
             raise ServiceUnavailable("Failed to parse RSS feed") from e
 
         entries = self._extract_entries(root)
@@ -58,21 +78,6 @@ class RSSFeed(HealthCheck):
             )
 
         logger.debug("No recent incidents found in RSS feed")
-
-    def is_incident(self, entry: ET.Element) -> bool:
-        """
-        Determine if an entry represents an incident.
-
-        Subclasses should override this method to implement custom incident detection.
-
-        Args:
-            entry: The RSS/Atom feed entry element.
-
-        Returns:
-            True if the entry represents an incident, False otherwise.
-
-        """
-        return False
 
     def _extract_entries(self, root):
         """Extract entries from RSS or Atom feed."""
@@ -91,9 +96,6 @@ class RSSFeed(HealthCheck):
 
     def _is_recent_incident(self, entry):
         """Check if entry is a recent incident."""
-        if not self.is_incident(entry):
-            return False
-
         published_at = self._extract_date(entry)
         if not published_at:
             return True
@@ -141,38 +143,3 @@ class RSSFeed(HealthCheck):
             return title.text or "Untitled incident"
 
         return "Untitled incident"
-
-
-@dataclasses.dataclass
-class AWS(RSSFeed):
-    """
-    Check AWS service status.
-
-    Args:
-        region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
-        service: AWS service name (e.g., 'ec2', 's3', 'rds').
-        timeout: Request timeout duration.
-        max_age: Maximum age of incidents to consider.
-
-    """
-
-    region: str
-    service: str
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(hours=2), repr=False
-    )
-
-    @property
-    def feed_url(self) -> str:
-        return f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
-
-    def is_incident(self, entry: ET.Element) -> bool:
-        """
-        Detect if entry is an incident for AWS.
-
-        Any entry in the AWS RSS feed is considered an active incident.
-        """
-        return True

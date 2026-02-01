@@ -32,4 +32,4 @@ To use the checks, you will need to install and set up their corresponding depen
 
 Monitor AWS service health using their public RSS status feeds.
 
-::: health_check.contrib.rss.AWS
+::: health_check.contrib.aws.AWS
