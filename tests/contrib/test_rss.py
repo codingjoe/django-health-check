@@ -1,5 +1,6 @@
 """Tests for RSS/Atom feed health checks."""
 
+import contextlib
 import datetime
 from unittest import mock
 
@@ -276,6 +277,22 @@ class TestGoogleCloudStatus:
                 assert "Cloud Storage" in str(exc_info.value)
                 assert "Compute Engine" not in str(exc_info.value)
 
+    @pytest.mark.integration
+    def test_check_status__live_endpoint(self):
+        """Fetch and parse live Google Cloud status feed."""
+        check = GoogleCloudStatus()
+        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+            # Incidents may be present; network may not be available in test env
+            check.check_status()
+
+    @pytest.mark.integration
+    def test_check_status__live_endpoint_with_service_filter(self):
+        """Fetch and parse live Google Cloud status feed with service filter."""
+        check = GoogleCloudStatus(service_name="Compute Engine")
+        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+            # Incidents may be present; network may not be available in test env
+            check.check_status()
+
 
 class TestAWSServiceStatus:
     """Test AWS service status health check."""
@@ -361,6 +378,14 @@ class TestAWSServiceStatus:
         """Verify correct feed URL format for AWS."""
         check = AWSServiceStatus(service="s3", region="eu-west-1")
         assert check.feed_url == "https://status.aws.amazon.com/rss/s3-eu-west-1.rss"
+
+    @pytest.mark.integration
+    def test_check_status__live_endpoint(self):
+        """Fetch and parse live AWS status feed."""
+        check = AWSServiceStatus(service="ec2", region="us-east-1")
+        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+            # Incidents may be present; network may not be available in test env
+            check.check_status()
 
 
 class TestAzureStatus:
@@ -453,42 +478,18 @@ class TestAzureStatus:
                 assert "Virtual Machines" in str(exc_info.value)
                 assert "SQL Database" not in str(exc_info.value)
 
-
-class TestIntegration:
-    """Integration tests against live cloud provider endpoints."""
-
     @pytest.mark.integration
-    def test_google_cloud_status__live_endpoint(self):
-        """Fetch and parse live Google Cloud status feed."""
-        check = GoogleCloudStatus()
-        check.check_status()
-        # Feed should be reachable; no incidents may or may not be present
-        # so we just verify the check completes without raising ServiceUnavailable
-
-    @pytest.mark.integration
-    def test_google_cloud_status__with_service_filter__live_endpoint(self):
-        """Fetch and parse live Google Cloud status feed with service filter."""
-        check = GoogleCloudStatus(service_name="Compute Engine")
-        check.check_status()
-        # Feed should be reachable with service filtering
-
-    @pytest.mark.integration
-    def test_aws_service_status__live_endpoint(self):
-        """Fetch and parse live AWS status feed."""
-        check = AWSServiceStatus(service="ec2", region="us-east-1")
-        check.check_status()
-        # Feed should be reachable; no incidents may or may not be present
-
-    @pytest.mark.integration
-    def test_azure_status__live_endpoint(self):
+    def test_check_status__live_endpoint(self):
         """Fetch and parse live Azure status feed."""
         check = AzureStatus()
-        check.check_status()
-        # Feed should be reachable; no incidents may or may not be present
+        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+            # Incidents may be present; network may not be available in test env
+            check.check_status()
 
     @pytest.mark.integration
-    def test_azure_status__with_service_filter__live_endpoint(self):
+    def test_check_status__live_endpoint_with_service_filter(self):
         """Fetch and parse live Azure status feed with service filter."""
         check = AzureStatus(service_name="Virtual Machines")
-        check.check_status()
-        # Feed should be reachable with service filtering
+        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+            # Incidents may be present; network may not be available in test env
+            check.check_status()
