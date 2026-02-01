@@ -25,24 +25,35 @@ anomalous behavior is detected.
 
 The following health checks are bundled with this project:
 
-- caches & databases
-- disk & memory utilization
-- DNS & email servers
-- storages
-- Celery, RabbitMQ, Redis, Kafka
+- [caches][health_check.Cache] & [databases][health_check.Database]
+- [disk][health_check.Disk] & [memory][health_check.Memory] utilization
+- [DNS][health_check.DNS] & [email][health_check.Mail]
+- [storages][health_check.Storage]
+- [Celery][health_check.contrib.celery.Ping], [Kafka][health_check.contrib.kafka.Kafka],
+  [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] & [Redis][health_check.contrib.redis.Redis]
 
 Writing your own custom health checks is also very quick and easy.
 
 We also like contributions, so don’t be afraid to make a pull request.
 
-## Use Cases
+## Integrations
 
-The primary intended use case is to monitor conditions via HTTP(S), with
-responses available in HTML and JSON formats. When you get back a
-response that includes one or more problems, you can then decide the
-appropriate course of action, which could include generating
-notifications and/or automating the replacement of a failing node with a
-new one. If you are monitoring health in a high-availability environment
-with a load balancer that returns responses from multiple nodes, please
-note that certain checks (e.g., disk and memory usage) will return
-responses specific to the node selected by the load balancer.
+The main entry point is an HTML view for your web application. However,
+there are multiple machine-readable formats available for integration:
+
+- [HTTP Status Codes] for load balancers and uptime monitors
+- [OpenMetrics] for [Prometheus] and [Grafana]
+- [CLI](container.md) for [Docker], [Podman] or [Kubernetes] health checks
+- [RSS]/[Atom] feed
+- [JSON] API for custom integrations
+
+[atom]: https://en.wikipedia.org/wiki/Atom_(standard)
+[docker]: https://www.docker.com/
+[grafana]: https://grafana.com/
+[http status codes]: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+[json]: https://www.json.org/
+[kubernetes]: https://kubernetes.io/
+[openmetrics]: https://openmetrics.io/
+[podman]: https://podman.io/
+[prometheus]: https://prometheus.io/
+[rss]: https://en.wikipedia.org/wiki/RSS
