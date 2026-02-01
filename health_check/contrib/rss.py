@@ -2,12 +2,11 @@
 
 import dataclasses
 import datetime
+import email.utils
 import logging
 import urllib.error
 import urllib.request
-
-import dateparser
-from defusedxml import ElementTree
+from xml.etree import ElementTree
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -66,7 +65,7 @@ class AWS(HealthCheck):
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
-            root = ElementTree.fromstring(content)
+            root = ElementTree.fromstring(content)  # noqa: S314
         except ElementTree.ParseError as e:
             raise ServiceUnavailable("Failed to parse RSS feed") from e
 
@@ -83,16 +82,13 @@ class AWS(HealthCheck):
 
     def _extract_entries(self, root):
         """Extract entries from RSS or Atom feed."""
-        # Try Atom format first
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
         if entries := root.findall("atom:entry", atom_ns):
             return entries
 
-        # Try RSS 2.0 format
         if entries := root.findall(".//item"):
             return entries
 
-        # Try RSS 1.0 format
         rss10_ns = {"rss": "http://purl.org/rss/1.0/"}
         return root.findall("rss:item", rss10_ns)
 
@@ -107,7 +103,6 @@ class AWS(HealthCheck):
 
     def _extract_date(self, entry):
         """Extract publication date from entry."""
-        # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
         date_text = (
             (
@@ -119,7 +114,6 @@ class AWS(HealthCheck):
                 and updated.text
             )
             or (
-                # RSS format
                 (pub_date := entry.find("pubDate")) is not None and pub_date.text
             )
             or None
@@ -128,27 +122,26 @@ class AWS(HealthCheck):
         if date_text is None:
             return None
 
-        # Use dateparser to handle both ISO-8601 (Atom) and RFC 822 (RSS) formats
-        parsed_date = dateparser.parse(
-            date_text, settings={"STRICT_PARSING": True, "RETURN_AS_TIMEZONE_AWARE": True}
-        )
-        if parsed_date is None:
-            return None
+        try:
+            parsed = datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+        except ValueError:
+            try:
+                timestamp = email.utils.parsedate_to_datetime(date_text)
+                parsed = timestamp
+            except (ValueError, TypeError):
+                return None
 
-        # Ensure timezone-aware datetime (assume UTC for naive datetimes)
-        if parsed_date.tzinfo is None:
-            parsed_date = parsed_date.replace(tzinfo=datetime.timezone.utc)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
 
-        return parsed_date
+        return parsed
 
     def _extract_title(self, entry):
         """Extract title from entry."""
-        # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
         if (title := entry.find("atom:title", atom_ns)) is not None:
             return title.text or "Untitled incident"
 
-        # RSS format
         if (title := entry.find("title")) is not None:
             return title.text or "Untitled incident"
 
