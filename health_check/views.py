@@ -180,8 +180,6 @@ class HealthCheckView(TemplateView):
                     return self.render_to_response_rss(status_code)
                 case "application/openmetrics-text":
                     return self.render_to_response_openmetrics(status_code)
-                case "text/plain":
-                    return self.render_to_response_openmetrics(status_code)
         return HttpResponse(
             "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
             status=406,
