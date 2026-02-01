@@ -5,7 +5,7 @@ import logging
 import typing
 
 from redis import exceptions, from_url
-from redis.sentinel import Sentinel
+from redis.sentinel import Sentinel as RedisSentinelClient
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -55,7 +55,7 @@ class Redis(HealthCheck):
 
 
 @dataclasses.dataclass
-class RedisSentinel(HealthCheck):
+class Sentinel(HealthCheck):
     """
     Check Redis service via Sentinel by pinging the master instance.
 
@@ -74,12 +74,6 @@ class RedisSentinel(HealthCheck):
         default_factory=dict, repr=False
     )
 
-    def __post_init__(self):
-        if not self.sentinels:
-            raise ValueError("At least one sentinel node must be provided.")
-        if not self.service_name:
-            raise ValueError("Service name must not be empty.")
-
     def check_status(self):
         logger.debug(
             "Connecting to Redis Sentinel nodes %s for service '%s'...",
@@ -88,7 +82,9 @@ class RedisSentinel(HealthCheck):
         )
 
         try:
-            sentinel = Sentinel(self.sentinels, **self.sentinel_connection_options)
+            sentinel = RedisSentinelClient(
+                self.sentinels, **self.sentinel_connection_options
+            )
             master = sentinel.master_for(self.service_name)
             master.ping()
         except ConnectionRefusedError as e:

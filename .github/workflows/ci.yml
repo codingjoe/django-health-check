@@ -61,6 +61,14 @@ jobs:
         ports:
           - 6379:6379
         options: --entrypoint redis-server
+      redis-sentinel:
+        image: bitnami/redis-sentinel:latest
+        ports:
+          - 26379:26379
+        env:
+          REDIS_MASTER_HOST: redis
+          REDIS_MASTER_SET: mymaster
+          REDIS_SENTINEL_QUORUM: 1
       rabbitmq:
         image: rabbitmq:3-management
         ports:
@@ -80,6 +88,9 @@ jobs:
           KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
     env:
       REDIS_URL: redis://localhost:6379/0
+      REDIS_SENTINEL_URL: redis-sentinel://localhost:26379/mymaster
+      REDIS_SENTINEL_NODES: localhost:26379
+      REDIS_SENTINEL_SERVICE_NAME: mymaster
       RABBITMQ_URL: amqp://guest:guest@localhost:5672//
       KAFKA_BOOTSTRAP_SERVERS: localhost:9092
     runs-on: ubuntu-latest

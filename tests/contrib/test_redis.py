@@ -11,7 +11,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from health_check.contrib.redis import Redis as RedisHealthCheck
-from health_check.contrib.redis import RedisSentinel as RedisSentinelHealthCheck
+from health_check.contrib.redis import Sentinel as SentinelHealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 
@@ -85,19 +85,21 @@ class TestRedis:
         assert check.errors == []
 
 
-class TestRedisSentinel:
-    """Test Redis Sentinel health check."""
+class TestSentinel:
+    """Test Sentinel health check."""
 
     def test_check_status__success(self):
         """Ping Redis master successfully via Sentinel when connection succeeds."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel = mock.MagicMock()
             mock_sentinel_class.return_value = mock_sentinel
             mock_master = mock.MagicMock()
             mock_sentinel.master_for.return_value = mock_master
             mock_master.ping.return_value = True
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             check.check_status()
@@ -108,10 +110,12 @@ class TestRedisSentinel:
 
     def test_check_status__connection_refused(self):
         """Raise ServiceUnavailable when Sentinel connection is refused."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel_class.side_effect = ConnectionRefusedError("refused")
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             with pytest.raises(ServiceUnavailable):
@@ -119,10 +123,12 @@ class TestRedisSentinel:
 
     def test_check_status__timeout(self):
         """Raise ServiceUnavailable when Sentinel connection times out."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel_class.side_effect = RedisTimeoutError("timeout")
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             with pytest.raises(ServiceUnavailable):
@@ -130,10 +136,12 @@ class TestRedisSentinel:
 
     def test_check_status__connection_error(self):
         """Raise ServiceUnavailable when Sentinel connection fails."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel_class.side_effect = RedisConnectionError("connection error")
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             with pytest.raises(ServiceUnavailable):
@@ -141,10 +149,12 @@ class TestRedisSentinel:
 
     def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable for unexpected exceptions."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel_class.side_effect = RuntimeError("unexpected")
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             with pytest.raises(ServiceUnavailable):
@@ -152,7 +162,9 @@ class TestRedisSentinel:
 
     def test_check_status__multiple_sentinels(self):
         """Connect to Redis via multiple Sentinel nodes."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel = mock.MagicMock()
             mock_sentinel_class.return_value = mock_sentinel
             mock_master = mock.MagicMock()
@@ -164,16 +176,16 @@ class TestRedisSentinel:
                 ("localhost", 26380),
                 ("localhost", 26381),
             ]
-            check = RedisSentinelHealthCheck(
-                sentinels=sentinels, service_name="mymaster"
-            )
+            check = SentinelHealthCheck(sentinels=sentinels, service_name="mymaster")
             check.check_status()
             assert check.errors == []
             mock_sentinel_class.assert_called_once_with(sentinels)
 
     def test_check_status__with_connection_options(self):
         """Pass connection options to Sentinel constructor."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel = mock.MagicMock()
             mock_sentinel_class.return_value = mock_sentinel
             mock_master = mock.MagicMock()
@@ -181,7 +193,7 @@ class TestRedisSentinel:
             mock_master.ping.return_value = True
 
             connection_options = {"socket_connect_timeout": 5, "socket_timeout": 10}
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)],
                 service_name="mymaster",
                 sentinel_connection_options=connection_options,
@@ -194,27 +206,39 @@ class TestRedisSentinel:
 
     def test_check_status__ping_failure(self):
         """Raise ServiceUnavailable when ping to master fails."""
-        with mock.patch("health_check.contrib.redis.Sentinel") as mock_sentinel_class:
+        with mock.patch(
+            "health_check.contrib.redis.RedisSentinelClient"
+        ) as mock_sentinel_class:
             mock_sentinel = mock.MagicMock()
             mock_sentinel_class.return_value = mock_sentinel
             mock_master = mock.MagicMock()
             mock_sentinel.master_for.return_value = mock_master
             mock_master.ping.side_effect = RedisConnectionError("ping failed")
 
-            check = RedisSentinelHealthCheck(
+            check = SentinelHealthCheck(
                 sentinels=[("localhost", 26379)], service_name="mymaster"
             )
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
 
-    def test_init__empty_sentinels(self):
-        """Raise ValueError when sentinels list is empty."""
-        with pytest.raises(
-            ValueError, match="At least one sentinel node must be provided"
-        ):
-            RedisSentinelHealthCheck(sentinels=[], service_name="mymaster")
+    @pytest.mark.integration
+    def test_check_status__real_sentinel(self):
+        """Ping real Redis Sentinel when REDIS_SENTINEL_URL is configured."""
+        sentinel_url = os.getenv("REDIS_SENTINEL_URL")
+        if not sentinel_url:
+            pytest.skip("REDIS_SENTINEL_URL not set; skipping integration test")
 
-    def test_init__empty_service_name(self):
-        """Raise ValueError when service_name is empty."""
-        with pytest.raises(ValueError, match="Service name must not be empty"):
-            RedisSentinelHealthCheck(sentinels=[("localhost", 26379)], service_name="")
+        # Parse sentinel URL format: redis-sentinel://host:port/service_name
+        # or use environment variables for sentinel nodes
+        sentinel_nodes = os.getenv("REDIS_SENTINEL_NODES", "localhost:26379")
+        service_name = os.getenv("REDIS_SENTINEL_SERVICE_NAME", "mymaster")
+
+        # Parse sentinel nodes from comma-separated list
+        sentinels = []
+        for node in sentinel_nodes.split(","):
+            host, port = node.strip().split(":")
+            sentinels.append((host, int(port)))
+
+        check = SentinelHealthCheck(sentinels=sentinels, service_name=service_name)
+        check.check_status()
+        assert check.errors == []
