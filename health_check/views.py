@@ -7,6 +7,7 @@ from functools import cached_property
 from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
@@ -89,7 +90,6 @@ class MediaType:
         return self.weight.__lt__(other.weight)
 
 
-@method_decorator(transaction.non_atomic_requests, name="dispatch")
 class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
@@ -144,6 +144,12 @@ class HealthCheckView(TemplateView):
                 _run(result)
                 _collect_errors(result)
         return errors
+
+    @method_decorator(transaction.non_atomic_requests)
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        patch_vary_headers(response, ["Accept"])
+        return response
 
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
@@ -209,7 +215,9 @@ class HealthCheckView(TemplateView):
         lines = []
 
         # Add metadata
-        lines.append("# HELP django_health_check_status Health check status (1 = healthy, 0 = unhealthy)")
+        lines.append(
+            "# HELP django_health_check_status Health check status (1 = healthy, 0 = unhealthy)"
+        )
         lines.append("# TYPE django_health_check_status gauge")
 
         # Add status metrics for each check
@@ -217,20 +225,28 @@ class HealthCheckView(TemplateView):
             # Sanitize label for Prometheus (replace spaces and special chars with underscores)
             safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
             status_value = 1 if not result.errors else 0
-            lines.append(f'django_health_check_status{{check="{safe_label}"}} {status_value}')
+            lines.append(
+                f'django_health_check_status{{check="{safe_label}"}} {status_value}'
+            )
 
         # Add response time metrics
         lines.append("")
-        lines.append("# HELP django_health_check_response_time_seconds Health check response time in seconds")
+        lines.append(
+            "# HELP django_health_check_response_time_seconds Health check response time in seconds"
+        )
         lines.append("# TYPE django_health_check_response_time_seconds gauge")
 
         for label, result in self.results.items():
             safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
-            lines.append(f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}')
+            lines.append(
+                f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
+            )
 
         # Add overall health status
         lines.append("")
-        lines.append("# HELP django_health_check_overall_status Overall health check status (1 = all healthy, 0 = at least one unhealthy)")
+        lines.append(
+            "# HELP django_health_check_overall_status Overall health check status (1 = all healthy, 0 = at least one unhealthy)"
+        )
         lines.append("# TYPE django_health_check_overall_status gauge")
         overall_status = 1 if status == 200 else 0
         lines.append(f"django_health_check_overall_status {overall_status}")

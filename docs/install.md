@@ -40,6 +40,10 @@ urlpatterns = [
                 "health_check.Storage",
                 # 3rd party checks
                 "health_check.contrib.celery.Ping",
+                (
+                    "health_check.contrib.kafka.Kafka",
+                    {"bootstrap_servers": ["localhost:9092"]},
+                ),
                 (  # tuple with options
                     "health_check.contrib.rabbitmq.RabbitMQ",
                     {"amqp_url": "amqp://guest:guest@localhost:5672//"},
