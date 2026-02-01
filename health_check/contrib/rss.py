@@ -5,7 +5,9 @@ import datetime
 import logging
 import urllib.error
 import urllib.request
-from xml.etree import ElementTree
+
+import dateparser
+from defusedxml import ElementTree
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -64,7 +66,7 @@ class AWS(HealthCheck):
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
-            root = ElementTree.fromstring(content)  # noqa: S314
+            root = ElementTree.fromstring(content)
         except ElementTree.ParseError as e:
             raise ServiceUnavailable("Failed to parse RSS feed") from e
 
@@ -126,10 +128,16 @@ class AWS(HealthCheck):
         if date_text is None:
             return None
 
-        try:
-            return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-        except ValueError:
+        # Use dateparser to handle both ISO-8601 (Atom) and RFC 822 (RSS) formats
+        parsed_date = dateparser.parse(date_text)
+        if parsed_date is None:
             return None
+
+        # Ensure timezone-aware datetime (assume UTC for naive datetimes)
+        if parsed_date.tzinfo is None:
+            parsed_date = parsed_date.replace(tzinfo=datetime.timezone.utc)
+
+        return parsed_date
 
     def _extract_title(self, entry):
         """Extract title from entry."""

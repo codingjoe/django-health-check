@@ -40,6 +40,8 @@ dynamic = [
 ]
 dependencies = [
   "Django>=4.2",
+  "dateparser>=1.0.0",
+  "defusedxml>=0.7.0",
   "dnspython>=2.0.0",
   "psutil",
 ]

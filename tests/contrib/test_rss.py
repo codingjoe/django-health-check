@@ -20,7 +20,7 @@ class TestAWS:
   <channel>
     <item>
       <title>Service is operating normally</title>
-      <pubDate>2024-01-01T00:00:00Z</pubDate>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
     </item>
   </channel>
 </rss>"""
@@ -36,7 +36,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -53,11 +52,11 @@ class TestAWS:
   <channel>
     <item>
       <title>Increased API Error Rates</title>
-      <pubDate>2024-01-01T00:00:00Z</pubDate>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
     </item>
     <item>
       <title>Resolved: Service disruption</title>
-      <pubDate>2024-01-01T00:00:00Z</pubDate>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
     </item>
   </channel>
 </rss>"""
@@ -73,7 +72,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -89,7 +87,7 @@ class TestAWS:
   <channel>
     <item>
       <title>Old incident</title>
-      <pubDate>2024-01-01T00:00:00Z</pubDate>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
     </item>
   </channel>
 </rss>"""
@@ -106,7 +104,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -198,7 +195,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -214,7 +210,7 @@ class TestAWS:
          xmlns="http://purl.org/rss/1.0/">
   <item>
     <title>RSS 1.0 incident</title>
-    <pubDate>2024-01-01T00:00:00Z</pubDate>
+    <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
   </item>
 </rdf:RDF>"""
 
@@ -229,7 +225,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -292,7 +287,7 @@ class TestAWS:
 <rss version="2.0">
   <channel>
     <item>
-      <pubDate>2024-01-01T00:00:00Z</pubDate>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
     </item>
   </channel>
 </rss>"""
@@ -308,7 +303,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -338,7 +332,6 @@ class TestAWS:
             )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
-                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
@@ -365,6 +358,12 @@ class TestAWS:
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
         """Fetch and parse live AWS status feed."""
+        import os
+
+        aws_rss_feed_url = os.getenv("AWS_RSS_FEED_URL")
+        if not aws_rss_feed_url:
+            pytest.skip("AWS_RSS_FEED_URL not set; skipping integration test")
+
         check = AWS(region="us-east-1", service="ec2")
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
