@@ -52,6 +52,19 @@ urlpatterns = [
                     "health_check.contrib.redis.Redis",
                     {"redis_url": "redis://localhost:6379"},
                 ),
+                # Cloud provider status checks
+                (
+                    "health_check.contrib.rss.GoogleCloudStatus",
+                    {"service_name": "Cloud Storage"},
+                ),
+                (
+                    "health_check.contrib.rss.AWSServiceStatus",
+                    {"region": "eu-west-1", "service": "s3"},
+                ),
+                (
+                    "health_check.contrib.rss.AzureStatus",
+                    {"service_name": "Storage"},
+                ),
             ],
             use_threading=True,  # optional, default is True
             warnings_as_errors=True,  # optional, default is True

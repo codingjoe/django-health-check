@@ -34,13 +34,14 @@ class RSSFeed(HealthCheck):
 
     def check_status(self):
         """Check the RSS/Atom feed for incidents."""
-        logger.debug("Fetching RSS feed from %s", self.feed_url)
+        logger.debug("Fetching feed from %s", self.feed_url)
+
+        request = urllib.request.Request(  # noqa: S310
+            self.feed_url,
+            headers={"User-Agent": "django-health-check"},
+        )
 
         try:
-            request = urllib.request.Request(  # noqa: S310
-                self.feed_url,
-                headers={"User-Agent": "django-health-check"},
-            )
             with urllib.request.urlopen(  # noqa: S310
                 request, timeout=self.timeout.total_seconds()
             ) as response:
@@ -118,22 +119,22 @@ class RSSFeed(HealthCheck):
         """Extract publication date from entry."""
         # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        if (
-            (published := entry.find("atom:published", atom_ns)) is not None
-            and (date_text := published.text)
+        date_text = (
+            (published := entry.find("atom:published", atom_ns)) is not None and published.text
         ) or (
-            (updated := entry.find("atom:updated", atom_ns)) is not None
-            and (date_text := updated.text)
+            (updated := entry.find("atom:updated", atom_ns)) is not None and updated.text
         ) or (
             # RSS format
-            (pub_date := entry.find("pubDate")) is not None
-            and (date_text := pub_date.text)
-        ):
-            try:
-                return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-            except ValueError:
-                return None
-        return None
+            (pub_date := entry.find("pubDate")) is not None and pub_date.text
+        ) or None
+
+        if date_text is None:
+            return None
+
+        try:
+            return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
 
     def _extract_title(self, entry):
         """Extract title from entry."""
@@ -152,17 +153,18 @@ class RSSFeed(HealthCheck):
 @dataclasses.dataclass
 class GoogleCloudStatus(RSSFeed):
     """
-    Proxy for Google Cloud Platform service status.
-
-    Checks the current operational status of Google Cloud services
-    by parsing their public status feed.
+    Check Google Cloud Platform service status.
 
     Example:
-        >>> check = GoogleCloudStatus()
-        >>> check.run_check()  # Check all services
-        >>> # Or filter by specific service:
-        >>> check = GoogleCloudStatus(service_name="Compute Engine")
-        >>> check.run_check()
+        Check all GCP services::
+
+            >>> check = GoogleCloudStatus()
+            >>> check.run_check()
+
+        Or filter by specific service::
+
+            >>> check = GoogleCloudStatus(service_name="Cloud Storage")
+            >>> check.run_check()
 
     Args:
         service_name: Optional service name to filter incidents.
@@ -192,10 +194,13 @@ class GoogleCloudStatus(RSSFeed):
 @dataclasses.dataclass
 class AWSServiceStatus(RSSFeed):
     """
-    Proxy for AWS service status.
+    Check AWS service status.
 
-    Checks the current operational status of specific AWS services
-    in a given region by parsing their public status feed.
+    Example:
+        Check S3 in eu-west-1::
+
+            >>> check = AWSServiceStatus(region="eu-west-1", service="s3")
+            >>> check.run_check()
 
     Args:
         region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
@@ -204,16 +209,14 @@ class AWSServiceStatus(RSSFeed):
     """
 
     feed_url: str = dataclasses.field(default="", init=False, repr=False)
-    region: str = ""
-    service: str = ""
+    region: dataclasses.InitVar[str] = ""
+    service: dataclasses.InitVar[str] = ""
 
-    def __post_init__(self):
+    def __post_init__(self, region: str, service: str):
         """Initialize feed URL."""
-        if not self.region or not self.service:
+        if not region or not service:
             raise ValueError("Both 'region' and 'service' are required")
-        self.feed_url = (
-            f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
-        )
+        self.feed_url = f"https://status.aws.amazon.com/rss/{service}-{region}.rss"
 
     def is_incident(self, entry: ET.Element) -> bool:
         """Detect if entry is an incident for AWS."""
@@ -239,10 +242,18 @@ class AWSServiceStatus(RSSFeed):
 @dataclasses.dataclass
 class AzureStatus(RSSFeed):
     """
-    Proxy for Microsoft Azure service status.
+    Check Microsoft Azure service status.
 
-    Checks the current operational status of Azure services
-    by parsing their public status feed.
+    Example:
+        Check all Azure services::
+
+            >>> check = AzureStatus()
+            >>> check.run_check()
+
+        Or filter by specific service::
+
+            >>> check = AzureStatus(service_name="Storage")
+            >>> check.run_check()
 
     Args:
         service_name: Optional service name to filter incidents.

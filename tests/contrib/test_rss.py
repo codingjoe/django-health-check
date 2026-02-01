@@ -216,6 +216,167 @@ class TestRSSFeed:
 
             assert "Failed to parse RSS feed" in str(exc_info.value)
 
+    def test_check_status__general_exception(self):
+        """Raise ServiceUnavailable for unexpected exceptions."""
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = RuntimeError("Unexpected error")
+
+            check = RSSFeed(feed_url="https://example.com/status.rss")
+            with pytest.raises(ServiceUnavailable) as exc_info:
+                check.check_status()
+
+            assert "Unknown error fetching RSS feed" in str(exc_info.value)
+
+    def test_extract_entries__rss10_format(self):
+        """Parse RSS 1.0 format feed."""
+        rss10_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/">
+  <item>
+    <title>Test item</title>
+  </item>
+</rdf:RDF>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss10_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            @dataclasses.dataclass
+            class TestFeed(RSSFeed):
+                feed_url: str = dataclasses.field(
+                    default="https://example.com/status.rss", init=False
+                )
+
+            check = TestFeed()
+            check.check_status()
+            assert check.errors == []
+
+    def test_extract_date__invalid_format(self):
+        """Handle invalid date format gracefully."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Incident</title>
+      <pubDate>not a valid date</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            @dataclasses.dataclass
+            class TestFeed(RSSFeed):
+                feed_url: str = dataclasses.field(
+                    default="https://example.com/status.rss", init=False
+                )
+
+                def is_incident(self, entry):
+                    return True
+
+            check = TestFeed()
+            # Should treat as recent incident when date parsing fails
+            with pytest.raises(ServiceWarning):
+                check.check_status()
+
+    def test_extract_date__no_date(self):
+        """Handle entries without date."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Incident without date</title>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            @dataclasses.dataclass
+            class TestFeed(RSSFeed):
+                feed_url: str = dataclasses.field(
+                    default="https://example.com/status.rss", init=False
+                )
+
+                def is_incident(self, entry):
+                    return True
+
+            check = TestFeed()
+            # Should treat as recent incident when no date found
+            with pytest.raises(ServiceWarning):
+                check.check_status()
+
+    def test_extract_title__no_title(self):
+        """Handle entries without title."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <pubDate>2024-01-01T00:00:00Z</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
+                mock_datetime.datetime.now.return_value = mock_now
+                mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
+                mock_datetime.timezone = datetime.timezone
+
+                @dataclasses.dataclass
+                class TestFeed(RSSFeed):
+                    feed_url: str = dataclasses.field(
+                        default="https://example.com/status.rss", init=False
+                    )
+
+                    def is_incident(self, entry):
+                        return True
+
+                check = TestFeed()
+                with pytest.raises(ServiceWarning) as exc_info:
+                    check.check_status()
+
+                assert "Untitled incident" in str(exc_info.value)
+
+    def test_is_incident__default_implementation(self):
+        """Default is_incident returns False."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Any incident</title>
+      <pubDate>2024-01-01T00:00:00Z</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            # Using base class without overriding is_incident
+            check = RSSFeed(feed_url="https://example.com/status.rss")
+            check.check_status()
+            assert check.errors == []
+
 
 class TestGoogleCloudStatus:
     """Test Google Cloud Platform status health check."""
@@ -402,6 +563,20 @@ class TestAWSServiceStatus:
         """Verify correct feed URL format for AWS."""
         check = AWSServiceStatus(region="eu-west-1", service="s3")
         assert check.feed_url == "https://status.aws.amazon.com/rss/s3-eu-west-1.rss"
+
+    def test_init__missing_region(self):
+        """Raise ValueError when region is missing."""
+        with pytest.raises(ValueError) as exc_info:
+            AWSServiceStatus(region="", service="s3")
+
+        assert "Both 'region' and 'service' are required" in str(exc_info.value)
+
+    def test_init__missing_service(self):
+        """Raise ValueError when service is missing."""
+        with pytest.raises(ValueError) as exc_info:
+            AWSServiceStatus(region="us-east-1", service="")
+
+        assert "Both 'region' and 'service' are required" in str(exc_info.value)
 
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
