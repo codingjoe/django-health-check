@@ -630,7 +630,9 @@ class TestHealthCheckView:
         # Double quotes should be escaped as \"
         # Backslashes should be escaped as \\
         # Newlines should be escaped as \n
-        assert 'Test \\"quoted\\" value\\\\with\\\\backslashes\\nand newlines' in content
+        assert (
+            'Test \\"quoted\\" value\\\\with\\\\backslashes\\nand newlines' in content
+        )
 
     def test_get__openmetrics_metadata(self, health_check_view):
         """OpenMetrics include proper HELP and TYPE metadata."""
