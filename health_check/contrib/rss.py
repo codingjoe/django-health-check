@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class AWS(HealthCheck):
     """
-    Check AWS service status.
+    Check AWS service status via their public RSS status feeds.
 
     Args:
         region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
         service: AWS service name (e.g., 'ec2', 's3', 'rds').
         timeout: Request timeout duration.
-        max_age: Maximum age of incidents to consider.
+        max_age: Maximum age for an incident to be considered active.
 
     """
 

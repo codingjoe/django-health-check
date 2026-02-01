@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from health_check.contrib.aws import AWS
+from health_check.contrib.rss import AWS
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
 
 
@@ -118,9 +118,7 @@ class TestAWS:
         with mock.patch("urllib.request.urlopen") as mock_urlopen:
             from urllib.error import HTTPError
 
-            mock_urlopen.side_effect = HTTPError(
-                "url", 404, "Not Found", {}, None
-            )
+            mock_urlopen.side_effect = HTTPError("url", 404, "Not Found", {}, None)
 
             check = AWS(region="us-east-1", service="ec2")
             with pytest.raises(ServiceUnavailable) as exc_info:
