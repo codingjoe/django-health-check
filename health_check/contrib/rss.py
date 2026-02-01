@@ -47,9 +47,7 @@ class RSSFeed(HealthCheck):
             ) as response:
                 content = response.read()
         except urllib.error.HTTPError as e:
-            raise ServiceUnavailable(
-                f"HTTP error {e.code} fetching RSS feed"
-            ) from e
+            raise ServiceUnavailable(f"HTTP error {e.code} fetching RSS feed") from e
         except urllib.error.URLError as e:
             raise ServiceUnavailable(f"Failed to fetch RSS feed: {e.reason}") from e
         except TimeoutError as e:
@@ -120,13 +118,20 @@ class RSSFeed(HealthCheck):
         # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
         date_text = (
-            (published := entry.find("atom:published", atom_ns)) is not None and published.text
-        ) or (
-            (updated := entry.find("atom:updated", atom_ns)) is not None and updated.text
-        ) or (
-            # RSS format
-            (pub_date := entry.find("pubDate")) is not None and pub_date.text
-        ) or None
+            (
+                (published := entry.find("atom:published", atom_ns)) is not None
+                and published.text
+            )
+            or (
+                (updated := entry.find("atom:updated", atom_ns)) is not None
+                and updated.text
+            )
+            or (
+                # RSS format
+                (pub_date := entry.find("pubDate")) is not None and pub_date.text
+            )
+            or None
+        )
 
         if date_text is None:
             return None

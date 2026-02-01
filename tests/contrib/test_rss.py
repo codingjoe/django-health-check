@@ -100,7 +100,9 @@ class TestRSSFeed:
             mock_urlopen.return_value = mock_response
 
             # Mock datetime.now to make the incident recent
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -142,7 +144,9 @@ class TestRSSFeed:
             mock_urlopen.return_value = mock_response
 
             # Mock datetime.now to make the incident old
-            mock_now = datetime.datetime(2024, 1, 10, 0, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 10, 0, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -333,7 +337,9 @@ class TestRSSFeed:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -417,7 +423,9 @@ class TestGoogleCloudStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -449,7 +457,9 @@ class TestGoogleCloudStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -523,7 +533,9 @@ class TestAWSServiceStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -630,7 +642,9 @@ class TestAzureStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
@@ -664,7 +678,9 @@ class TestAzureStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
             with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
