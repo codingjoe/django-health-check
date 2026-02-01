@@ -30,10 +30,6 @@ To use the checks, you will need to install and set up their corresponding depen
 
 ## Cloud Provider Status
 
-Monitor cloud provider service health using their public RSS/Atom status feeds.
+Monitor AWS service health using their public RSS status feeds.
 
-::: health_check.contrib.rss.GoogleCloudStatus
-
-::: health_check.contrib.rss.AWSServiceStatus
-
-::: health_check.contrib.rss.AzureStatus
+::: health_check.contrib.rss.AWS

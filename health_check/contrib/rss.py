@@ -170,21 +170,9 @@ class AWS(RSSFeed):
         return f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
 
     def is_incident(self, entry: ET.Element) -> bool:
-        """Detect if entry is an incident for AWS."""
-        title = self._extract_title(entry)
-        title_lower = title.lower()
+        """
+        Detect if entry is an incident for AWS.
 
-        # AWS marks resolved incidents with "resolved:"
-        if "resolved:" in title_lower:
-            return False
-
-        # Check for incident keywords in AWS status
-        incident_keywords = [
-            "error",
-            "issue",
-            "degradation",
-            "disruption",
-            "outage",
-            "unavailable",
-        ]
-        return any(keyword in title_lower for keyword in incident_keywords)
+        Any entry in the AWS RSS feed is considered an active incident.
+        """
+        return True
