@@ -129,7 +129,9 @@ class AWS(HealthCheck):
             return None
 
         # Use dateparser to handle both ISO-8601 (Atom) and RFC 822 (RSS) formats
-        parsed_date = dateparser.parse(date_text)
+        parsed_date = dateparser.parse(
+            date_text, settings={"STRICT_PARSING": True, "RETURN_AS_TIMEZONE_AWARE": True}
+        )
         if parsed_date is None:
             return None
 
