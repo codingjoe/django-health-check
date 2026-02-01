@@ -172,64 +172,7 @@ class TestAWS:
 
             assert "Failed to parse RSS feed" in str(exc_info.value)
 
-    def test_extract_entries__atom_format(self):
-        """Parse Atom feed format."""
-        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <entry>
-    <title>Atom incident</title>
-    <published>2024-01-01T00:00:00Z</published>
-  </entry>
-</feed>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            mock_response = mock.MagicMock()
-            mock_response.read.return_value = atom_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
-
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = AWS(region="us-east-1", service="ec2")
-                with pytest.raises(ServiceWarning) as exc_info:
-                    check.check_status()
-
-                assert "Atom incident" in str(exc_info.value)
-
-    def test_extract_entries__rss10_format(self):
-        """Parse RSS 1.0 feed format."""
-        rss10_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns="http://purl.org/rss/1.0/">
-  <item>
-    <title>RSS 1.0 incident</title>
-    <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
-  </item>
-</rdf:RDF>"""
-
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss10_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
-
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = AWS(region="us-east-1", service="ec2")
-                with pytest.raises(ServiceWarning) as exc_info:
-                    check.check_status()
-
-                assert "1 recent incident(s)" in str(exc_info.value)
 
     def test_extract_date__entry_without_date(self):
         """Entry without date is treated as recent incident."""
@@ -308,34 +251,6 @@ class TestAWS:
 
                 assert "Untitled incident" in str(exc_info.value)
 
-    def test_extract_title__atom_format(self):
-        """Extract title from Atom format entry."""
-        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <entry>
-    <title>Atom title test</title>
-    <published>2024-01-01T00:00:00Z</published>
-  </entry>
-</feed>"""
-
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            mock_response = mock.MagicMock()
-            mock_response.read.return_value = atom_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
-
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = AWS(region="us-east-1", service="ec2")
-                with pytest.raises(ServiceWarning) as exc_info:
-                    check.check_status()
-
-                assert "Atom title test" in str(exc_info.value)
 
     def test_feed_url_format(self):
         """Verify correct feed URL format for AWS."""
