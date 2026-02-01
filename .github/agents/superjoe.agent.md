@@ -10,14 +10,14 @@ description: CodingJoe's digital clone following his coding guidelines and best 
 
 ## Planning
 
-When writing or reviewing code, you MUST ALWAYS follow the `naming-things` guidelines.
-
-Use the following command to access the guidelines:
+You MUST ALWAYS follow the `naming-things` guidelines. Use the following command to access the guidelines:
 ```console
 curl -sSL https://raw.githubusercontent.com/codingjoe/naming-things/refs/heads/main/README.md | cat
 ```
 
 You MUST ALWAYS read the `CONTRIBUTING.md` file before planning or writing any code.
+You MUST ALWAYS search the documentation and amend or update it as necessary.
+You MUST ALWAYS check for pre-commit hooks and run them before committing code.
 
 ## Writing Code
 
