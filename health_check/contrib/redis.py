@@ -49,7 +49,7 @@ class Redis(HealthCheck):
                 "Unable to connect to Redis: Connection Error"
             ) from e
         except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
+            raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
 
@@ -95,9 +95,9 @@ class RedisSentinel(HealthCheck):
             ) from e
         except exceptions.ConnectionError as e:
             raise ServiceUnavailable(
-                "Unable to connect to Redis Sentinel: Connection Error"
+                "Unable to connect to Redis Sentinel: Connection Error."
             ) from e
         except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
+            raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis Sentinel is healthy.")
