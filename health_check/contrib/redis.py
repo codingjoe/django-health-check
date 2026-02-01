@@ -46,10 +46,10 @@ class Redis(HealthCheck):
             raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
         except exceptions.ConnectionError as e:
             raise ServiceUnavailable(
-                "Unable to connect to Redis: Connection Error"
+                "Unable to connect to Redis: Connection Error."
             ) from e
         except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
+            raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
 
@@ -91,7 +91,7 @@ class RedisCluster(HealthCheck):
             ) from e
         except exceptions.ConnectionError as e:
             raise ServiceUnavailable(
-                "Unable to connect to Redis Cluster: Connection Error"
+                "Unable to connect to Redis Cluster: Connection Error."
             ) from e
         except exceptions.ClusterDownError as e:
             raise ServiceUnavailable(
@@ -99,9 +99,9 @@ class RedisCluster(HealthCheck):
             ) from e
         except exceptions.ClusterError as e:
             raise ServiceUnavailable(
-                "Unable to connect to Redis Cluster: Cluster Error"
+                "Unable to connect to Redis Cluster: Cluster Error."
             ) from e
         except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
+            raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis Cluster is healthy.")
