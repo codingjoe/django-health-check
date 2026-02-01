@@ -29,6 +29,7 @@ repos:
           - mdformat-footnote
           - mdformat-gfm
           - mdformat-gfm-alerts
+        exclude: '.github/agents/'
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.14
     hooks:
