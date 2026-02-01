@@ -506,11 +506,12 @@ class TestHealthCheckView:
 
         response = health_check_view([SuccessBackend], format_param="openmetrics")
         assert response.status_code == 200
-        assert "text/plain" in response["content-type"]
+        assert "application/openmetrics-text" in response["content-type"]
         content = response.content.decode("utf-8")
         assert "django_health_check_status" in content
         assert "django_health_check_response_time_seconds" in content
         assert "django_health_check_overall_status" in content
+        assert "# EOF" in content
 
     def test_get__openmetrics_accept_header_openmetrics(self, health_check_view):
         """Return OpenMetrics when Accept header is application/openmetrics-text."""
@@ -523,22 +524,10 @@ class TestHealthCheckView:
             [SuccessBackend], accept_header="application/openmetrics-text"
         )
         assert response.status_code == 200
-        assert "text/plain" in response["content-type"]
+        assert "application/openmetrics-text" in response["content-type"]
         content = response.content.decode("utf-8")
         assert "django_health_check_status" in content
-
-    def test_get__openmetrics_accept_header_text_plain(self, health_check_view):
-        """Return OpenMetrics when Accept header is text/plain."""
-
-        class SuccessBackend(HealthCheck):
-            def check_status(self):
-                pass
-
-        response = health_check_view([SuccessBackend], accept_header="text/plain")
-        assert response.status_code == 200
-        assert "text/plain" in response["content-type"]
-        content = response.content.decode("utf-8")
-        assert "django_health_check_status" in content
+        assert "# EOF" in content
 
     def test_get__openmetrics_healthy_status(self, health_check_view):
         """OpenMetrics show healthy status when all checks pass."""
@@ -621,8 +610,27 @@ class TestHealthCheckView:
 
         response = health_check_view([CustomCheck], format_param="openmetrics")
         content = response.content.decode("utf-8")
-        # Check that special characters are replaced with underscores
-        assert "Custom_Check_Backend_Test" in content
+        # Check that the label value is present (with proper escaping)
+        assert 'check="Custom-Check.Backend Test"' in content
+
+    def test_get__openmetrics_label_escaping(self, health_check_view):
+        """OpenMetrics properly escape special characters in label values."""
+
+        @dataclasses.dataclass
+        class EscapingCheck(HealthCheck):
+            def check_status(self):
+                pass
+
+            def __repr__(self):
+                return 'Test "quoted" value\\with\\backslashes\nand newlines'
+
+        response = health_check_view([EscapingCheck], format_param="openmetrics")
+        content = response.content.decode("utf-8")
+        # Check that special characters are properly escaped per OpenMetrics spec
+        # Double quotes should be escaped as \"
+        # Backslashes should be escaped as \\
+        # Newlines should be escaped as \n
+        assert 'Test \\"quoted\\" value\\\\with\\\\backslashes\\nand newlines' in content
 
     def test_get__openmetrics_metadata(self, health_check_view):
         """OpenMetrics include proper HELP and TYPE metadata."""

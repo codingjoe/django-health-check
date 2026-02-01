@@ -208,6 +208,21 @@ class HealthCheckView(TemplateView):
         """Return RSS 2.0 feed response with health check results."""
         return self._render_feed(Rss201rev2Feed, status)
 
+    def _escape_openmetrics_label_value(self, value):
+        r"""
+        Escape label value according to OpenMetrics specification.
+
+        Escapes backslashes, double quotes, and newlines as required by the spec:
+        - Backslash (\) -> \\
+        - Double quote (") -> \"
+        - Line feed (\n) -> \n
+        """
+        # Order matters: escape backslashes first to avoid double-escaping
+        value = value.replace("\\", "\\\\")
+        value = value.replace('"', '\\"')
+        value = value.replace("\n", "\\n")
+        return value
+
     def render_to_response_openmetrics(self, status):
         """Return OpenMetrics response with health check results."""
         lines = []
@@ -220,8 +235,7 @@ class HealthCheckView(TemplateView):
 
         # Add status metrics for each check
         for label, result in self.results.items():
-            # Sanitize label for Prometheus (replace spaces and special chars with underscores)
-            safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
+            safe_label = self._escape_openmetrics_label_value(label)
             status_value = 1 if not result.errors else 0
             lines.append(
                 f'django_health_check_status{{check="{safe_label}"}} {status_value}'
@@ -235,7 +249,7 @@ class HealthCheckView(TemplateView):
         lines.append("# TYPE django_health_check_response_time_seconds gauge")
 
         for label, result in self.results.items():
-            safe_label = label.replace(" ", "_").replace("-", "_").replace(".", "_")
+            safe_label = self._escape_openmetrics_label_value(label)
             lines.append(
                 f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
             )
