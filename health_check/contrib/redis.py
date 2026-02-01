@@ -5,6 +5,7 @@ import logging
 import typing
 
 from redis import exceptions, from_url
+from redis.sentinel import Sentinel
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -51,3 +52,52 @@ class Redis(HealthCheck):
             raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
+
+
+@dataclasses.dataclass
+class RedisSentinel(HealthCheck):
+    """
+    Check Redis service via Sentinel by pinging the master instance.
+
+    Args:
+        sentinels: List of Sentinel node addresses as (host, port) tuples,
+                   e.g., [('localhost', 26379), ('localhost', 26380)].
+        service_name: Name of the Redis service to monitor.
+        sentinel_connection_options: Additional options for Sentinel connections,
+                                      e.g., {'socket_connect_timeout': 5}.
+
+    """
+
+    sentinels: list[tuple[str, int]] = dataclasses.field(repr=False)
+    service_name: str
+    sentinel_connection_options: dict[str, typing.Any] = dataclasses.field(
+        default_factory=dict, repr=False
+    )
+
+    def check_status(self):
+        logger.debug(
+            "Connecting to Redis Sentinel nodes %s for service '%s'...",
+            self.sentinels,
+            self.service_name,
+        )
+
+        try:
+            sentinel = Sentinel(self.sentinels, **self.sentinel_connection_options)
+            master = sentinel.master_for(self.service_name)
+            master.ping()
+        except ConnectionRefusedError as e:
+            raise ServiceUnavailable(
+                "Unable to connect to Redis Sentinel: Connection was refused."
+            ) from e
+        except exceptions.TimeoutError as e:
+            raise ServiceUnavailable(
+                "Unable to connect to Redis Sentinel: Timeout."
+            ) from e
+        except exceptions.ConnectionError as e:
+            raise ServiceUnavailable(
+                "Unable to connect to Redis Sentinel: Connection Error"
+            ) from e
+        except BaseException as e:
+            raise ServiceUnavailable("Unknown error") from e
+        else:
+            logger.debug("Connection established. Redis Sentinel is healthy.")
