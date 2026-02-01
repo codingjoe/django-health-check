@@ -59,7 +59,7 @@ class RSSFeed(HealthCheck):
             raise ServiceUnavailable(f"Failed to fetch RSS feed: {e.reason}") from e
         except TimeoutError as e:
             raise ServiceUnavailable("RSS feed request timed out") from e
-        except BaseException as e:
+        except Exception as e:
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
@@ -215,13 +215,20 @@ class AWSServiceStatus(RSSFeed):
         title = self._extract_title(entry)
         title_lower = title.lower()
 
-        # AWS marks resolved incidents differently
-        resolved_keywords = ["resolved", "resolved:"]
-        if any(keyword in title_lower for keyword in resolved_keywords):
+        # AWS marks resolved incidents with "resolved:"
+        if "resolved:" in title_lower:
             return False
 
-        # Any other entry is considered an active incident
-        return True
+        # Check for incident keywords in AWS status
+        incident_keywords = [
+            "error",
+            "issue",
+            "degradation",
+            "disruption",
+            "outage",
+            "unavailable",
+        ]
+        return any(keyword in title_lower for keyword in incident_keywords)
 
 
 @dataclasses.dataclass
@@ -239,7 +246,7 @@ class AzureStatus(RSSFeed):
 
     def __post_init__(self):
         """Initialize feed URL and incident detector."""
-        self.feed_url = "https://rssfeed.azure.status.microsoft/en-us/status/feed/"
+        self.feed_url = "https://rssfeed.azure.status.microsoft.com/en-us/status/feed/"
         self.is_incident = self._detect_azure_incident
 
     def _detect_azure_incident(self, entry):

@@ -298,6 +298,7 @@ class TestAWSServiceStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
+            # Normal operation message should not trigger incident
             check = AWSServiceStatus(service="ec2", region="us-east-1")
             check.check_status()
             assert check.errors == []
@@ -326,6 +327,7 @@ class TestAWSServiceStatus:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
+                # Error in title should trigger incident
                 check = AWSServiceStatus(service="ec2", region="us-east-1")
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
@@ -350,6 +352,7 @@ class TestAWSServiceStatus:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
+            # Resolved incidents should not trigger warning
             check = AWSServiceStatus(service="ec2", region="us-east-1")
             check.check_status()
             assert check.errors == []
