@@ -27,3 +27,9 @@ To use the checks, you will need to install and set up their corresponding depen
 ::: health_check.contrib.rabbitmq.RabbitMQ
 
 ::: health_check.contrib.redis.Redis
+
+## Cloud Provider Status
+
+Monitor AWS service health using their public RSS status feeds.
+
+::: health_check.contrib.rss.AWS
