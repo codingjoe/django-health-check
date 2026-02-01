@@ -1,7 +1,8 @@
-"""RSS/Atom feed health checks for cloud provider status pages."""
+"""RSS feed health checks for cloud provider status pages."""
 
 import dataclasses
 import datetime
+import email.utils
 import logging
 import urllib.error
 import urllib.request
@@ -41,7 +42,7 @@ class AWS(HealthCheck):
         )
 
     def check_status(self):
-        """Check the RSS/Atom feed for incidents."""
+        """Check the RSS feed for incidents."""
         logger.debug("Fetching feed from %s", self.feed_url)
 
         request = urllib.request.Request(  # noqa: S310
@@ -80,19 +81,8 @@ class AWS(HealthCheck):
         logger.debug("No recent incidents found in RSS feed")
 
     def _extract_entries(self, root):
-        """Extract entries from RSS or Atom feed."""
-        # Try Atom format first
-        atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        if entries := root.findall("atom:entry", atom_ns):
-            return entries
-
-        # Try RSS 2.0 format
-        if entries := root.findall(".//item"):
-            return entries
-
-        # Try RSS 1.0 format
-        rss10_ns = {"rss": "http://purl.org/rss/1.0/"}
-        return root.findall("rss:item", rss10_ns)
+        """Extract entries from RSS 2.0 feed."""
+        return root.findall(".//item")
 
     def _is_recent_incident(self, entry):
         """Check if entry is a recent incident."""
@@ -104,41 +94,26 @@ class AWS(HealthCheck):
         return published_at > cutoff
 
     def _extract_date(self, entry):
-        """Extract publication date from entry."""
-        # Atom format
-        atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        date_text = (
-            (
-                (published := entry.find("atom:published", atom_ns)) is not None
-                and published.text
-            )
-            or (
-                (updated := entry.find("atom:updated", atom_ns)) is not None
-                and updated.text
-            )
-            or (
-                # RSS format
-                (pub_date := entry.find("pubDate")) is not None and pub_date.text
-            )
-            or None
-        )
+        """Extract publication date from RSS entry."""
+        if (pub_date := entry.find("pubDate")) is None:
+            return None
 
-        if date_text is None:
+        date_text = pub_date.text
+        if not date_text:
             return None
 
         try:
-            return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-        except ValueError:
+            parsed = email.utils.parsedate_to_datetime(date_text)
+        except (ValueError, TypeError):
             return None
 
-    def _extract_title(self, entry):
-        """Extract title from entry."""
-        # Atom format
-        atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        if (title := entry.find("atom:title", atom_ns)) is not None:
-            return title.text or "Untitled incident"
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
 
-        # RSS format
+        return parsed
+
+    def _extract_title(self, entry):
+        """Extract title from RSS entry."""
         if (title := entry.find("title")) is not None:
             return title.text or "Untitled incident"
 
