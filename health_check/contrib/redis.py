@@ -74,6 +74,12 @@ class RedisSentinel(HealthCheck):
         default_factory=dict, repr=False
     )
 
+    def __post_init__(self):
+        if not self.sentinels:
+            raise ValueError("At least one sentinel node must be provided.")
+        if not self.service_name:
+            raise ValueError("Service name must not be empty.")
+
     def check_status(self):
         logger.debug(
             "Connecting to Redis Sentinel nodes %s for service '%s'...",

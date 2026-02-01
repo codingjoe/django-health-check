@@ -206,3 +206,15 @@ class TestRedisSentinel:
             )
             with pytest.raises(ServiceUnavailable):
                 check.check_status()
+
+    def test_init__empty_sentinels(self):
+        """Raise ValueError when sentinels list is empty."""
+        with pytest.raises(
+            ValueError, match="At least one sentinel node must be provided"
+        ):
+            RedisSentinelHealthCheck(sentinels=[], service_name="mymaster")
+
+    def test_init__empty_service_name(self):
+        """Raise ValueError when service_name is empty."""
+        with pytest.raises(ValueError, match="Service name must not be empty"):
+            RedisSentinelHealthCheck(sentinels=[("localhost", 26379)], service_name="")
