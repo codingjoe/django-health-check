@@ -34,7 +34,9 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
                 check = AWS(region="us-east-1", service="ec2")
@@ -69,7 +71,9 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
@@ -100,7 +104,9 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
@@ -172,8 +178,6 @@ class TestAWS:
 
             assert "Failed to parse RSS feed" in str(exc_info.value)
 
-
-
     def test_extract_date__entry_without_date(self):
         """Entry without date is treated as recent incident."""
         rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -241,7 +245,9 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.rss.datetime", wraps=datetime) as mock_datetime:
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
@@ -250,7 +256,6 @@ class TestAWS:
                     check.check_status()
 
                 assert "Untitled incident" in str(exc_info.value)
-
 
     def test_feed_url_format(self):
         """Verify correct feed URL format for AWS."""
