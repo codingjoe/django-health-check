@@ -282,5 +282,6 @@ class TestAWS:
             pytest.skip("AWS_RSS_FEED_URL not set; skipping integration test")
 
         check = AWS(region="us-east-1", service="ec2")
-        with contextlib.suppress(ServiceWarning, ServiceUnavailable):
+        check.feed_url = aws_rss_feed_url
+        with contextlib.suppress(ServiceWarning):
             check.check_status()

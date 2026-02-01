@@ -61,7 +61,7 @@ class AWS(HealthCheck):
             raise ServiceUnavailable(f"Failed to fetch RSS feed: {e.reason}") from e
         except TimeoutError as e:
             raise ServiceUnavailable("RSS feed request timed out") from e
-        except Exception as e:
+        except BaseException as e:
             raise ServiceUnavailable("Unknown error fetching RSS feed") from e
 
         try:
