@@ -254,7 +254,7 @@ class HealthCheckView(TemplateView):
 
         return HttpResponse(
             content,
-            content_type="text/plain; version=0.0.4; charset=utf-8",
+            content_type="application/openmetrics-text; charset=utf-8",
             status=200,  # Prometheus expects 200 even if checks fail
         )
 

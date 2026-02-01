@@ -498,7 +498,7 @@ class TestHealthCheckView:
         assert "Accept" in rss_response.get("Vary", "")
 
     def test_get__openmetrics_format_parameter(self, health_check_view):
-        """Return OpenMetrics when format=prometheus."""
+        """Return OpenMetrics when format=openmetrics."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
