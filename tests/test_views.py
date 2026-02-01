@@ -222,7 +222,7 @@ class TestHealthCheckView:
         assert response.status_code == 406
         assert (
             response.content
-            == b"Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text, text/plain"
+            == b"Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text"
         )
 
     def test_get__unsupported_with_fallback(self, health_check_view):
@@ -457,14 +457,14 @@ class TestHealthCheckView:
             response.render()
         assert response.status_code == 200
 
-    def test_get__prometheus_format_parameter(self, health_check_view):
-        """Return Prometheus metrics when format=prometheus."""
+    def test_get__openmetrics_format_parameter(self, health_check_view):
+        """Return OpenMetrics when format=prometheus."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
                 pass
 
-        response = health_check_view([SuccessBackend], format_param="prometheus")
+        response = health_check_view([SuccessBackend], format_param="openmetrics")
         assert response.status_code == 200
         assert "text/plain" in response["content-type"]
         content = response.content.decode("utf-8")
@@ -472,8 +472,8 @@ class TestHealthCheckView:
         assert "django_health_check_response_time_seconds" in content
         assert "django_health_check_overall_status" in content
 
-    def test_get__prometheus_accept_header_openmetrics(self, health_check_view):
-        """Return Prometheus metrics when Accept header is application/openmetrics-text."""
+    def test_get__openmetrics_accept_header_openmetrics(self, health_check_view):
+        """Return OpenMetrics when Accept header is application/openmetrics-text."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
@@ -487,8 +487,8 @@ class TestHealthCheckView:
         content = response.content.decode("utf-8")
         assert "django_health_check_status" in content
 
-    def test_get__prometheus_accept_header_text_plain(self, health_check_view):
-        """Return Prometheus metrics when Accept header is text/plain."""
+    def test_get__openmetrics_accept_header_text_plain(self, health_check_view):
+        """Return OpenMetrics when Accept header is text/plain."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
@@ -500,14 +500,14 @@ class TestHealthCheckView:
         content = response.content.decode("utf-8")
         assert "django_health_check_status" in content
 
-    def test_get__prometheus_healthy_status(self, health_check_view):
-        """Prometheus metrics show healthy status when all checks pass."""
+    def test_get__openmetrics_healthy_status(self, health_check_view):
+        """OpenMetrics show healthy status when all checks pass."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
                 pass
 
-        response = health_check_view([SuccessBackend], format_param="prometheus")
+        response = health_check_view([SuccessBackend], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that status metric is 1 (healthy)
         assert "SuccessBackend" in content
@@ -516,14 +516,14 @@ class TestHealthCheckView:
         # Check that overall status is 1 (all healthy)
         assert "django_health_check_overall_status 1" in content
 
-    def test_get__prometheus_unhealthy_status(self, health_check_view):
-        """Prometheus metrics show unhealthy status when check fails."""
+    def test_get__openmetrics_unhealthy_status(self, health_check_view):
+        """OpenMetrics show unhealthy status when check fails."""
 
         class FailingBackend(HealthCheck):
             def check_status(self):
                 raise HealthCheckException("Check failed")
 
-        response = health_check_view([FailingBackend], format_param="prometheus")
+        response = health_check_view([FailingBackend], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that status metric is 0 (unhealthy)
         assert "FailingBackend" in content
@@ -532,21 +532,21 @@ class TestHealthCheckView:
         # Check that overall status is 0 (at least one unhealthy)
         assert "django_health_check_overall_status 0" in content
 
-    def test_get__prometheus_response_time(self, health_check_view):
-        """Prometheus metrics include response time."""
+    def test_get__openmetrics_response_time(self, health_check_view):
+        """OpenMetrics include response time."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
                 pass
 
-        response = health_check_view([SuccessBackend], format_param="prometheus")
+        response = health_check_view([SuccessBackend], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that response time metric exists
         assert "django_health_check_response_time_seconds" in content
         assert "SuccessBackend" in content
 
-    def test_get__prometheus_multiple_checks(self, health_check_view):
-        """Prometheus metrics handle multiple checks correctly."""
+    def test_get__openmetrics_multiple_checks(self, health_check_view):
+        """OpenMetrics handle multiple checks correctly."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
@@ -557,7 +557,7 @@ class TestHealthCheckView:
                 raise HealthCheckException("Failed")
 
         response = health_check_view(
-            [SuccessBackend, FailingBackend], format_param="prometheus"
+            [SuccessBackend, FailingBackend], format_param="openmetrics"
         )
         content = response.content.decode("utf-8")
         # Check that both checks are represented
@@ -568,8 +568,8 @@ class TestHealthCheckView:
         status_lines = [line for line in lines if "django_health_check_status{" in line]
         assert len(status_lines) == 2
 
-    def test_get__prometheus_label_sanitization(self, health_check_view):
-        """Prometheus metrics sanitize labels with special characters."""
+    def test_get__openmetrics_label_sanitization(self, health_check_view):
+        """OpenMetrics sanitize labels with special characters."""
 
         @dataclasses.dataclass
         class CustomCheck(HealthCheck):
@@ -579,19 +579,19 @@ class TestHealthCheckView:
             def __repr__(self):
                 return "Custom-Check.Backend Test"
 
-        response = health_check_view([CustomCheck], format_param="prometheus")
+        response = health_check_view([CustomCheck], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that special characters are replaced with underscores
         assert "Custom_Check_Backend_Test" in content
 
-    def test_get__prometheus_metadata(self, health_check_view):
-        """Prometheus metrics include proper HELP and TYPE metadata."""
+    def test_get__openmetrics_metadata(self, health_check_view):
+        """OpenMetrics include proper HELP and TYPE metadata."""
 
         class SuccessBackend(HealthCheck):
             def check_status(self):
                 pass
 
-        response = health_check_view([SuccessBackend], format_param="prometheus")
+        response = health_check_view([SuccessBackend], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check for proper metadata
         assert "# HELP django_health_check_status" in content

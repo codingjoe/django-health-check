@@ -6,6 +6,9 @@ Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
 > [!TIP]
 > The health check command does not require curl or any HTTP client in your container image.
 
+> [!TIP]
+> For Prometheus users: The health check endpoint supports OpenMetrics format via `?format=openmetrics` for metrics scraping.
+
 ## Container Health Check Endpoint
 
 You may want to limit the checks performed by the health check command to a subset of all available checks.

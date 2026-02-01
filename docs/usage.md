@@ -7,10 +7,7 @@ monitor service status. The `/health/` endpoint will respond with an HTTP
 200 if all checks passed and with an HTTP 500 if any of the tests
 failed.
 
-For integration with Prometheus, Grafana, and other monitoring platforms,
-see the [Monitoring Integration](monitoring.md) guide.
-
-## Getting machine-readable JSON reports
+## Getting machine-readable reports
 
 If you want machine-readable status reports you can request the `/health/`
 endpoint with the `Accept` HTTP header set to `application/json` or pass
@@ -48,6 +45,16 @@ $ curl -v -X GET http://www.example.com/health/?format=json
     "S3BotoStorageHealthCheck": "working"
 }
 ```
+
+### OpenMetrics for Prometheus
+
+For Prometheus monitoring, you can request OpenMetrics format:
+
+```shell
+$ curl http://www.example.com/health/?format=openmetrics
+```
+
+This will return metrics in the OpenMetrics exposition format, which can be scraped by Prometheus.
 
 ## Writing a custom health check
 

@@ -157,8 +157,8 @@ class HealthCheckView(TemplateView):
             return self.render_to_response_atom(status_code)
         elif format_override == "rss":
             return self.render_to_response_rss(status_code)
-        elif format_override == "prometheus":
-            return self.render_to_response_prometheus(status_code)
+        elif format_override == "openmetrics":
+            return self.render_to_response_openmetrics(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -173,11 +173,11 @@ class HealthCheckView(TemplateView):
                 case "application/rss+xml":
                     return self.render_to_response_rss(status_code)
                 case "application/openmetrics-text":
-                    return self.render_to_response_prometheus(status_code)
+                    return self.render_to_response_openmetrics(status_code)
                 case "text/plain":
-                    return self.render_to_response_prometheus(status_code)
+                    return self.render_to_response_openmetrics(status_code)
         return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text, text/plain",
+            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
             status=406,
             content_type="text/plain",
         )
@@ -204,8 +204,8 @@ class HealthCheckView(TemplateView):
         """Return RSS 2.0 feed response with health check results."""
         return self._render_feed(Rss201rev2Feed, status)
 
-    def render_to_response_prometheus(self, status):
-        """Return Prometheus metrics response with health check results."""
+    def render_to_response_openmetrics(self, status):
+        """Return OpenMetrics response with health check results."""
         lines = []
 
         # Add metadata
