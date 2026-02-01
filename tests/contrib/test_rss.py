@@ -225,6 +225,39 @@ class TestAWS:
 
             assert "Incident with bad date" in str(exc_info.value)
 
+    def test_extract_date__naive_datetime_normalized_to_utc(self):
+        """Entry with naive datetime (no timezone) is normalized to UTC."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Recent incident without timezone</title>
+      <pubDate>Mon, 01 Jan 2024 00:00:00</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock.MagicMock()
+            mock_response.read.return_value = rss_content
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+
+                check = AWS(region="us-east-1", service="ec2")
+                with pytest.raises(ServiceWarning) as exc_info:
+                    check.check_status()
+
+                assert "Recent incident without timezone" in str(exc_info.value)
+
     def test_extract_title__entry_without_title(self):
         """Entry without title shows 'Untitled incident'."""
         rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>

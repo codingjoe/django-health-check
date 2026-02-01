@@ -98,7 +98,11 @@ class AWS(HealthCheck):
         pub_date = entry.find("pubDate")
         if pub_date is not None and (date_text := pub_date.text):
             try:
-                return email.utils.parsedate_to_datetime(date_text)
+                published_at = email.utils.parsedate_to_datetime(date_text)
+                # Normalize naive datetimes to UTC to avoid comparison errors
+                if published_at.tzinfo is None:
+                    published_at = published_at.replace(tzinfo=datetime.timezone.utc)
+                return published_at
             except (ValueError, TypeError):
                 pass
 
