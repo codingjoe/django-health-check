@@ -6,7 +6,6 @@ import logging
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET  # noqa: S405
-from collections.abc import Callable
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -20,22 +19,17 @@ class RSSFeed(HealthCheck):
     Check service status by parsing an RSS or Atom feed.
 
     Args:
-        feed_url: The URL of the RSS/Atom feed to check.
         timeout: Timeout duration for the HTTP request.
         max_age: Maximum age for incidents to be considered current.
-        is_incident: Custom function to determine if an entry is an incident.
 
     """
 
-    feed_url: str = dataclasses.field(default="", repr=False)
+    feed_url: str
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
     max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-    is_incident: Callable[[ET.Element], bool] = dataclasses.field(
-        default=lambda _: False, repr=False
+        default=datetime.timedelta(hours=2), repr=False
     )
 
     def check_status(self):
@@ -78,25 +72,35 @@ class RSSFeed(HealthCheck):
 
         logger.debug("No recent incidents found in RSS feed")
 
+    def is_incident(self, entry: ET.Element) -> bool:
+        """
+        Determine if an entry represents an incident.
+
+        Subclasses should override this method to implement custom incident detection.
+
+        Args:
+            entry: The RSS/Atom feed entry element.
+
+        Returns:
+            True if the entry represents an incident, False otherwise.
+
+        """
+        return False
+
     def _extract_entries(self, root):
         """Extract entries from RSS or Atom feed."""
-        # Atom namespace
-        atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-
         # Try Atom format first
-        entries = root.findall("atom:entry", atom_ns)
-        if entries:
+        atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
+        if entries := root.findall("atom:entry", atom_ns):
             return entries
 
         # Try RSS 2.0 format
-        entries = root.findall(".//item")
-        if entries:
+        if entries := root.findall(".//item"):
             return entries
 
         # Try RSS 1.0 format
         rss10_ns = {"rss": "http://purl.org/rss/1.0/"}
-        entries = root.findall("rss:item", rss10_ns)
-        return entries
+        return root.findall("rss:item", rss10_ns)
 
     def _is_recent_incident(self, entry):
         """Check if entry is a recent incident."""
@@ -114,43 +118,33 @@ class RSSFeed(HealthCheck):
         """Extract publication date from entry."""
         # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        published = entry.find("atom:published", atom_ns)
-        updated = entry.find("atom:updated", atom_ns)
-
-        date_text = None
-        if published is not None and published.text:
-            date_text = published.text
-        elif updated is not None and updated.text:
-            date_text = updated.text
-
-        # RSS format
-        if not date_text:
-            pubDate = entry.find("pubDate")
-            if pubDate is not None and pubDate.text:
-                date_text = pubDate.text
-
-        if not date_text:
-            return None
-
-        try:
-            return datetime.datetime.fromisoformat(
-                date_text.replace("Z", "+00:00")
-            )
-        except ValueError:
-            return None
+        if (
+            (published := entry.find("atom:published", atom_ns)) is not None
+            and (date_text := published.text)
+        ) or (
+            (updated := entry.find("atom:updated", atom_ns)) is not None
+            and (date_text := updated.text)
+        ) or (
+            # RSS format
+            (pub_date := entry.find("pubDate")) is not None
+            and (date_text := pub_date.text)
+        ):
+            try:
+                return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+        return None
 
     def _extract_title(self, entry):
         """Extract title from entry."""
         # Atom format
         atom_ns = {"atom": "http://www.w3.org/2005/Atom"}
-        title = entry.find("atom:title", atom_ns)
-        if title is not None and title.text:
-            return title.text
+        if (title := entry.find("atom:title", atom_ns)) is not None:
+            return title.text or "Untitled incident"
 
         # RSS format
-        title = entry.find("title")
-        if title is not None and title.text:
-            return title.text
+        if (title := entry.find("title")) is not None:
+            return title.text or "Untitled incident"
 
         return "Untitled incident"
 
@@ -158,7 +152,17 @@ class RSSFeed(HealthCheck):
 @dataclasses.dataclass
 class GoogleCloudStatus(RSSFeed):
     """
-    Check Google Cloud Platform service status.
+    Proxy for Google Cloud Platform service status.
+
+    Checks the current operational status of Google Cloud services
+    by parsing their public status feed.
+
+    Example:
+        >>> check = GoogleCloudStatus()
+        >>> check.run_check()  # Check all services
+        >>> # Or filter by specific service:
+        >>> check = GoogleCloudStatus(service_name="Compute Engine")
+        >>> check.run_check()
 
     Args:
         service_name: Optional service name to filter incidents.
@@ -166,14 +170,12 @@ class GoogleCloudStatus(RSSFeed):
 
     """
 
+    feed_url: str = dataclasses.field(
+        default="https://status.cloud.google.com/en/feed.atom", init=False, repr=False
+    )
     service_name: str | None = None
 
-    def __post_init__(self):
-        """Initialize feed URL and incident detector."""
-        self.feed_url = "https://status.cloud.google.com/en/feed.atom"
-        self.is_incident = self._detect_google_incident
-
-    def _detect_google_incident(self, entry):
+    def is_incident(self, entry: ET.Element) -> bool:
         """Detect if entry is an incident for Google Cloud."""
         title = self._extract_title(entry)
         title_lower = title.lower()
@@ -190,27 +192,30 @@ class GoogleCloudStatus(RSSFeed):
 @dataclasses.dataclass
 class AWSServiceStatus(RSSFeed):
     """
-    Check AWS service status for a specific region and service.
+    Proxy for AWS service status.
+
+    Checks the current operational status of specific AWS services
+    in a given region by parsing their public status feed.
 
     Args:
-        service: AWS service name (e.g., 'ec2', 's3', 'rds').
         region: AWS region code (e.g., 'us-east-1', 'eu-west-1').
+        service: AWS service name (e.g., 'ec2', 's3', 'rds').
 
     """
 
-    service: str = ""
+    feed_url: str = dataclasses.field(default="", init=False, repr=False)
     region: str = ""
+    service: str = ""
 
     def __post_init__(self):
-        """Initialize feed URL and incident detector."""
-        if not self.service or not self.region:
-            raise ValueError("Both 'service' and 'region' are required")
+        """Initialize feed URL."""
+        if not self.region or not self.service:
+            raise ValueError("Both 'region' and 'service' are required")
         self.feed_url = (
             f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
         )
-        self.is_incident = self._detect_aws_incident
 
-    def _detect_aws_incident(self, entry):
+    def is_incident(self, entry: ET.Element) -> bool:
         """Detect if entry is an incident for AWS."""
         title = self._extract_title(entry)
         title_lower = title.lower()
@@ -234,7 +239,10 @@ class AWSServiceStatus(RSSFeed):
 @dataclasses.dataclass
 class AzureStatus(RSSFeed):
     """
-    Check Microsoft Azure service status.
+    Proxy for Microsoft Azure service status.
+
+    Checks the current operational status of Azure services
+    by parsing their public status feed.
 
     Args:
         service_name: Optional service name to filter incidents.
@@ -242,14 +250,14 @@ class AzureStatus(RSSFeed):
 
     """
 
+    feed_url: str = dataclasses.field(
+        default="https://rssfeed.azure.status.microsoft.com/en-us/status/feed/",
+        init=False,
+        repr=False,
+    )
     service_name: str | None = None
 
-    def __post_init__(self):
-        """Initialize feed URL and incident detector."""
-        self.feed_url = "https://rssfeed.azure.status.microsoft.com/en-us/status/feed/"
-        self.is_incident = self._detect_azure_incident
-
-    def _detect_azure_incident(self, entry):
+    def is_incident(self, entry: ET.Element) -> bool:
         """Detect if entry is an incident for Azure."""
         title = self._extract_title(entry)
         title_lower = title.lower()

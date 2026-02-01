@@ -1,6 +1,7 @@
 """Tests for RSS/Atom feed health checks."""
 
 import contextlib
+import dataclasses
 import datetime
 from unittest import mock
 
@@ -37,10 +38,16 @@ class TestRSSFeed:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            check = RSSFeed(
-                feed_url="https://example.com/status.rss",
-                is_incident=lambda entry: False,
-            )
+            @dataclasses.dataclass
+            class TestFeed(RSSFeed):
+                feed_url: str = dataclasses.field(
+                    default="https://example.com/status.rss", init=False
+                )
+
+                def is_incident(self, entry):
+                    return False
+
+            check = TestFeed()
             check.check_status()
             assert check.errors == []
 
@@ -61,10 +68,16 @@ class TestRSSFeed:
             mock_response.__enter__.return_value = mock_response
             mock_urlopen.return_value = mock_response
 
-            check = RSSFeed(
-                feed_url="https://example.com/status.atom",
-                is_incident=lambda entry: False,
-            )
+            @dataclasses.dataclass
+            class TestFeed(RSSFeed):
+                feed_url: str = dataclasses.field(
+                    default="https://example.com/status.atom", init=False
+                )
+
+                def is_incident(self, entry):
+                    return False
+
+            check = TestFeed()
             check.check_status()
             assert check.errors == []
 
@@ -93,10 +106,16 @@ class TestRSSFeed:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = RSSFeed(
-                    feed_url="https://example.com/status.rss",
-                    is_incident=lambda entry: True,
-                )
+                @dataclasses.dataclass
+                class TestFeed(RSSFeed):
+                    feed_url: str = dataclasses.field(
+                        default="https://example.com/status.rss", init=False
+                    )
+
+                    def is_incident(self, entry):
+                        return True
+
+                check = TestFeed()
 
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
@@ -129,11 +148,16 @@ class TestRSSFeed:
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
 
-                check = RSSFeed(
-                    feed_url="https://example.com/status.rss",
-                    is_incident=lambda entry: True,
-                    max_age=datetime.timedelta(days=1),
-                )
+                @dataclasses.dataclass
+                class TestFeed(RSSFeed):
+                    feed_url: str = dataclasses.field(
+                        default="https://example.com/status.rss", init=False
+                    )
+
+                    def is_incident(self, entry):
+                        return True
+
+                check = TestFeed(max_age=datetime.timedelta(days=1))
                 check.check_status()
                 assert check.errors == []
 
@@ -316,7 +340,7 @@ class TestAWSServiceStatus:
             mock_urlopen.return_value = mock_response
 
             # Normal operation message should not trigger incident
-            check = AWSServiceStatus(service="ec2", region="us-east-1")
+            check = AWSServiceStatus(region="us-east-1", service="ec2")
             check.check_status()
             assert check.errors == []
 
@@ -345,7 +369,7 @@ class TestAWSServiceStatus:
                 mock_datetime.timezone = datetime.timezone
 
                 # Error in title should trigger incident
-                check = AWSServiceStatus(service="ec2", region="us-east-1")
+                check = AWSServiceStatus(region="us-east-1", service="ec2")
                 with pytest.raises(ServiceWarning) as exc_info:
                     check.check_status()
 
@@ -370,19 +394,19 @@ class TestAWSServiceStatus:
             mock_urlopen.return_value = mock_response
 
             # Resolved incidents should not trigger warning
-            check = AWSServiceStatus(service="ec2", region="us-east-1")
+            check = AWSServiceStatus(region="us-east-1", service="ec2")
             check.check_status()
             assert check.errors == []
 
     def test_feed_url_format(self):
         """Verify correct feed URL format for AWS."""
-        check = AWSServiceStatus(service="s3", region="eu-west-1")
+        check = AWSServiceStatus(region="eu-west-1", service="s3")
         assert check.feed_url == "https://status.aws.amazon.com/rss/s3-eu-west-1.rss"
 
     @pytest.mark.integration
     def test_check_status__live_endpoint(self):
         """Fetch and parse live AWS status feed."""
-        check = AWSServiceStatus(service="ec2", region="us-east-1")
+        check = AWSServiceStatus(region="us-east-1", service="ec2")
         with contextlib.suppress(ServiceWarning, ServiceUnavailable):
             # Incidents may be present; network may not be available in test env
             check.check_status()

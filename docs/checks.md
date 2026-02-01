@@ -32,8 +32,6 @@ To use the checks, you will need to install and set up their corresponding depen
 
 Monitor cloud provider service health using their public RSS/Atom status feeds.
 
-::: health_check.contrib.rss.RSSFeed
-
 ::: health_check.contrib.rss.GoogleCloudStatus
 
 ::: health_check.contrib.rss.AWSServiceStatus
