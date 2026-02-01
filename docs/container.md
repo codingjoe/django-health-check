@@ -4,7 +4,7 @@ Django HealthCheck can be integrated into various container orchestration system
 Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
 
 > [!TIP]
-> The health check command does not require curl/wget to minize your container image.
+> The health check command does not require curl/wget to minimize your container image.
 
 ## Container Health Check Endpoint
 

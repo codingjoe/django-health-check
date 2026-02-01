@@ -250,6 +250,7 @@ class HealthCheckView(TemplateView):
         lines.append("# TYPE django_health_check_overall_status gauge")
         overall_status = 1 if status == 200 else 0
         lines.append(f"django_health_check_overall_status {overall_status}")
+        lines.append("# EOF")
 
         content = "\n".join(lines) + "\n"
 
