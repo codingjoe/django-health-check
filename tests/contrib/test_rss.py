@@ -34,7 +34,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -71,7 +71,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -104,7 +104,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -196,7 +196,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -227,7 +227,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -306,7 +306,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
@@ -336,7 +336,7 @@ class TestAWS:
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
             )
-            with mock.patch("health_check.contrib.aws.datetime") as mock_datetime:
+            with mock.patch("health_check.contrib.rss.datetime") as mock_datetime:
                 mock_datetime.datetime.now.return_value = mock_now
                 mock_datetime.datetime.fromisoformat = datetime.datetime.fromisoformat
                 mock_datetime.timezone = datetime.timezone
