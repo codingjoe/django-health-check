@@ -95,22 +95,16 @@ class AWS(HealthCheck):
 
     def _extract_date(self, entry):
         """Extract publication date from RSS entry."""
-        if (pub_date := entry.find("pubDate")) is None:
-            return None
-
-        date_text = pub_date.text
-        if not date_text:
-            return None
-
-        try:
-            parsed = email.utils.parsedate_to_datetime(date_text)
-        except (ValueError, TypeError):
-            return None
-
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
-
-        return parsed
+        pub_date = entry.find("pubDate")
+        if pub_date is not None and (date_text := pub_date.text):
+            try:
+                parsed = email.utils.parsedate_to_datetime(date_text)
+            except (ValueError, TypeError):
+                return None
+            else:
+                if not parsed.tzinfo:
+                    parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+                return parsed
 
     def _extract_title(self, entry):
         """Extract title from RSS entry."""
