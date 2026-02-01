@@ -7,6 +7,7 @@ from functools import cached_property
 from django.db import connections, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
@@ -89,7 +90,6 @@ class MediaType:
         return self.weight.__lt__(other.weight)
 
 
-@method_decorator(transaction.non_atomic_requests, name="dispatch")
 class HealthCheckView(TemplateView):
     """Perform health checks and return results in various formats."""
 
@@ -145,6 +145,12 @@ class HealthCheckView(TemplateView):
                 _collect_errors(result)
         return errors
 
+    @method_decorator(transaction.non_atomic_requests)
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        patch_vary_headers(response, ["Accept"])
+        return response
+
     @method_decorator(never_cache)
     def get(self, request, *args, **kwargs):
         health_check_has_error = self.run_check()
@@ -157,6 +163,8 @@ class HealthCheckView(TemplateView):
             return self.render_to_response_atom(status_code)
         elif format_override == "rss":
             return self.render_to_response_rss(status_code)
+        elif format_override == "openmetrics":
+            return self.render_to_response_openmetrics(status_code)
 
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
@@ -170,8 +178,10 @@ class HealthCheckView(TemplateView):
                     return self.render_to_response_atom(status_code)
                 case "application/rss+xml":
                     return self.render_to_response_rss(status_code)
+                case "application/openmetrics-text":
+                    return self.render_to_response_openmetrics(status_code)
         return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml",
+            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
             status=406,
             content_type="text/plain",
         )
@@ -197,6 +207,70 @@ class HealthCheckView(TemplateView):
     def render_to_response_rss(self, status):
         """Return RSS 2.0 feed response with health check results."""
         return self._render_feed(Rss201rev2Feed, status)
+
+    def _escape_openmetrics_label_value(self, value):
+        r"""
+        Escape label value according to OpenMetrics specification.
+
+        Escapes backslashes, double quotes, and newlines as required by the spec:
+        - Backslash (\) -> \\
+        - Double quote (") -> \"
+        - Line feed (\n) -> \n
+        """
+        # Order matters: escape backslashes first to avoid double-escaping
+        value = value.replace("\\", "\\\\")
+        value = value.replace('"', '\\"')
+        value = value.replace("\n", "\\n")
+        return value
+
+    def render_to_response_openmetrics(self, status):
+        """Return OpenMetrics response with health check results."""
+        lines = []
+
+        # Add metadata
+        lines.append(
+            "# HELP django_health_check_status Health check status (1 = healthy, 0 = unhealthy)"
+        )
+        lines.append("# TYPE django_health_check_status gauge")
+
+        # Add status metrics for each check
+        for label, result in self.results.items():
+            safe_label = self._escape_openmetrics_label_value(label)
+            status_value = 1 if not result.errors else 0
+            lines.append(
+                f'django_health_check_status{{check="{safe_label}"}} {status_value}'
+            )
+
+        # Add response time metrics
+        lines.append("")
+        lines.append(
+            "# HELP django_health_check_response_time_seconds Health check response time in seconds"
+        )
+        lines.append("# TYPE django_health_check_response_time_seconds gauge")
+
+        for label, result in self.results.items():
+            safe_label = self._escape_openmetrics_label_value(label)
+            lines.append(
+                f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
+            )
+
+        # Add overall health status
+        lines.append("")
+        lines.append(
+            "# HELP django_health_check_overall_status Overall health check status (1 = all healthy, 0 = at least one unhealthy)"
+        )
+        lines.append("# TYPE django_health_check_overall_status gauge")
+        overall_status = 1 if status == 200 else 0
+        lines.append(f"django_health_check_overall_status {overall_status}")
+        lines.append("# EOF")
+
+        content = "\n".join(lines) + "\n"
+
+        return HttpResponse(
+            content,
+            content_type="application/openmetrics-text; charset=utf-8",
+            status=200,  # Prometheus expects 200 even if checks fail
+        )
 
     def _render_feed(self, feed_class, status):
         """Generate RSS or Atom feed with health check results."""
