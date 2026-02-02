@@ -1,9 +1,11 @@
 import dataclasses
 import logging
 import typing
+import warnings
 
 from django.conf import settings
-from redis import exceptions, from_url
+from redis import Redis as RedisClient
+from redis import RedisCluster, exceptions
 
 from health_check.backends import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -14,27 +16,53 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class RedisHealthCheck(HealthCheck):
     """
-    Check Redis service by pinging the redis instance with a redis connection.
+    Check Redis service by pinging a Redis client.
+
+    This check works with any Redis client that implements the ping() method,
+    including standard Redis, Sentinel, and Cluster clients.
 
     Args:
-        redis_url: The Redis connection URL.
-        redis_url_options: Additional options for the Redis connection.
+        client: A Redis client instance (Redis, Sentinel master, or Cluster).
+                If provided, this takes precedence over redis_url.
+        redis_url: (Deprecated) The Redis connection URL.
+                   Use the 'client' parameter instead.
+        redis_url_options: (Deprecated) Additional options for the Redis connection.
+                           Use the 'client' parameter instead.
+
+    Examples:
+        Using a standard Redis client:
+        >>> from redis import Redis as RedisClient
+        >>> Redis(client=RedisClient(host='localhost', port=6379))
+
+        Using a Cluster client:
+        >>> from redis.cluster import RedisCluster
+        >>> Redis(client=RedisCluster(host='localhost', port=7000))
+
+        Using a Sentinel client:
+        >>> from redis.sentinel import Sentinel
+        >>> sentinel = Sentinel([('localhost', 26379)])
+        >>> Redis(client=sentinel.master_for('mymaster'))
 
     """
 
+    client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
     redis_url: str = dataclasses.field(default=getattr(settings, "REDIS_URL", "redis://localhost/1"), repr=False)
     redis_url_options: dict[str, typing.Any] = dataclasses.field(
         default=getattr(settings, "HEALTHCHECK_REDIS_URL_OPTIONS", None), repr=False
     )
 
-    def check_status(self):
-        logger.debug("Got %s as the redis_url. Connecting to redis...", self.redis_url)
+    def __post_init__(self):
+        if not self.client:
+            warnings.warn(
+                "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
+                DeprecationWarning,
+            )
+            self.client = RedisClient.from_url(self.redis_url, **self.redis_url_options)
 
-        logger.debug("Attempting to connect to redis...")
+    def check_status(self):
+        logger.debug("Pinging Redis client...")
         try:
-            # conn is used as a context to release opened resources later
-            with from_url(self.redis_url, **(self.redis_url_options or {})) as conn:
-                conn.ping()  # exceptions may be raised upon ping
+            self.client.ping()
         except ConnectionRefusedError as e:
             self.add_error(
                 ServiceUnavailable("Unable to connect to Redis: Connection was refused."),
@@ -45,6 +73,8 @@ class RedisHealthCheck(HealthCheck):
         except exceptions.ConnectionError as e:
             self.add_error(ServiceUnavailable("Unable to connect to Redis: Connection Error"), e)
         except BaseException as e:
-            self.add_error(ServiceUnavailable("Unknown error"), e)
+            self.add_error(ServiceUnavailable("Unknown error."), e)
         else:
             logger.debug("Connection established. Redis is healthy.")
+        finally:
+            self.client.close()
