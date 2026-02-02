@@ -51,10 +51,7 @@ class Command(BaseCommand):
             label, sep, message = line.partition(": ")
             if not sep:
                 continue
-            if message == "OK":
-                style_func = self.style.SUCCESS
-            else:
-                style_func = self.style.ERROR
+            style_func = self.style.SUCCESS if message == "OK" else self.style.ERROR
             self.stdout.write(f"{label:<50} {style_func(message)}\n")
 
         if status_code != 200:
