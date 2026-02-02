@@ -6,7 +6,7 @@ import typing
 import warnings
 
 from redis import Redis as RedisClient
-from redis import RedisCluster, exceptions, from_url
+from redis import RedisCluster, exceptions
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -59,7 +59,7 @@ class Redis(HealthCheck):
                 "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
                 DeprecationWarning,
             )
-            self.client = from_url(self.redis_url, **self.redis_url_options)
+            self.client = RedisClient.from_url(self.redis_url, **self.redis_url_options)
 
     def check_status(self):
         logger.debug("Pinging Redis client...")
@@ -79,3 +79,5 @@ class Redis(HealthCheck):
             raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
+        finally:
+            self.client.close()

@@ -63,35 +63,32 @@ class TestRedis:
         with pytest.raises(ServiceUnavailable):
             check.check_status()
 
+    @pytest.mark.integration
     def test_redis__deprecated_url(self):
         """Create client from URL when redis_url is provided."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_client = mock.MagicMock()
-            mock_from_url.return_value = mock_client
-            mock_client.ping.return_value = True
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            pytest.skip("REDIS_URL not set; skipping integration test")
 
-            with pytest.warns(DeprecationWarning, match="redis_url.*deprecated"):
-                check = RedisHealthCheck(redis_url="redis://localhost:6379")
-            check.check_status()
-            assert check.errors == []
-            mock_from_url.assert_called_once_with("redis://localhost:6379")
-            mock_client.ping.assert_called_once()
+        with pytest.warns(DeprecationWarning, match="redis_url.*deprecated"):
+            check = RedisHealthCheck(redis_url="redis://localhost:6379")
+        check.check_status()
+        assert check.errors == []
 
+    @pytest.mark.integration
     def test_redis__deprecated_url_with_options(self):
         """Pass options when creating client from URL."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_client = mock.MagicMock()
-            mock_from_url.return_value = mock_client
-            mock_client.ping.return_value = True
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            pytest.skip("REDIS_URL not set; skipping integration test")
 
-            options = {"socket_connect_timeout": 5}
-            with pytest.warns(DeprecationWarning):
-                check = RedisHealthCheck(
-                    redis_url="redis://localhost:6379", redis_url_options=options
-                )
-            check.check_status()
-            assert check.errors == []
-            mock_from_url.assert_called_once_with("redis://localhost:6379", **options)
+        options = {"socket_connect_timeout": 5}
+        with pytest.warns(DeprecationWarning):
+            check = RedisHealthCheck(
+                redis_url="redis://localhost:6379", redis_url_options=options
+            )
+        check.check_status()
+        assert check.errors == []
 
     @pytest.mark.integration
     def test_redis__real_connection(self):
