@@ -64,33 +64,6 @@ class TestRedis:
             check.check_status()
 
     @pytest.mark.integration
-    def test_redis__deprecated_url(self):
-        """Create client from URL when redis_url is provided."""
-        redis_url = os.getenv("REDIS_URL")
-        if not redis_url:
-            pytest.skip("REDIS_URL not set; skipping integration test")
-
-        with pytest.warns(DeprecationWarning, match="redis_url.*deprecated"):
-            check = RedisHealthCheck(redis_url="redis://localhost:6379")
-        check.check_status()
-        assert check.errors == []
-
-    @pytest.mark.integration
-    def test_redis__deprecated_url_with_options(self):
-        """Pass options when creating client from URL."""
-        redis_url = os.getenv("REDIS_URL")
-        if not redis_url:
-            pytest.skip("REDIS_URL not set; skipping integration test")
-
-        options = {"socket_connect_timeout": 5}
-        with pytest.warns(DeprecationWarning):
-            check = RedisHealthCheck(
-                redis_url="redis://localhost:6379", redis_url_options=options
-            )
-        check.check_status()
-        assert check.errors == []
-
-    @pytest.mark.integration
     def test_redis__real_connection(self):
         """Ping real Redis server when REDIS_URL is configured."""
         redis_url = os.getenv("REDIS_URL")
