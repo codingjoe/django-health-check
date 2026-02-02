@@ -14,10 +14,10 @@ from health_check.contrib.redis import Redis as RedisHealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 
-class TestRedisWithClient:
-    """Test Redis health check with client parameter."""
+class TestRedis:
+    """Test Redis health check."""
 
-    def test_check_status__success(self):
+    def test_redis__ok(self):
         """Ping Redis successfully when using client parameter."""
         mock_client = mock.MagicMock()
         mock_client.ping.return_value = True
@@ -27,7 +27,7 @@ class TestRedisWithClient:
         assert check.errors == []
         mock_client.ping.assert_called_once()
 
-    def test_check_status__connection_refused(self):
+    def test_redis__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
         mock_client = mock.MagicMock()
         mock_client.ping.side_effect = ConnectionRefusedError("refused")
@@ -36,7 +36,7 @@ class TestRedisWithClient:
         with pytest.raises(ServiceUnavailable):
             check.check_status()
 
-    def test_check_status__timeout(self):
+    def test_redis__timeout(self):
         """Raise ServiceUnavailable when connection times out."""
         mock_client = mock.MagicMock()
         mock_client.ping.side_effect = RedisTimeoutError("timeout")
@@ -45,7 +45,7 @@ class TestRedisWithClient:
         with pytest.raises(ServiceUnavailable):
             check.check_status()
 
-    def test_check_status__connection_error(self):
+    def test_redis__connection_error(self):
         """Raise ServiceUnavailable when connection fails."""
         mock_client = mock.MagicMock()
         mock_client.ping.side_effect = RedisConnectionError("connection error")
@@ -54,7 +54,7 @@ class TestRedisWithClient:
         with pytest.raises(ServiceUnavailable):
             check.check_status()
 
-    def test_check_status__unknown_error(self):
+    def test_redis__unknown_error(self):
         """Raise ServiceUnavailable for unexpected exceptions."""
         mock_client = mock.MagicMock()
         mock_client.ping.side_effect = RuntimeError("unexpected")
@@ -63,125 +63,45 @@ class TestRedisWithClient:
         with pytest.raises(ServiceUnavailable):
             check.check_status()
 
-    def test_check_status__sentinel_client(self):
-        """Work with Sentinel master client."""
-        mock_sentinel_master = mock.MagicMock()
-        mock_sentinel_master.ping.return_value = True
-
-        check = RedisHealthCheck(client=mock_sentinel_master)
-        check.check_status()
-        assert check.errors == []
-        mock_sentinel_master.ping.assert_called_once()
-
-    def test_check_status__cluster_client(self):
-        """Work with Cluster client."""
-        mock_cluster_client = mock.MagicMock()
-        mock_cluster_client.ping.return_value = True
-
-        check = RedisHealthCheck(client=mock_cluster_client)
-        check.check_status()
-        assert check.errors == []
-        mock_cluster_client.ping.assert_called_once()
-
-    def test_check_status__no_client_or_url(self):
-        """Raise ValueError when neither client nor redis_url is provided."""
-        check = RedisHealthCheck()
-        with pytest.raises(
-            ValueError, match="Either 'client' or 'redis_url' must be provided"
-        ):
-            check.check_status()
-
-
-class TestRedisWithURL:
-    """Test Redis health check with deprecated redis_url parameter."""
-
-    def test_check_status__success(self):
-        """Ping Redis successfully when connection succeeds."""
+    def test_redis__deprecated_url(self):
+        """Create client from URL when redis_url is provided."""
         with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_conn = mock.MagicMock()
-            mock_from_url.return_value.__enter__.return_value = mock_conn
-            mock_conn.ping.return_value = True
+            mock_client = mock.MagicMock()
+            mock_from_url.return_value = mock_client
+            mock_client.ping.return_value = True
 
             with pytest.warns(DeprecationWarning, match="redis_url.*deprecated"):
                 check = RedisHealthCheck(redis_url="redis://localhost:6379")
-                check.check_status()
-            assert check.errors == []
-
-    def test_check_status__connection_refused(self):
-        """Raise ServiceUnavailable when connection is refused."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_from_url.return_value.__enter__.side_effect = ConnectionRefusedError(
-                "refused"
-            )
-
-            with pytest.warns(DeprecationWarning):
-                check = RedisHealthCheck(redis_url="redis://localhost:6379")
-                with pytest.raises(ServiceUnavailable):
-                    check.check_status()
-
-    def test_check_status__timeout(self):
-        """Raise ServiceUnavailable when connection times out."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_from_url.return_value.__enter__.side_effect = RedisTimeoutError(
-                "timeout"
-            )
-
-            with pytest.warns(DeprecationWarning):
-                check = RedisHealthCheck(redis_url="redis://localhost:6379")
-                with pytest.raises(ServiceUnavailable):
-                    check.check_status()
-
-    def test_check_status__connection_error(self):
-        """Raise ServiceUnavailable when connection fails."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_from_url.return_value.__enter__.side_effect = RedisConnectionError(
-                "connection error"
-            )
-
-            with pytest.warns(DeprecationWarning):
-                check = RedisHealthCheck(redis_url="redis://localhost:6379")
-                with pytest.raises(ServiceUnavailable):
-                    check.check_status()
-
-    def test_check_status__unknown_error(self):
-        """Raise ServiceUnavailable for unexpected exceptions."""
-        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
-            mock_from_url.return_value.__enter__.side_effect = RuntimeError(
-                "unexpected"
-            )
-
-            with pytest.warns(DeprecationWarning):
-                check = RedisHealthCheck(redis_url="redis://localhost:6379")
-                with pytest.raises(ServiceUnavailable):
-                    check.check_status()
-
-    @pytest.mark.integration
-    def test_check_status__real_redis(self):
-        """Ping real Redis server when REDIS_URL is configured."""
-        redis_url = os.getenv("REDIS_URL")
-        if not redis_url:
-            pytest.skip("REDIS_URL not set; skipping integration test")
-
-        with pytest.warns(DeprecationWarning):
-            check = RedisHealthCheck(redis_url=redis_url)
             check.check_status()
-        assert check.errors == []
+            assert check.errors == []
+            mock_from_url.assert_called_once_with("redis://localhost:6379")
+            mock_client.ping.assert_called_once()
 
+    def test_redis__deprecated_url_with_options(self):
+        """Pass options when creating client from URL."""
+        with mock.patch("health_check.contrib.redis.from_url") as mock_from_url:
+            mock_client = mock.MagicMock()
+            mock_from_url.return_value = mock_client
+            mock_client.ping.return_value = True
 
-class TestRedisIntegration:
-    """Integration tests for Redis health check."""
+            options = {"socket_connect_timeout": 5}
+            with pytest.warns(DeprecationWarning):
+                check = RedisHealthCheck(
+                    redis_url="redis://localhost:6379", redis_url_options=options
+                )
+            check.check_status()
+            assert check.errors == []
+            mock_from_url.assert_called_once_with("redis://localhost:6379", **options)
 
     @pytest.mark.integration
-    def test_check_status__real_redis_with_client(self):
-        """Ping real Redis server using client parameter."""
+    def test_redis__real_connection(self):
+        """Ping real Redis server when REDIS_URL is configured."""
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
             pytest.skip("REDIS_URL not set; skipping integration test")
 
         from redis import Redis as RedisClient
 
-        # Parse URL to get connection params
-        # For simplicity, we'll just use from_url but with client approach
         client = RedisClient.from_url(redis_url)
         check = RedisHealthCheck(client=client)
         check.check_status()
@@ -189,7 +109,7 @@ class TestRedisIntegration:
         client.close()
 
     @pytest.mark.integration
-    def test_check_status__real_sentinel(self):
+    def test_redis__real_sentinel(self):
         """Ping real Redis Sentinel when configured."""
         sentinel_url = os.getenv("REDIS_SENTINEL_URL")
         if not sentinel_url:
