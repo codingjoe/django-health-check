@@ -231,7 +231,12 @@ class TestHealthCheckCommand:
 
     def test_handle__multiple_checks_with_mixed_status(self):
         """Display all checks with mixed success and error status."""
-        mock_response_data = "Cache: OK\nDatabase: unavailable: Connection failed\nDisk: OK\nMemory: warning: Memory usage high\n"
+        mock_response_data = (
+            "Cache: OK\n"
+            "Database: unavailable: Connection failed\n"
+            "Disk: OK\n"
+            "Memory: warning: Memory usage high\n"
+        )
 
         with mock.patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = mock.MagicMock()
