@@ -88,3 +88,7 @@ else:
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost/1")
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")
+
+HEALTH_CHECK = {
+    "DISABLE_THREADING": True,
+}
