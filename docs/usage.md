@@ -56,6 +56,24 @@ $ curl http://www.example.com/health/?format=openmetrics
 
 This will return metrics in the OpenMetrics exposition format, which can be scraped by Prometheus.
 
+### RSS and Atom feeds
+
+For RSS feed readers and monitoring tools, you can request RSS or Atom format:
+
+```shell
+$ curl http://www.example.com/health/?format=rss
+$ curl http://www.example.com/health/?format=atom
+```
+
+You can also use the `Accept` header:
+
+```shell
+$ curl -H "Accept: application/rss+xml" http://www.example.com/health/
+$ curl -H "Accept: application/atom+xml" http://www.example.com/health/
+```
+
+These endpoints always return a 200 status code with health check results in the feed content. Failed checks are indicated by categories and item descriptions.
+
 ## Writing a custom health check
 
 You can write your own health checks by inheriting from [HealthCheck][health_check.HealthCheck]
