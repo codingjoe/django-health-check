@@ -390,6 +390,60 @@ class TestHealthCheckView:
         assert "application/rss+xml" in response["content-type"]
         assert response.status_code == 200
 
+    def test_get__atom_format_parameter_error(self, health_check_view):
+        """Return 200 with Atom feed even when health checks fail."""
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Check failed")
+
+        response = health_check_view([FailingBackend], format_param="atom")
+        assert response.status_code == 200
+        assert "application/atom+xml" in response["content-type"]
+        assert b"<feed" in response.content
+        assert b"error" in response.content or b"unhealthy" in response.content
+
+    def test_get__rss_format_parameter_error(self, health_check_view):
+        """Return 200 with RSS feed even when health checks fail."""
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Check failed")
+
+        response = health_check_view([FailingBackend], format_param="rss")
+        assert response.status_code == 200
+        assert "application/rss+xml" in response["content-type"]
+        assert b"<rss" in response.content
+        assert b"error" in response.content or b"unhealthy" in response.content
+
+    def test_get__atom_accept_header_error(self, health_check_view):
+        """Return 200 with Atom feed even when health checks fail via Accept header."""
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Check failed")
+
+        response = health_check_view(
+            [FailingBackend], accept_header="application/atom+xml"
+        )
+        assert response.status_code == 200
+        assert "application/atom+xml" in response["content-type"]
+        assert b"error" in response.content or b"unhealthy" in response.content
+
+    def test_get__rss_accept_header_error(self, health_check_view):
+        """Return 200 with RSS feed even when health checks fail via Accept header."""
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Check failed")
+
+        response = health_check_view(
+            [FailingBackend], accept_header="application/rss+xml"
+        )
+        assert response.status_code == 200
+        assert "application/rss+xml" in response["content-type"]
+        assert b"error" in response.content or b"unhealthy" in response.content
+
     def test_threading_enabled(self, health_check_view):
         """Use ThreadPoolExecutor when use_threading is True."""
 

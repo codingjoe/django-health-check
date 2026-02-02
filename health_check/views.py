@@ -295,7 +295,7 @@ class HealthCheckView(TemplateView):
         response = HttpResponse(
             feed.writeString("utf-8"),
             content_type=feed.content_type,
-            status=status,
+            status=200,  # Feed readers expect 200 even if checks fail
         )
         return response
 
