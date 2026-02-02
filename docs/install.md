@@ -24,6 +24,7 @@ Add a health check view to your URL configuration. For example:
 # urls.py
 from django.urls import include, path
 from health_check.views import HealthCheckView
+from redis import Redis
 
 urlpatterns = [
     # …
@@ -40,13 +41,22 @@ urlpatterns = [
                 "health_check.Storage",
                 # 3rd party checks
                 "health_check.contrib.celery.Ping",
+                (
+                    "health_check.contrib.kafka.Kafka",
+                    {"bootstrap_servers": ["localhost:9092"]},
+                ),
                 (  # tuple with options
                     "health_check.contrib.rabbitmq.RabbitMQ",
                     {"amqp_url": "amqp://guest:guest@localhost:5672//"},
                 ),
                 (
                     "health_check.contrib.redis.Redis",
-                    {"redis_url": "redis://localhost:6379"},
+                    {"client": Redis.from_url("redis://localhost:6379")},
+                ),
+                # AWS service status check
+                (
+                    "health_check.contrib.rss.AWS",
+                    {"region": "eu-west-1", "service": "s3"},
                 ),
             ],
             use_threading=True,  # optional, default is True

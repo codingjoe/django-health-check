@@ -20,6 +20,10 @@
           type="application/rss+xml"
           title="RSS Feed"
           href="?format=rss">
+    <link rel="alternate"
+          type="application/openmetrics-text"
+          title="OpenMetrics"
+          href="?format=openmetrics">
     <style>
     :root {
       color-scheme: light dark;
@@ -177,7 +181,7 @@
         <p class="footer-text">
           Generated at {% now "SHORT_DATETIME_FORMAT" %} with <a href="https://codingjoe.dev/django-health-check/">Django Health Check</a>.
           <br>
-          Subscribe: <a href="?format=atom">Atom</a> | <a href="?format=rss">RSS</a>
+          Subscribe: <a href="?format=atom">Atom</a> | <a href="?format=rss">RSS</a> | <a href="?format=openmetrics">OpenMetrics</a>
         </p>
       </footer>
     {% endblock content %}

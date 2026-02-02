@@ -4,7 +4,7 @@ Django HealthCheck can be integrated into various container orchestration system
 Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
 
 > [!TIP]
-> The health check command does not require curl or any HTTP client in your container image.
+> The health check command does not require curl/wget to minimize your container image.
 
 ## Container Health Check Endpoint
 
@@ -40,6 +40,9 @@ python manage.py health_check health_check-container localhost:8000
 Your host name and port may vary depending on your container setup.
 
 ## Configuration Examples
+
+> [!TIP]
+> For Prometheus users: The health check endpoint supports OpenMetrics format via `?format=openmetrics` for metrics scraping.
 
 ### Container Image
 
