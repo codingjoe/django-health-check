@@ -1,4 +1,3 @@
-import json
 import sys
 import urllib.error
 import urllib.request
@@ -30,35 +29,18 @@ class Command(BaseCommand):
         host, sep, port = options.get("addrport").partition(":")
         url = f"http://{host}:{port}{path}" if sep else f"http://{host}{path}"
         request = urllib.request.Request(  # noqa: S310
-            url, headers={"Accept": "application/json"}
+            url, headers={"Accept": "text/plain"}
         )
         try:
             response = urllib.request.urlopen(request)  # noqa: S310
         except urllib.error.HTTPError as e:
-            content = e.read()
+            # 500 status codes will raise HTTPError
+            self.stdout.write(e.read().decode("utf-8"))
+            sys.exit(1)
         except urllib.error.URLError as e:
             self.stderr.write(
                 f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.'
             )
             sys.exit(2)
         else:
-            content = response.read()
-
-        try:
-            json_data = json.loads(content.decode("utf-8"))
-        except json.JSONDecodeError as e:
-            self.stderr.write(
-                f"Health check endpoint '{endpoint}' did not return valid JSON: {e.msg}\n"
-            )
-            sys.exit(2)
-        else:
-            errors = False
-            for label, msg in json_data.items():
-                if msg == "OK":
-                    style_func = self.style.SUCCESS
-                else:
-                    style_func = self.style.ERROR
-                    errors = True
-                self.stdout.write(f"{label:<50} {style_func(msg)}\n")
-            if errors:
-                sys.exit(1)
+            self.stdout.write(response.read().decode("utf-8"))

@@ -222,7 +222,7 @@ class TestHealthCheckView:
         assert response.status_code == 406
         assert (
             response.content
-            == b"Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text"
+            == b"Not Acceptable: Supported content types: text/plain, text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text"
         )
 
     def test_get__unsupported_with_fallback(self, health_check_view):
@@ -704,3 +704,80 @@ class TestHealthCheckView:
         assert "# TYPE django_health_check_response_time_seconds gauge" in content
         assert "# HELP django_health_check_overall_status" in content
         assert "# TYPE django_health_check_overall_status gauge" in content
+
+    def test_get__text_format_parameter(self, health_check_view):
+        """Return plain text when format=text."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="text")
+        assert response.status_code == 200
+        assert "text/plain" in response["content-type"]
+        content = response.content.decode("utf-8")
+        assert "SuccessBackend" in content
+        assert ": OK" in content
+
+    def test_get__text_accept_header(self, health_check_view):
+        """Return plain text when Accept header is text/plain."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], accept_header="text/plain")
+        assert response.status_code == 200
+        assert "text/plain" in response["content-type"]
+        content = response.content.decode("utf-8")
+        assert "SuccessBackend" in content
+        assert ": OK" in content
+
+    def test_get__text_healthy_status(self, health_check_view):
+        """Plain text shows OK when all checks pass."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        response = health_check_view([SuccessBackend], format_param="text")
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "SuccessBackend" in content
+        assert ": OK" in content
+
+    def test_get__text_unhealthy_status(self, health_check_view):
+        """Plain text shows error message when check fails."""
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Check failed")
+
+        response = health_check_view([FailingBackend], format_param="text")
+        assert response.status_code == 500
+        content = response.content.decode("utf-8")
+        assert "FailingBackend" in content
+        assert "Check failed" in content
+
+    def test_get__text_multiple_checks(self, health_check_view):
+        """Plain text handles multiple checks correctly."""
+
+        class SuccessBackend(HealthCheck):
+            def check_status(self):
+                pass
+
+        class FailingBackend(HealthCheck):
+            def check_status(self):
+                raise HealthCheckException("Failed")
+
+        response = health_check_view(
+            [SuccessBackend, FailingBackend], format_param="text"
+        )
+        assert response.status_code == 500
+        content = response.content.decode("utf-8")
+        lines = content.strip().split("\n")
+        assert len(lines) == 2
+        assert "SuccessBackend" in content
+        assert ": OK" in content
+        assert "FailingBackend" in content
+        assert "Failed" in content

@@ -9,6 +9,43 @@ failed.
 
 ## Getting machine-readable reports
 
+### Plain text
+
+For simple monitoring and scripting, you can request plain text output with the `Accept` HTTP header set to `text/plain` or pass `format=text` as a query parameter.
+
+The endpoint will return a plain text response with HTTP 200 if all checks passed and HTTP 500 if any check failed:
+
+```shell
+$ curl -v -X GET -H "Accept: text/plain" http://www.example.com/health/
+
+> GET /health/ HTTP/1.1
+> Host: www.example.com
+> Accept: text/plain
+>
+< HTTP/1.1 200 OK
+< Content-Type: text/plain; charset=utf-8
+
+CacheBackend: OK
+DatabaseBackend: OK
+S3BotoStorageHealthCheck: OK
+
+$ curl -v -X GET http://www.example.com/health/?format=text
+
+> GET /health/?format=text HTTP/1.1
+> Host: www.example.com
+>
+< HTTP/1.1 200 OK
+< Content-Type: text/plain; charset=utf-8
+
+CacheBackend: OK
+DatabaseBackend: OK
+S3BotoStorageHealthCheck: OK
+```
+
+This format is particularly useful for command-line tools and simple monitoring scripts that don't need the overhead of JSON parsing.
+
+### JSON
+
 If you want machine-readable status reports you can request the `/health/`
 endpoint with the `Accept` HTTP header set to `application/json` or pass
 `format=json` as a query parameter.

@@ -1,10 +1,37 @@
 from django.conf import settings
 from django.urls import path
 
+from health_check.base import HealthCheck
+from health_check.exceptions import HealthCheckException
 from health_check.views import HealthCheckView
+
+
+class AlwaysFailingCheck(HealthCheck):
+    """Health check that always fails for testing purposes."""
+
+    def check_status(self):
+        raise HealthCheckException("Test failure")
+
 
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health_check"),
+    # Simple endpoint for testing that only checks things that will work
+    path(
+        "health/test/",
+        HealthCheckView.as_view(
+            checks=[
+                "health_check.checks.Database",
+                "health_check.checks.Cache",
+            ]
+        ),
+        name="health_check_test",
+    ),
+    # Failing endpoint for testing error handling
+    path(
+        "health/fail/",
+        HealthCheckView.as_view(checks=[AlwaysFailingCheck]),
+        name="health_check_fail",
+    ),
 ]
 
 try:
