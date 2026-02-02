@@ -20,9 +20,6 @@ class HealthCheck:
     critical_service: bool = dataclasses.field(init=False, default=True, repr=False)
     errors: list[HealthCheckException] = dataclasses.field(init=False, default_factory=list, repr=False)
 
-    async def __call__(self, *args, **kwargs):
-        return self.run_check()
-
     def check_status(self):
         """
         Execute the health check logic.

@@ -2,7 +2,7 @@ import copy
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync, sync_to_async
 from django.db import connections
 from django.http import Http404
 
@@ -60,12 +60,12 @@ class CheckMixin:
         @async_to_sync
         async def _run(plugin):
             try:
-                await plugin()
+                await sync_to_async(plugin.run_check, thread_sensitive=True)()
                 return plugin
             finally:
                 if self.use_threading:
                     # DB connections are thread-local so we need to close them here
-                    connections.close_all()
+                    await sync_to_async(connections.close_all, thread_sensitive=True)()
 
         def _collect_errors(plugin):
             if plugin.critical_service:
