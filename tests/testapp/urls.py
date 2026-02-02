@@ -5,6 +5,17 @@ from health_check.views import HealthCheckView
 
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health_check"),
+    # Simple endpoint for testing that only checks things that will work
+    path(
+        "health/test/",
+        HealthCheckView.as_view(
+            checks=[
+                "health_check.checks.Database",
+                "health_check.checks.Cache",
+            ]
+        ),
+        name="health_check_test",
+    ),
 ]
 
 try:
