@@ -35,7 +35,7 @@ class TestHealthCheckCommand:
             assert "Disk" in output
             assert "OK" in output
 
-    def test_handle__with_error(self):
+    def test_handle__with_error(self, live_server):
         """Return exit code 1 when checks fail."""
         mock_response_data = "Cache: OK\nDatabase: unavailable: Connection failed\n"
 

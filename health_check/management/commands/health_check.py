@@ -33,26 +33,14 @@ class Command(BaseCommand):
         )
         try:
             response = urllib.request.urlopen(request)  # noqa: S310
-            content = response.read()
-            status_code = response.getcode()
         except urllib.error.HTTPError as e:
-            content = e.read()
-            status_code = e.code
+            # 500 status codes will raise HTTPError
+            self.stdout.write(e.read().decode("utf-8"))
+            sys.exit(1)
         except urllib.error.URLError as e:
             self.stderr.write(
                 f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.'
             )
             sys.exit(2)
-
-        text = content.decode("utf-8")
-        for line in text.strip().split("\n"):
-            if not line:
-                continue
-            label, sep, message = line.partition(": ")
-            if not sep:
-                continue
-            style_func = self.style.SUCCESS if message == "OK" else self.style.ERROR
-            self.stdout.write(f"{label:<50} {style_func(message)}\n")
-
-        if status_code != 200:
-            sys.exit(1)
+        else:
+            self.stdout.write(response.read().decode("utf-8"))
