@@ -48,11 +48,12 @@ class RedisHealthCheck(HealthCheck):
     client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
     redis_url: str = dataclasses.field(default=getattr(settings, "REDIS_URL", "redis://localhost/1"), repr=False)
     redis_url_options: dict[str, typing.Any] = dataclasses.field(
-        default=getattr(settings, "HEALTHCHECK_REDIS_URL_OPTIONS", None), repr=False
+        default_factory=lambda: getattr(settings, "HEALTHCHECK_REDIS_URL_OPTIONS", {}), repr=False
     )
 
     def __post_init__(self):
         if not self.client:
+            print(self.client)
             warnings.warn(
                 "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
                 DeprecationWarning,
@@ -64,16 +65,13 @@ class RedisHealthCheck(HealthCheck):
         try:
             self.client.ping()
         except ConnectionRefusedError as e:
-            self.add_error(
-                ServiceUnavailable("Unable to connect to Redis: Connection was refused."),
-                e,
-            )
+            raise ServiceUnavailable("Unable to connect to Redis: Connection was refused.") from e
         except exceptions.TimeoutError as e:
-            self.add_error(ServiceUnavailable("Unable to connect to Redis: Timeout."), e)
+            raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
         except exceptions.ConnectionError as e:
-            self.add_error(ServiceUnavailable("Unable to connect to Redis: Connection Error"), e)
+            raise ServiceUnavailable("Unable to connect to Redis: Connection Error") from e
         except BaseException as e:
-            self.add_error(ServiceUnavailable("Unknown error."), e)
+            raise ServiceUnavailable("Unknown error.") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
