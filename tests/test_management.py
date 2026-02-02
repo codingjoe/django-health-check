@@ -29,6 +29,26 @@ class TestHealthCheckCommand:
         assert "Database" in output or "Cache" in output
         assert "OK" in output or "working" in output
 
+    def test_handle__http_error(self, live_server):
+        """Return exit code 1 when checks fail with HTTP 500."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        with pytest.raises(SystemExit) as exc_info:
+            call_command(
+                "health_check",
+                "health_check_fail",
+                addrport,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 1
+        output = stdout.getvalue()
+        # Should display the error message from the failing check
+        assert "Test failure" in output or "AlwaysFailingCheck" in output
+
     def test_handle__url_error__connection_refused(self):
         """Return exit code 2 when URL cannot be reached (connection refused)."""
         stdout = StringIO()
