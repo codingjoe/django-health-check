@@ -160,6 +160,8 @@ class HealthCheckView(TemplateView):
         match format_override:
             case "json":
                 return self.render_to_response_json(status_code)
+            case "text":
+                return self.render_to_response_text(status_code)
             case "atom":
                 return self.render_to_response_atom()
             case "rss":
@@ -170,6 +172,8 @@ class HealthCheckView(TemplateView):
         accept_header = request.headers.get("accept", "*/*")
         for media in MediaType.parse_header(accept_header):
             match media.mime_type:
+                case "text/plain":
+                    return self.render_to_response_text(status_code)
                 case "text/html" | "application/xhtml+xml" | "text/*" | "*/*":
                     context = self.get_context_data(**kwargs)
                     return self.render_to_response(context, status=status_code)
@@ -182,7 +186,7 @@ class HealthCheckView(TemplateView):
                 case "application/openmetrics-text":
                     return self.render_to_response_openmetrics()
         return HttpResponse(
-            "Not Acceptable: Supported content types: text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
+            "Not Acceptable: Supported content types: text/plain, text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
             status=406,
             content_type="text/plain",
         )
@@ -198,6 +202,18 @@ class HealthCheckView(TemplateView):
         """Return JSON response with health check results."""
         return JsonResponse(
             {label: str(p.pretty_status()) for label, p in self.results.items()},
+            status=status,
+        )
+
+    def render_to_response_text(self, status):
+        """Return plain text response with health check results."""
+        lines = (
+            f"{label}: {result.pretty_status()}"
+            for label, result in self.results.items()
+        )
+        return HttpResponse(
+            "\n".join(lines) + "\n",
+            content_type="text/plain; charset=utf-8",
             status=status,
         )
 

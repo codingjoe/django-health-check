@@ -1,4 +1,3 @@
-import json
 import sys
 import urllib.error
 import urllib.request
@@ -30,35 +29,33 @@ class Command(BaseCommand):
         host, sep, port = options.get("addrport").partition(":")
         url = f"http://{host}:{port}{path}" if sep else f"http://{host}{path}"
         request = urllib.request.Request(  # noqa: S310
-            url, headers={"Accept": "application/json"}
+            url, headers={"Accept": "text/plain"}
         )
         try:
             response = urllib.request.urlopen(request)  # noqa: S310
+            content = response.read()
+            status_code = response.getcode()
         except urllib.error.HTTPError as e:
             content = e.read()
+            status_code = e.code
         except urllib.error.URLError as e:
             self.stderr.write(
                 f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting.'
             )
             sys.exit(2)
-        else:
-            content = response.read()
 
-        try:
-            json_data = json.loads(content.decode("utf-8"))
-        except json.JSONDecodeError as e:
-            self.stderr.write(
-                f"Health check endpoint '{endpoint}' did not return valid JSON: {e.msg}\n"
-            )
-            sys.exit(2)
-        else:
-            errors = False
-            for label, msg in json_data.items():
-                if msg == "OK":
-                    style_func = self.style.SUCCESS
-                else:
-                    style_func = self.style.ERROR
-                    errors = True
-                self.stdout.write(f"{label:<50} {style_func(msg)}\n")
-            if errors:
-                sys.exit(1)
+        text = content.decode("utf-8")
+        for line in text.strip().split("\n"):
+            if not line:
+                continue
+            label, sep, message = line.partition(": ")
+            if not sep:
+                continue
+            if message == "OK":
+                style_func = self.style.SUCCESS
+            else:
+                style_func = self.style.ERROR
+            self.stdout.write(f"{label:<50} {style_func(message)}\n")
+
+        if status_code != 200:
+            sys.exit(1)
