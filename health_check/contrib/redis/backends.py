@@ -24,10 +24,6 @@ class RedisHealthCheck(HealthCheck):
     Args:
         client: A Redis client instance (Redis, Sentinel master, or Cluster).
                 If provided, this takes precedence over redis_url.
-        redis_url: (Deprecated) The Redis connection URL.
-                   Use the 'client' parameter instead.
-        redis_url_options: (Deprecated) Additional options for the Redis connection.
-                           Use the 'client' parameter instead.
 
     Examples:
         Using a standard Redis client:
