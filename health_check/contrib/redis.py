@@ -2,8 +2,6 @@
 
 import dataclasses
 import logging
-import typing
-import warnings
 
 from redis import Redis as RedisClient
 from redis import RedisCluster, exceptions
@@ -25,11 +23,6 @@ class Redis(HealthCheck):
     Args:
         client: A Redis client instance (Redis, Sentinel master, or Cluster).
                 If provided, this takes precedence over redis_url.
-        redis_url: (Deprecated) The Redis connection URL, e.g., 'redis://localhost:6379/0'.
-                   Use the 'client' parameter instead.
-        redis_url_options: (Deprecated) Additional options for the Redis connection,
-                           e.g., {'socket_connect_timeout': 5}.
-                           Use the 'client' parameter instead.
 
     Examples:
         Using a standard Redis client:
@@ -48,18 +41,6 @@ class Redis(HealthCheck):
     """
 
     client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
-    redis_url: str | None = dataclasses.field(default=None, repr=False)
-    redis_url_options: dict[str, typing.Any] = dataclasses.field(
-        default_factory=dict, repr=False
-    )
-
-    def __post_init__(self):
-        if not self.client:
-            warnings.warn(
-                "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
-                DeprecationWarning,
-            )
-            self.client = RedisClient.from_url(self.redis_url, **self.redis_url_options)
 
     def check_status(self):
         logger.debug("Pinging Redis client...")
@@ -76,7 +57,7 @@ class Redis(HealthCheck):
                 "Unable to connect to Redis: Connection Error"
             ) from e
         except BaseException as e:
-            raise ServiceUnavailable("Unknown error.") from e
+            raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
