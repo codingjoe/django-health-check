@@ -70,54 +70,6 @@ class MyHealthCheckBackend(HealthCheck):
 
 ::: health_check.HealthCheck
 
-## Customizing output
-
-You can customize HTML or JSON rendering by inheriting from [HealthCheckView][health_check.views.HealthCheckView]
-and customizing the `template_name`, `get`,
-`render_to_response` and `render_to_response_json` properties:
-
-```python
-# views.py
-from django.http import HttpResponse, JsonResponse
-
-from health_check.views import HealthCheckView
-
-
-class HealthCheckCustomView(HealthCheckView):
-    template_name = "myapp/health_check_dashboard.html"  # customize the used templates
-
-    def get(self, request, *args, **kwargs):
-        plugins = []
-        status = 200  # needs to be filled status you need
-        # …
-        if "application/json" in request.META.get("HTTP_ACCEPT", ""):
-            return self.render_to_response_json(plugins, status)
-        return self.render_to_response(plugins, status)
-
-    def render_to_response(self, plugins, status):  # customize HTML output
-        return HttpResponse("COOL" if status == 200 else "SWEATY", status=status)
-
-    def render_to_response_json(self, plugins, status):  # customize JSON output
-        return JsonResponse({repr(p): "COOL" if status == 200 else "SWEATY" for p in plugins}, status=status)
-
-
-# urls.py
-from django.urls import path
-
-from . import views
-
-urlpatterns = [
-    # …
-    path(
-        "ht/",
-        views.HealthCheckCustomView.as_view(checks=["myapp.health_checks.MyHealthCheckBackend"]),
-        name="health_check_custom",
-    ),
-]
-```
-
-::: health_check.views.HealthCheckView
-
 ## Django command
 
 You can run the Django command `health_check` to perform your health
@@ -134,5 +86,5 @@ Database                 ... OK
 CustomHealthCheck        ... unavailable: Something went wrong!
 ```
 
-Similar to the http version, a critical error will cause the command to
+Similar to the http version, an error will cause the command to
 quit with the exit code `1`.

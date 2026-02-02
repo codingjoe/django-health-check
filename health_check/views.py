@@ -1,4 +1,5 @@
 import re
+import warnings
 from functools import cached_property
 
 from django.db import transaction
@@ -145,6 +146,21 @@ class HealthCheckView(_MainView):
     """Perform health checks and return results in various formats."""
 
     checks: list[str | tuple[str, dict]] | None = None
+
+    def as_view(self, **initkwargs):
+        if "warnings_as_errors" in initkwargs:
+            warnings.warn(
+                "`warnings_as_errors` argument is deprecated and will be removed the next major version.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if "use_threading" in initkwargs:
+            warnings.warn(
+                "`use_threading` argument is deprecated and will be removed the next major version.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        super().as_view(**initkwargs)
 
     def get_plugins(self):
         for check in self.checks or [

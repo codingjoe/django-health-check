@@ -55,24 +55,10 @@ urlpatterns = [
                     {"client": Redis.from_url("redis://localhost:6379")},
                 ),
             ],
-            use_threading=True,  # optional, default is True
-            warnings_as_errors=True,  # optional, default is True
         ),
     ),
 ]
 ```
-
-## Threading
-
-Django Health Check runs each check in a separate thread by default to improve performance. If you prefer to run the checks sequentially, you can set the `use_threading` parameter to `False` when instantiating the `HealthCheckView`, as shown in the example above.
-
-This can be useful in environments where threads are not closing IO connections properly, leading to resource leaks.
-However, for Django's database connections, threading is generally safe and recommended for better performance.
-
-## Warnings as Errors
-
-Treats `ServiceWarning` as errors, meaning they will cause the views to respond with a 500 status code. Default is `True`.
-If set to `False` warnings will be displayed in the template or in the JSON response but the status code will remain a 200.
 
 ## Security
 
