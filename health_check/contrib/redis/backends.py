@@ -53,6 +53,7 @@ class RedisHealthCheck(HealthCheck):
             warnings.warn(
                 "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
             self.client = RedisClient.from_url(self.redis_url, **self.redis_url_options)
 
