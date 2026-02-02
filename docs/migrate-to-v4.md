@@ -1,5 +1,9 @@
 # Migration to version 4.x
 
+> [!IMPORTANT]
+> Version 3.21 started deprecation of settings and various old checks and APIs.
+> However, version 3.21 supports BOTH the OLD and NEW way of configuring health checks to ease the migration.
+
 1. If you have `health_check.db` in your `INSTALLED_APPS`, remove revert the migration to drop the `TestModel` table:
 
    ```shell

@@ -52,6 +52,11 @@ urlpatterns = [
                     "health_check.contrib.redis.Redis",
                     {"redis_url": "redis://localhost:6379"},
                 ),
+                # AWS service status check
+                (
+                    "health_check.contrib.rss.AWS",
+                    {"region": "eu-west-1", "service": "s3"},
+                ),
             ],
             use_threading=True,  # optional, default is True
             warnings_as_errors=True,  # optional, default is True
