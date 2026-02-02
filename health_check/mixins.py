@@ -2,6 +2,7 @@ import copy
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
+from asgiref.sync import async_to_sync
 from django.db import connections
 from django.http import Http404
 
@@ -56,9 +57,10 @@ class CheckMixin:
     def run_check(self, subset=None):
         errors = []
 
-        def _run(plugin):
-            plugin.run_check()
+        @async_to_sync
+        async def _run(plugin):
             try:
+                await plugin()
                 return plugin
             finally:
                 if self.use_threading:
