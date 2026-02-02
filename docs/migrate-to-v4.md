@@ -1,5 +1,9 @@
 # Migration to version 4.x
 
+> [!IMPORTANT]
+> Version 3.21 started deprecation of settings and various old checks and APIs.
+> However, version 3.21 supports BOTH the OLD and NEW way of configuring health checks to ease the migration.
+
 1. Remove these `health_check.*` sub‑apps from `INSTALLED_APPS` but keep `health_check`!
 
 1. Remove all `HEALTH_CHECK_*` settings from your settings file.
