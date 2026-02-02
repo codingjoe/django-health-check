@@ -5,7 +5,8 @@ import logging
 import typing
 import warnings
 
-from redis import exceptions, from_url
+from redis import Redis as RedisClient
+from redis import RedisCluster, exceptions, from_url
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -30,79 +31,51 @@ class Redis(HealthCheck):
                            e.g., {'socket_connect_timeout': 5}.
                            Use the 'client' parameter instead.
 
-    Example:
-        # Using a standard Redis client
-        from redis import Redis as RedisClient
-        check = Redis(client=RedisClient(host='localhost', port=6379))
+    Examples:
+        Using a standard Redis client:
+        >>> from redis import Redis as RedisClient
+        >>> Redis(client=RedisClient(host='localhost', port=6379))
 
-        # Using a Sentinel client
-        from redis.sentinel import Sentinel
-        sentinel = Sentinel([('localhost', 26379)])
-        check = Redis(client=sentinel.master_for('mymaster'))
+        Using a Cluster client:
+        >>> from redis.cluster import RedisCluster
+        >>> Redis(client=RedisCluster(host='localhost', port=7000))
 
-        # Using a Cluster client
-        from redis.cluster import RedisCluster
-        check = Redis(client=RedisCluster(host='localhost', port=7000))
+        Using a Sentinel client:
+        >>> from redis.sentinel import Sentinel
+        >>> sentinel = Sentinel([('localhost', 26379)])
+        >>> Redis(client=sentinel.master_for('mymaster'))
 
     """
 
-    client: typing.Any = dataclasses.field(default=None, repr=False)
+    client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
     redis_url: str | None = dataclasses.field(default=None, repr=False)
     redis_url_options: dict[str, typing.Any] = dataclasses.field(
         default_factory=dict, repr=False
     )
 
-    def check_status(self):
-        if self.client is not None:
-            # Use the provided client directly
-            logger.debug("Pinging Redis client...")
-            try:
-                self.client.ping()
-            except ConnectionRefusedError as e:
-                raise ServiceUnavailable(
-                    "Unable to connect to Redis: Connection was refused."
-                ) from e
-            except exceptions.TimeoutError as e:
-                raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
-            except exceptions.ConnectionError as e:
-                raise ServiceUnavailable(
-                    "Unable to connect to Redis: Connection Error"
-                ) from e
-            except BaseException as e:
-                raise ServiceUnavailable("Unknown error.") from e
-            else:
-                logger.debug("Connection established. Redis is healthy.")
-        elif self.redis_url is not None:
-            # Deprecated: Use redis_url for backward compatibility
+    def __post_init__(self):
+        if not self.client:
             warnings.warn(
-                "The 'redis_url' parameter is deprecated. "
-                "Please pass a Redis client instance using the 'client' parameter instead.",
+                "The 'redis_url' parameter is deprecated. Please use the 'client' parameter instead.",
                 DeprecationWarning,
-                stacklevel=2,
             )
-            logger.debug(
-                "Got %s as the redis_url. Connecting to redis...", self.redis_url
-            )
-            logger.debug("Attempting to connect to redis...")
-            try:
-                # conn is used as a context to release opened resources later
-                with from_url(self.redis_url, **self.redis_url_options) as conn:
-                    conn.ping()  # exceptions may be raised upon ping
-            except ConnectionRefusedError as e:
-                raise ServiceUnavailable(
-                    "Unable to connect to Redis: Connection was refused."
-                ) from e
-            except exceptions.TimeoutError as e:
-                raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
-            except exceptions.ConnectionError as e:
-                raise ServiceUnavailable(
-                    "Unable to connect to Redis: Connection Error"
-                ) from e
-            except BaseException as e:
-                raise ServiceUnavailable("Unknown error.") from e
-            else:
-                logger.debug("Connection established. Redis is healthy.")
+            self.client = from_url(self.redis_url, **self.redis_url_options)
+
+    def check_status(self):
+        logger.debug("Pinging Redis client...")
+        try:
+            self.client.ping()
+        except ConnectionRefusedError as e:
+            raise ServiceUnavailable(
+                "Unable to connect to Redis: Connection was refused."
+            ) from e
+        except exceptions.TimeoutError as e:
+            raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
+        except exceptions.ConnectionError as e:
+            raise ServiceUnavailable(
+                "Unable to connect to Redis: Connection Error"
+            ) from e
+        except BaseException as e:
+            raise ServiceUnavailable("Unknown error.") from e
         else:
-            raise ValueError(
-                "Either 'client' or 'redis_url' must be provided to Redis health check."
-            )
+            logger.debug("Connection established. Redis is healthy.")
