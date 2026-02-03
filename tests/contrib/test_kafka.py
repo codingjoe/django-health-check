@@ -104,4 +104,6 @@ class TestKafka:
 
         check = KafkaHealthCheck(bootstrap_servers=kafka_servers.split(","))
         result = await check.get_result()
-        assert result.error is None
+        assert result.error
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Failed to retrieve Kafka topics." in str(result.error)

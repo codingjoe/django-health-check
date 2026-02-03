@@ -50,10 +50,15 @@ class Kafka(HealthCheck):
         try:
             # Try to list topics to verify connection
             # This will raise an exception if Kafka is not available
-            cluster_metadata = await consumer.list_topics(
-                timeout=self.timeout.total_seconds()
-            )
-            if not cluster_metadata or not cluster_metadata.topics:
+
+            if not (
+                (
+                    cluster_metadata := await consumer.list_topics(
+                        timeout=self.timeout.total_seconds()
+                    )
+                )
+                and cluster_metadata.topics
+            ):
                 raise ServiceUnavailable("Failed to retrieve Kafka topics.")
 
             logger.debug(
