@@ -260,7 +260,7 @@ class Memory(HealthCheck):
     max_memory_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
-    async def run(self):
+    def run(self):
         try:
             memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
