@@ -41,7 +41,7 @@ class AWS(HealthCheck):
             f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
         )
 
-    def check_status(self):
+    async def run(self):
         """Check the RSS feed for incidents."""
         logger.debug("Fetching feed from %s", self.feed_url)
 

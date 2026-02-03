@@ -24,7 +24,7 @@ class RabbitMQ(HealthCheck):
 
     amqp_url: str
 
-    def check_status(self):
+    async def run(self):
         logger.debug("Attempting to connect to %r...", self.amqp_url)
         try:
             # conn is used as a context to release opened resources later

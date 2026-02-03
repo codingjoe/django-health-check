@@ -9,7 +9,7 @@ from health_check.views import HealthCheckView
 class AlwaysFailingCheck(HealthCheck):
     """Health check that always fails for testing purposes."""
 
-    def check_status(self):
+    async def run(self):
         raise HealthCheckException("Test failure")
 
 

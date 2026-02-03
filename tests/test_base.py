@@ -13,7 +13,7 @@ class TestHealthCheck:
         """Execute check_status without errors."""
 
         class SuccessCheck(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         check = SuccessCheck()
@@ -24,7 +24,7 @@ class TestHealthCheck:
         """Re-raise unexpected exceptions that are not HealthCheckException."""
 
         class UnexpectedErrorCheck(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise RuntimeError("Unexpected error")
 
         check = UnexpectedErrorCheck()

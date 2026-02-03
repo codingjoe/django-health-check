@@ -3,8 +3,9 @@
 import dataclasses
 import logging
 
-from redis import Redis as RedisClient
-from redis import RedisCluster, exceptions
+from redis import exceptions
+from redis.asyncio import Redis as RedisClient
+from redis.asyncio import RedisCluster
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -26,15 +27,15 @@ class Redis(HealthCheck):
 
     Examples:
         Using a standard Redis client:
-        >>> from redis import Redis as RedisClient
+        >>> from redis.asyncio import Redis as RedisClient
         >>> Redis(client=RedisClient(host='localhost', port=6379))
 
         Using a Cluster client:
-        >>> from redis.cluster import RedisCluster
+        >>> from redis.asyncio import RedisCluster
         >>> Redis(client=RedisCluster(host='localhost', port=7000))
 
         Using a Sentinel client:
-        >>> from redis.sentinel import Sentinel
+        >>> from redis.asyncio import Sentinel
         >>> sentinel = Sentinel([('localhost', 26379)])
         >>> Redis(client=sentinel.master_for('mymaster'))
 
@@ -42,10 +43,10 @@ class Redis(HealthCheck):
 
     client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
 
-    def check_status(self):
+    async def run(self):
         logger.debug("Pinging Redis client...")
         try:
-            self.client.ping()
+            await self.client.ping()
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(
                 "Unable to connect to Redis: Connection was refused."
@@ -61,4 +62,4 @@ class Redis(HealthCheck):
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
-            self.client.close()
+            await self.client.close()

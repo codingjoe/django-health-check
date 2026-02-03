@@ -2,8 +2,9 @@
 
 import dataclasses
 import datetime
+import typing
 
-from celery.app import default_app as app
+from celery.app import default_app
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -15,18 +16,20 @@ class Ping(HealthCheck):
     Check Celery worker availability using the ping control command.
 
     Args:
+        app: Celery application instance to use for the health check.
         timeout: Timeout duration for the ping command.
 
     """
 
-    CORRECT_PING_RESPONSE = {"ok": "pong"}
+    CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
+    app = default_app
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
 
-    def check_status(self):
+    async def run(self):
         try:
-            ping_result = app.control.ping(timeout=self.timeout.total_seconds())
+            ping_result = self.app.control.ping(timeout=self.timeout.total_seconds())
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         except NotImplementedError as e:
@@ -56,14 +59,14 @@ class Ping(HealthCheck):
             self._check_active_queues(active_workers)
 
     def _check_active_queues(self, active_workers):
-        defined_queues = getattr(app.conf, "task_queues", None) or getattr(
-            app.conf, "CELERY_QUEUES", None
+        defined_queues = getattr(self.app.conf, "task_queues", None) or getattr(
+            self.app.conf, "CELERY_QUEUES", None
         )
 
         defined_queues = {queue.name for queue in defined_queues}
         active_queues = set()
 
-        for queues in app.control.inspect(active_workers).active_queues().values():
+        for queues in self.app.control.inspect(active_workers).active_queues().values():
             active_queues.update([queue.get("name") for queue in queues])
 
         for queue in defined_queues.difference(active_queues):

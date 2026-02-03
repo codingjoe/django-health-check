@@ -162,16 +162,16 @@
           </tr>
         </thead>
         <tbody>
-          {% for plugin in plugins %}
-            <tr {% if not plugin.status %}class="error"{% endif %}>
+          {% for result in results %}
+            <tr {% if result.error %}class="error"{% endif %}>
               <td data-label="Service">
-                {{ plugin }}
+                {{ result.check|stringformat:'r' }}
               </td>
               <td data-label="Status" class="mono">
-                {{ plugin.pretty_status | linebreaks }}
+                {{ result.error|default_if_none:"OK"|linebreaks }}
               </td>
               <td data-label="Timing" class="align-right mono">
-                {{ plugin.time_taken|floatformat:3 }}&#x202F;s
+                {{ result.time_taken|floatformat:3 }}&#x202F;s
               </td>
             </tr>
           {% endfor %}

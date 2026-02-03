@@ -102,7 +102,7 @@ class TestHealthCheckView:
         """Return 200 with HTML content when all checks pass."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend])
@@ -113,7 +113,7 @@ class TestHealthCheckView:
         """Return 500 with error message when check fails."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Super Fail!")
 
         response = health_check_view([FailingBackend])
@@ -125,7 +125,7 @@ class TestHealthCheckView:
         """Return 500 when warning raised and warnings_as_errors=True."""
 
         class WarningBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise ServiceWarning("so so")
 
         factory = RequestFactory()
@@ -141,7 +141,7 @@ class TestHealthCheckView:
         """Return 200 when warning raised and warnings_as_errors=False."""
 
         class WarningBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise ServiceWarning("so so")
 
         factory = RequestFactory()
@@ -162,7 +162,7 @@ class TestHealthCheckView:
         class NonCriticalBackend(HealthCheck):
             critical_service = False
 
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Super Fail!")
 
         response = health_check_view([NonCriticalBackend])
@@ -174,7 +174,7 @@ class TestHealthCheckView:
         """Return JSON when Accept header requests it."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], accept_header="application/json")
@@ -185,7 +185,7 @@ class TestHealthCheckView:
         """Return JSON when it is preferred in Accept header."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -199,7 +199,7 @@ class TestHealthCheckView:
         """Return HTML when XHTML is requested (no XHTML support)."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -212,7 +212,7 @@ class TestHealthCheckView:
         """Return 406 when Accept header is unsupported."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -229,7 +229,7 @@ class TestHealthCheckView:
         """Return supported format when unsupported format requested with fallback."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -243,7 +243,7 @@ class TestHealthCheckView:
         """Prefer HTML when both HTML and JSON are acceptable."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -257,7 +257,7 @@ class TestHealthCheckView:
         """Prefer JSON when it has higher weight."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -271,7 +271,7 @@ class TestHealthCheckView:
         """Format parameter overrides Accept header."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -284,7 +284,7 @@ class TestHealthCheckView:
         """Return HTML by default without Accept header."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend])
@@ -295,7 +295,7 @@ class TestHealthCheckView:
         """Return JSON with error when Accept header requests JSON."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("JSON Error")
 
         response = health_check_view([FailingBackend], accept_header="application/json")
@@ -311,7 +311,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="json")
@@ -326,7 +326,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("JSON Error")
 
         response = health_check_view([FailingBackend], format_param="json")
@@ -342,7 +342,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="atom")
@@ -356,7 +356,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="rss")
@@ -368,7 +368,7 @@ class TestHealthCheckView:
         """Return Atom feed when Accept header requests it."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -381,7 +381,7 @@ class TestHealthCheckView:
         """Return RSS feed when Accept header requests it."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -394,7 +394,7 @@ class TestHealthCheckView:
         """Return 200 with Atom feed even when health checks fail."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view([FailingBackend], format_param="atom")
@@ -407,7 +407,7 @@ class TestHealthCheckView:
         """Return 200 with RSS feed even when health checks fail."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view([FailingBackend], format_param="rss")
@@ -420,7 +420,7 @@ class TestHealthCheckView:
         """Return 200 with Atom feed even when health checks fail via Accept header."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view(
@@ -434,7 +434,7 @@ class TestHealthCheckView:
         """Return 200 with RSS feed even when health checks fail via Accept header."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view(
@@ -448,7 +448,7 @@ class TestHealthCheckView:
         """Use ThreadPoolExecutor when use_threading is True."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         factory = RequestFactory()
@@ -465,7 +465,7 @@ class TestHealthCheckView:
         """Execute checks sequentially when use_threading is False."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         factory = RequestFactory()
@@ -497,7 +497,7 @@ class TestHealthCheckView:
         class ConfigurableCheck(HealthCheck):
             value: int = 0
 
-            def check_status(self):
+            async def run(self):
                 if self.value < 0:
                     raise HealthCheckException("Invalid value")
 
@@ -515,7 +515,7 @@ class TestHealthCheckView:
         """Response includes Vary: Accept header for content negotiation."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend])
@@ -526,7 +526,7 @@ class TestHealthCheckView:
         """Vary: Accept header is present for all response formats."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         # Test with HTML response
@@ -555,7 +555,7 @@ class TestHealthCheckView:
         """Return OpenMetrics when format=openmetrics."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="openmetrics")
@@ -571,7 +571,7 @@ class TestHealthCheckView:
         """Return OpenMetrics when Accept header is application/openmetrics-text."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view(
@@ -587,7 +587,7 @@ class TestHealthCheckView:
         """OpenMetrics show healthy status when all checks pass."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="openmetrics")
@@ -603,7 +603,7 @@ class TestHealthCheckView:
         """OpenMetrics show unhealthy status when check fails."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view([FailingBackend], format_param="openmetrics")
@@ -619,7 +619,7 @@ class TestHealthCheckView:
         """OpenMetrics include response time."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="openmetrics")
@@ -632,11 +632,11 @@ class TestHealthCheckView:
         """OpenMetrics handle multiple checks correctly."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Failed")
 
         response = health_check_view(
@@ -656,7 +656,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class CustomCheck(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
             def __repr__(self):
@@ -672,7 +672,7 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class EscapingCheck(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
             def __repr__(self):
@@ -692,7 +692,7 @@ class TestHealthCheckView:
         """OpenMetrics include proper HELP and TYPE metadata."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="openmetrics")
@@ -709,7 +709,7 @@ class TestHealthCheckView:
         """Return plain text when format=text."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="text")
@@ -723,7 +723,7 @@ class TestHealthCheckView:
         """Return plain text when Accept header is text/plain."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], accept_header="text/plain")
@@ -737,7 +737,7 @@ class TestHealthCheckView:
         """Plain text shows OK when all checks pass."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         response = health_check_view([SuccessBackend], format_param="text")
@@ -750,7 +750,7 @@ class TestHealthCheckView:
         """Plain text shows error message when check fails."""
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Check failed")
 
         response = health_check_view([FailingBackend], format_param="text")
@@ -763,11 +763,11 @@ class TestHealthCheckView:
         """Plain text handles multiple checks correctly."""
 
         class SuccessBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 pass
 
         class FailingBackend(HealthCheck):
-            def check_status(self):
+            async def run(self):
                 raise HealthCheckException("Failed")
 
         response = health_check_view(

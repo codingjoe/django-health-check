@@ -29,7 +29,7 @@ class Kafka(HealthCheck):
         default=datetime.timedelta(seconds=10), repr=False
     )
 
-    def check_status(self):
+    async def run(self):
         logger.debug(
             "Connecting to Kafka bootstrap servers %r ...",
             self.bootstrap_servers,
