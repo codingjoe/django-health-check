@@ -273,7 +273,9 @@ class HealthCheckView(TemplateView):
         )
         return response
 
-    def get_checks(self) -> typing.Generator[typing.Callable[..., typing.Coroutine], None, None]:
+    def get_checks(
+        self,
+    ) -> typing.Generator[typing.Callable[..., typing.Coroutine], None, None]:
         """Yield instantiated health checks callable."""
         for check in self.checks:
             try:

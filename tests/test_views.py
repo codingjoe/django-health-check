@@ -2,7 +2,6 @@ import dataclasses
 import json
 
 import pytest
-from django.test import RequestFactory
 
 from health_check.base import HealthCheck
 from health_check.exceptions import HealthCheckException, ServiceWarning
@@ -156,7 +155,9 @@ class TestHealthCheckView:
             async def run(self):
                 pass
 
-        response = await health_check_view([SuccessBackend], accept_header="application/json")
+        response = await health_check_view(
+            [SuccessBackend], accept_header="application/json"
+        )
         assert response["content-type"] == "application/json"
         assert response.status_code == 200
 
@@ -286,7 +287,9 @@ class TestHealthCheckView:
             async def run(self):
                 raise HealthCheckException("JSON Error")
 
-        response = await health_check_view([FailingBackend], accept_header="application/json")
+        response = await health_check_view(
+            [FailingBackend], accept_header="application/json"
+        )
         assert response.status_code == 500
         assert response["content-type"] == "application/json"
         assert (
@@ -502,7 +505,9 @@ class TestHealthCheckView:
                 pass
 
         # Test with HTML response
-        html_response = await health_check_view([SuccessBackend], accept_header="text/html")
+        html_response = await health_check_view(
+            [SuccessBackend], accept_header="text/html"
+        )
         assert "Accept" in html_response.get("Vary", "")
 
         # Test with JSON response

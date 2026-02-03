@@ -53,6 +53,7 @@ class TestHealthCheck:
         class SlowCheck(HealthCheck):
             async def run(self):
                 import asyncio
+
                 await asyncio.sleep(0.01)
 
         check = SlowCheck()

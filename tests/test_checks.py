@@ -8,7 +8,6 @@ from unittest import mock
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
-from django.test import override_settings
 
 from health_check.checks import DNS, Cache, Database, Disk, Mail, Memory, Storage
 from health_check.exceptions import (
@@ -150,7 +149,9 @@ class TestCacheExceptionHandling:
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
-            mock_cache.aset = mock.AsyncMock(side_effect=ConnectionError("Connection failed"))
+            mock_cache.aset = mock.AsyncMock(
+                side_effect=ConnectionError("Connection failed")
+            )
 
             check = Cache()
             result = await check.result
@@ -280,7 +281,9 @@ class TestDNSExceptionHandling:
         ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
-            mock_resolver.resolve = mock.AsyncMock(side_effect=dns.exception.DNSException("DNS error"))
+            mock_resolver.resolve = mock.AsyncMock(
+                side_effect=dns.exception.DNSException("DNS error")
+            )
 
             check = DNS(hostname="example.com")
             result = await check.result
@@ -296,7 +299,9 @@ class TestDNSExceptionHandling:
         ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
-            mock_resolver.resolve = mock.AsyncMock(side_effect=RuntimeError("Unexpected error"))
+            mock_resolver.resolve = mock.AsyncMock(
+                side_effect=RuntimeError("Unexpected error")
+            )
 
             check = DNS(hostname="example.com")
             result = await check.result
