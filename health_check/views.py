@@ -161,7 +161,7 @@ class HealthCheckView(_MainView):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        super().as_view(**initkwargs)
+        return super().as_view(**initkwargs)
 
     def get_plugins(self):
         for check in self.checks or [

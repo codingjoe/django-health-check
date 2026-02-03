@@ -10,7 +10,7 @@ from health_check.backends import HealthCheck
 from health_check.conf import HEALTH_CHECK
 from health_check.exceptions import ServiceWarning
 from health_check.plugins import plugin_dir
-from health_check.views import MediaType
+from health_check.views import HealthCheckView, MediaType
 
 
 class TestMediaType:
@@ -326,3 +326,22 @@ class TestMainView:
         response = client.get(self.url)
         assert response.status_code == 500
         assert b"System status" in response.content
+
+
+class TestHealthCheckView:
+    def test_as_view__return_callable(self):
+        """Return a callable view function."""
+        view = HealthCheckView.as_view()
+        assert callable(view)
+
+    def test_as_view__warn_warnings_as_errors(self):
+        """Emit deprecation warning when warnings_as_errors is passed."""
+        with pytest.warns(DeprecationWarning, match=r"`warnings_as_errors` argument is deprecated"):
+            view = HealthCheckView.as_view(warnings_as_errors=True)
+        assert callable(view)
+
+    def test_as_view__warn_use_threading(self):
+        """Emit deprecation warning when use_threading is passed."""
+        with pytest.warns(DeprecationWarning, match=r"`use_threading` argument is deprecated"):
+            view = HealthCheckView.as_view(use_threading=True)
+        assert callable(view)
