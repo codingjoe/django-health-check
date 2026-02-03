@@ -29,6 +29,9 @@ class Kafka(HealthCheck):
     )
 
     def run(self):
+        # Note: confluent_kafka's Consumer operations are synchronous/blocking.
+        # This check will be automatically executed in a thread pool via
+        # asyncio.to_thread() by the base class.
         logger.debug(
             "Connecting to Kafka bootstrap servers %r ...",
             self.bootstrap_servers,

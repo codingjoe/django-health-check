@@ -42,7 +42,7 @@ class TestKafka:
         with mock.patch("health_check.contrib.kafka.Consumer") as mock_consumer_cls:
             mock_consumer = mock.MagicMock()
             mock_consumer_cls.return_value = mock_consumer
-            
+
             kafka_error = KafkaError(1)  # Error code for broker not available
             mock_consumer.list_topics.side_effect = KafkaException(kafka_error)
 

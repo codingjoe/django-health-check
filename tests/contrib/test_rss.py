@@ -29,7 +29,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -72,7 +72,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -111,7 +111,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -142,7 +142,7 @@ class TestAWS:
             mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
                 "Not Found", request=mock.MagicMock(), response=mock_response
             )
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -200,7 +200,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = invalid_xml
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -229,7 +229,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -259,7 +259,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
@@ -288,7 +288,7 @@ class TestAWS:
             mock_response = mock.MagicMock()
             mock_response.content = rss_content
             mock_response.raise_for_status = mock.MagicMock()
-            
+
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
                 return_value=mock_response
