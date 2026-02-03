@@ -24,7 +24,7 @@ class TestRedis:
         mock_client.ping.return_value = True
 
         check = RedisHealthCheck(client=mock_client)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
         mock_client.ping.assert_called_once()
 
@@ -35,7 +35,7 @@ class TestRedis:
         mock_client.ping.side_effect = ConnectionRefusedError("refused")
 
         check = RedisHealthCheck(client=mock_client)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
 
@@ -46,7 +46,7 @@ class TestRedis:
         mock_client.ping.side_effect = RedisTimeoutError("timeout")
 
         check = RedisHealthCheck(client=mock_client)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
 
@@ -57,7 +57,7 @@ class TestRedis:
         mock_client.ping.side_effect = RedisConnectionError("connection error")
 
         check = RedisHealthCheck(client=mock_client)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
 
@@ -73,9 +73,9 @@ class TestRedis:
 
         client = RedisClient.from_url(redis_url)
         check = RedisHealthCheck(client=client)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
-        client.close()
+        await client.aclose()
 
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -103,5 +103,5 @@ class TestRedis:
 
         # Use the unified Redis check with the master client
         check = RedisHealthCheck(client=master)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None

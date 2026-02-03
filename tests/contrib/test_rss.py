@@ -5,6 +5,8 @@ from unittest import mock
 
 import pytest
 
+pytest.importorskip("httpx")
+
 from health_check.contrib.rss import AWS
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
 
@@ -45,7 +47,7 @@ class TestAWS:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
                 check = AWS(region="us-east-1", service="ec2")
-                result = await check.result
+                result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "1 recent incident(s)" in str(result.error)
@@ -89,7 +91,7 @@ class TestAWS:
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
                 check = AWS(region="us-east-1", service="ec2")
-                result = await check.result
+                result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "2 recent incident(s)" in str(result.error)
@@ -128,7 +130,7 @@ class TestAWS:
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
                 check = AWS(region="us-east-1", service="ec2")
-                result = await check.result
+                result = await check.get_result()
                 assert result.error is None
 
     @pytest.mark.asyncio
@@ -150,7 +152,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "HTTP error 404" in str(result.error)
@@ -168,7 +170,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Failed to fetch RSS feed" in str(result.error)
@@ -186,7 +188,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "timed out" in str(result.error)
@@ -208,7 +210,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Failed to parse RSS feed" in str(result.error)
@@ -237,7 +239,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "Incident without date" in str(result.error)
@@ -267,7 +269,7 @@ class TestAWS:
             mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "Incident with bad date" in str(result.error)
@@ -305,7 +307,7 @@ class TestAWS:
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
 
                 check = AWS(region="us-east-1", service="ec2")
-                result = await check.result
+                result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "Untitled incident" in str(result.error)
@@ -337,6 +339,6 @@ class TestAWS:
 
         check = AWS(region="us-east-1", service="ec2")
         check.feed_url = aws_rss_feed_url
-        result = await check.result
+        result = await check.get_result()
         # Result can be either None or ServiceWarning, both are acceptable for live endpoint
         assert result.error is None or isinstance(result.error, ServiceWarning)

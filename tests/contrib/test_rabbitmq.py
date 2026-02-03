@@ -26,7 +26,7 @@ class TestRabbitMQ:
             mock_connect.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
             mock_conn.close.assert_awaited_once()
 
@@ -39,7 +39,7 @@ class TestRabbitMQ:
             mock_connect.side_effect = ConnectionRefusedError("refused")
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -54,7 +54,7 @@ class TestRabbitMQ:
             )
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -67,7 +67,7 @@ class TestRabbitMQ:
             mock_connect.side_effect = OSError("os error")
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -80,7 +80,7 @@ class TestRabbitMQ:
             mock_connect.side_effect = RuntimeError("unexpected")
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -93,5 +93,5 @@ class TestRabbitMQ:
             pytest.skip("BROKER_URL/RABBITMQ_URL not set; skipping integration test")
 
         check = RabbitMQHealthCheck(amqp_url=broker_url)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None

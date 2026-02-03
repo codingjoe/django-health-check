@@ -20,6 +20,12 @@
 
 To use the checks, you will need to install and set up their corresponding dependencies.
 
+To enable AWS health checks, install the correct extra:
+
+```shell
+pip install django-health-check[redis,rabbitmq,celery,kafka]
+```
+
 ::: health_check.contrib.celery.Ping
 
 ::: health_check.contrib.kafka.Kafka
@@ -31,5 +37,11 @@ To use the checks, you will need to install and set up their corresponding depen
 ## Cloud Provider Status
 
 Monitor AWS service health using their public RSS status feeds.
+
+To enable AWS health checks, install the `rss` extra:
+
+```shell
+pip install django-health-check[rss]
+```
 
 ::: health_check.contrib.rss.AWS

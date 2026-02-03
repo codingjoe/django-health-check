@@ -30,7 +30,7 @@ class TestKafka:
             mock_consumer.list_topics.return_value = mock_metadata
 
             check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
 
             # Verify consumer was closed
@@ -47,7 +47,7 @@ class TestKafka:
             mock_consumer.list_topics.side_effect = KafkaException(kafka_error)
 
             check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Unable to connect to Kafka" in str(result.error)
@@ -64,7 +64,7 @@ class TestKafka:
             mock_consumer.list_topics.return_value = None
 
             check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Failed to retrieve Kafka topics" in str(result.error)
@@ -87,7 +87,7 @@ class TestKafka:
                 bootstrap_servers="localhost:9092",
                 timeout=datetime.timedelta(seconds=5),
             )
-            await check.result
+            await check.get_result()
 
             # Verify timeout was used in consumer configuration
             call_kwargs = mock_consumer_cls.call_args[0][0]
@@ -103,5 +103,5 @@ class TestKafka:
             pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test")
 
         check = KafkaHealthCheck(bootstrap_servers=kafka_servers)
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None

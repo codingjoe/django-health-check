@@ -49,10 +49,6 @@ class HealthCheck(abc.ABC):
 
     """
 
-    _result_cache: HealthCheckResult | None = dataclasses.field(
-        default=None, init=False, repr=False, compare=False
-    )
-
     @abc.abstractmethod
     async def run(self) -> None:
         """
@@ -77,31 +73,21 @@ class HealthCheck(abc.ABC):
         """Return human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
-    @property
-    def result(self: HealthCheck):
-        """Execute the health check and return the result, with caching."""
-        async def _get_result() -> HealthCheckResult:
-            if self._result_cache is not None:
-                return self._result_cache
-
-            start = timeit.default_timer()
-            try:
-                await self.run() if inspect.iscoroutinefunction(
-                    self.run
-                ) else await asyncio.to_thread(self.run)
-            except HealthCheckException as e:
-                error = e
-            except BaseException:
-                logger.exception("Unexpected exception during health check")
-                error = HealthCheckException("unknown error")
-            else:
-                error = None
-
-            self._result_cache = HealthCheckResult(
-                check=self,
-                error=error,
-                time_taken=timeit.default_timer() - start,
-            )
-            return self._result_cache
-
-        return _get_result()
+    async def get_result(self: HealthCheck) -> HealthCheckResult:
+        start = timeit.default_timer()
+        try:
+            await self.run() if inspect.iscoroutinefunction(
+                self.run
+            ) else await asyncio.to_thread(self.run)
+        except HealthCheckException as e:
+            error = e
+        except BaseException:
+            logger.exception("Unexpected exception during health check")
+            error = HealthCheckException("unknown error")
+        else:
+            error = None
+        return HealthCheckResult(
+            check=self,
+            error=error,
+            time_taken=timeit.default_timer() - start,
+        )

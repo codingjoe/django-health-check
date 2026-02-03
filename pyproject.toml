@@ -78,10 +78,6 @@ docs = [
   "mkdocs-material",
   "markdown-callouts",
   "Pygments",
-  "celery",
-  "aio-pika",
-  "redis",
-  "httpx",
 ]
 
 [tool.flit.module]

@@ -14,7 +14,7 @@ class TestHealthCheck:
                 pass
 
         check = SuccessCheck()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
         assert isinstance(result, HealthCheckResult)
         assert result.check is check
@@ -28,7 +28,7 @@ class TestHealthCheck:
                 raise RuntimeError("Unexpected error")
 
         check = UnexpectedErrorCheck()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, HealthCheckException)
         assert str(result.error) == "Unknown Error: unknown error"
@@ -42,7 +42,7 @@ class TestHealthCheck:
                 pass
 
         check = SyncCheck()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
         assert isinstance(result, HealthCheckResult)
 
@@ -57,5 +57,5 @@ class TestHealthCheck:
                 await asyncio.sleep(0.01)
 
         check = SlowCheck()
-        result = await check.result
+        result = await check.get_result()
         assert result.time_taken > 0
