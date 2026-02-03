@@ -108,7 +108,7 @@ class TestKafka:
                 bootstrap_servers=["localhost:9092"],
                 timeout=datetime.timedelta(seconds=5),
             )
-            result = await check.result
+            await check.result
 
             # Verify timeout was used in consumer configuration
             call_kwargs = mock_consumer_cls.call_args[1]
