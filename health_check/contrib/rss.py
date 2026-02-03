@@ -4,9 +4,9 @@ import dataclasses
 import datetime
 import email.utils
 import logging
-import urllib.error
-import urllib.request
 from xml.etree import ElementTree
+
+import httpx
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -45,22 +45,27 @@ class AWS(HealthCheck):
         """Check the RSS feed for incidents."""
         logger.debug("Fetching feed from %s", self.feed_url)
 
-        request = urllib.request.Request(  # noqa: S310
-            self.feed_url,
-            headers={"User-Agent": "django-health-check"},
-        )
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    self.feed_url,
+                    headers={"User-Agent": "django-health-check"},
+                    timeout=self.timeout.total_seconds(),
+                    follow_redirects=True,
+                )
+            except httpx.TimeoutException as e:
+                raise ServiceUnavailable("RSS feed request timed out") from e
+            except httpx.RequestError as e:
+                raise ServiceUnavailable(f"Failed to fetch RSS feed: {e}") from e
 
-        try:
-            with urllib.request.urlopen(  # noqa: S310
-                request, timeout=self.timeout.total_seconds()
-            ) as response:
-                content = response.read()
-        except urllib.error.HTTPError as e:
-            raise ServiceUnavailable(f"HTTP error {e.code} fetching RSS feed") from e
-        except urllib.error.URLError as e:
-            raise ServiceUnavailable(f"Failed to fetch RSS feed: {e.reason}") from e
-        except TimeoutError as e:
-            raise ServiceUnavailable("RSS feed request timed out") from e
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise ServiceUnavailable(
+                    f"HTTP error {e.response.status_code} fetching RSS feed"
+                ) from e
+
+            content = response.text
 
         try:
             root = ElementTree.fromstring(content)  # noqa: S314

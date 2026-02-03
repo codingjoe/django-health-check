@@ -119,6 +119,8 @@ class Database(HealthCheck):
                 raise ServiceUnavailable(
                     "Health Check query did not return the expected result."
                 )
+        finally:
+            connection.close_if_unusable_or_obsolete()
 
 
 @dataclasses.dataclass

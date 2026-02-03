@@ -24,7 +24,7 @@ class TestCache:
     async def test_run_check__cache_working(self):
         """Cache backend successfully sets and retrieves values."""
         check = Cache()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -36,7 +36,7 @@ class TestDatabase:
     async def test_run_check__database_available(self):
         """Database connection returns successful query result."""
         check = Database()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -47,7 +47,7 @@ class TestDNS:
     async def test_run_check__dns_working(self):
         """DNS resolution completes successfully for localhost."""
         check = DNS(hostname="github.com")
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -58,7 +58,7 @@ class TestDisk:
     async def test_run_check__disk_accessible(self):
         """Disk space check completes successfully."""
         check = Disk()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
     @pytest.mark.asyncio
@@ -66,7 +66,7 @@ class TestDisk:
         """Disk check succeeds with custom path."""
         with tempfile.TemporaryDirectory() as tmpdir:
             check = Disk(path=tmpdir)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
 
 
@@ -77,7 +77,7 @@ class TestMemory:
     async def test_run_check__memory_available(self):
         """Memory check completes successfully."""
         check = Memory()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -88,7 +88,7 @@ class TestMail:
     async def test_run_check__locmem_backend(self):
         """Mail check completes with locmem backend."""
         check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -99,7 +99,7 @@ class TestStorage:
     async def test_run_check__default_storage(self):
         """Storage check completes without exceptions."""
         check = Storage()
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
 
@@ -124,7 +124,7 @@ class TestCacheExceptionHandling:
             mock_cache.aset = mock.AsyncMock(side_effect=CacheKeyWarning("Invalid key"))
 
             check = Cache()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
             assert "Cache key warning" in str(result.error)
@@ -138,7 +138,7 @@ class TestCacheExceptionHandling:
             mock_cache.aset = mock.AsyncMock(side_effect=ValueError("Invalid value"))
 
             check = Cache()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
             assert "ValueError" in str(result.error)
@@ -154,7 +154,7 @@ class TestCacheExceptionHandling:
             )
 
             check = Cache()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
             assert "Connection Error" in str(result.error)
@@ -169,7 +169,7 @@ class TestCacheExceptionHandling:
             mock_cache.aget = mock.AsyncMock(return_value="wrong-value")
 
             check = Cache()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "does not match" in str(result.error)
@@ -193,7 +193,7 @@ class TestDatabaseExceptionHandling:
             )
 
             check = Database()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "did not return the expected result" in str(result.error)
@@ -209,7 +209,7 @@ class TestDatabaseExceptionHandling:
             mock_connection.ops.compiler.side_effect = db.Error("Database error")
 
             check = Database()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -221,7 +221,7 @@ class TestDNSExceptionHandling:
     async def test_check_status__nonexistent_hostname(self):
         """Raise ServiceUnavailable when hostname does not exist."""
         check = DNS(hostname="this-domain-does-not-exist-12345.invalid")
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert "does not exist" in str(result.error)
 
@@ -231,7 +231,7 @@ class TestDNSExceptionHandling:
         # Test with a hostname that has no A record (MX-only domain for example)
         # Using a TXT-only record subdomain or similar
         check = DNS(hostname="_dmarc.github.com")
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         # Will get either no answer or NXDOMAIN
         error_msg = str(result.error).lower()
@@ -245,7 +245,7 @@ class TestDNSExceptionHandling:
             hostname="example.com",
             timeout=datetime.timedelta(microseconds=1),
         )
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert "timeout" in str(result.error).lower()
 
@@ -254,7 +254,7 @@ class TestDNSExceptionHandling:
         """Raise ServiceUnavailable when nameserver is unreachable."""
         # Use an invalid/unreachable nameserver
         check = DNS(hostname="example.com", nameservers=["192.0.2.1"])
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         # Could be timeout or no nameservers error
         error_msg = str(result.error).lower()
@@ -265,7 +265,7 @@ class TestDNSExceptionHandling:
         """Raise ServiceUnavailable when nameserver is unreachable."""
         # Use an invalid/unreachable nameserver
         check = DNS(hostname="example.com", nameservers=[])
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         # Could be timeout or no nameservers error
         error_msg = str(result.error).lower()
@@ -286,7 +286,7 @@ class TestDNSExceptionHandling:
             )
 
             check = DNS(hostname="example.com")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "DNS resolution failed" in str(result.error)
@@ -304,7 +304,7 @@ class TestDiskExceptionHandling:
             mock_disk_usage.return_value = mock_disk_usage_result
 
             check = Disk(max_disk_usage_percent=90.0)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "95.5" in str(result.error)
@@ -318,7 +318,7 @@ class TestDiskExceptionHandling:
             mock_disk_usage.return_value = mock_disk_usage_result
 
             check = Disk(max_disk_usage_percent=None)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
 
     @pytest.mark.asyncio
@@ -328,7 +328,7 @@ class TestDiskExceptionHandling:
             mock_disk_usage.side_effect = ValueError("Invalid path")
 
             check = Disk()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
@@ -346,7 +346,7 @@ class TestMailExceptionHandling:
 
             check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
             with caplog.at_level(logging.DEBUG, logger="health_check.checks"):
-                result = await check.result
+                result = await check.get_result()
             assert result.error is None
             # Verify debug logging was called
             assert any(
@@ -366,7 +366,7 @@ class TestMailExceptionHandling:
             mock_connection.open.side_effect = smtplib.SMTPException("SMTP error")
 
             check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "SMTP server" in str(result.error)
@@ -383,7 +383,7 @@ class TestMailExceptionHandling:
             )
 
             check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Connection refused" in str(result.error)
@@ -406,7 +406,7 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(min_gibibytes_available=1.0)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "RAM" in str(result.error)
@@ -424,7 +424,7 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(max_memory_usage_percent=90.0)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "95" in str(result.error)
@@ -442,7 +442,7 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(min_gibibytes_available=None, max_memory_usage_percent=None)
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
 
     @pytest.mark.asyncio
@@ -454,7 +454,7 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.side_effect = ValueError("Invalid memory call")
 
             check = Memory()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
@@ -482,7 +482,7 @@ class TestStorageExceptionHandling:
             get_file_content.return_value = b"# generated by health_check.Storage at"
 
             check = Storage()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is None
 
     @pytest.mark.asyncio
@@ -505,7 +505,7 @@ class TestStorageExceptionHandling:
             get_file_content.return_value = b"# generated by health_check.Storage at"
 
             check = Storage()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "File was not deleted" in str(result.error)
@@ -520,7 +520,7 @@ class TestStorageExceptionHandling:
             mock_storage.exists.return_value = False
 
             check = Storage()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "does not exist" in str(result.error)
@@ -538,7 +538,7 @@ class TestStorageExceptionHandling:
             mock_storage.open.return_value.__enter__.return_value = mock_file
 
             check = Storage()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "does not match" in str(result.error)
@@ -552,7 +552,7 @@ class TestStorageExceptionHandling:
             mock_storage.save.side_effect = ServiceUnavailable("Service down")
 
             check = Storage()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Service down" in str(result.error)

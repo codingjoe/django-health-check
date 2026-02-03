@@ -60,4 +60,4 @@ class Redis(HealthCheck):
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
-            await self.client.close()
+            await self.client.aclose()

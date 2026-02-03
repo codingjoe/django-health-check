@@ -21,7 +21,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is None
 
     @pytest.mark.asyncio
@@ -32,7 +32,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = mock_app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
         assert "unavailable" in str(result.error).lower()
@@ -46,7 +46,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = mock_app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
         assert "incorrect" in str(result.error).lower()
@@ -59,7 +59,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = mock_app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
 
@@ -71,7 +71,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = mock_app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
         assert "CELERY_RESULT_BACKEND" in str(result.error)
@@ -83,7 +83,7 @@ class TestCelery:
             mock_app.control.ping.side_effect = RuntimeError("unexpected")
 
             check = CeleryPingHealthCheck()
-            result = await check.result
+            result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
 
@@ -104,7 +104,7 @@ class TestCelery:
         check = CeleryPingHealthCheck()
         check.app = mock_app
 
-        result = await check.result
+        result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
         assert "missing_queue" in str(result.error)

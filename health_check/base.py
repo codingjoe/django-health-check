@@ -6,7 +6,6 @@ import dataclasses
 import inspect
 import logging
 import timeit
-from functools import cached_property
 
 from health_check.exceptions import HealthCheckException
 
@@ -74,8 +73,7 @@ class HealthCheck(abc.ABC):
         """Return human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
-    @cached_property
-    async def result(self: HealthCheck) -> HealthCheckResult:
+    async def get_result(self: HealthCheck) -> HealthCheckResult:
         start = timeit.default_timer()
         try:
             await self.run() if inspect.iscoroutinefunction(

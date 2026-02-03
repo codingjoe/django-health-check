@@ -114,7 +114,7 @@ class HealthCheckView(TemplateView):
     @method_decorator(never_cache)
     async def get(self, request, *args, **kwargs):
         self.results = await asyncio.gather(
-            *(check.result for check in self.get_checks())
+            *(check.get_result() for check in self.get_checks())
         )
         has_errors = any(result.error for result in self.results)
         status_code = 500 if has_errors else 200
@@ -275,7 +275,7 @@ class HealthCheckView(TemplateView):
 
     def get_checks(
         self,
-    ) -> typing.Generator[typing.Callable[..., typing.Coroutine], None, None]:
+    ) -> typing.Generator[HealthCheck, None, None]:
         """Yield instantiated health checks callable."""
         for check in self.checks:
             try:
