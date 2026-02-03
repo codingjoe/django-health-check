@@ -13,7 +13,8 @@ from health_check.exceptions import ServiceUnavailable
 class TestCelery:
     """Test Celery ping health check."""
 
-    def test_check_status__success(self):
+    @pytest.mark.asyncio
+    async def test_check_status__success(self):
         """Report healthy when workers respond correctly."""
         mock_result = {"celery@worker1": {"ok": "pong"}}
 
@@ -21,20 +22,23 @@ class TestCelery:
             mock_app.control.ping.return_value = [mock_result]
 
             check = CeleryPingHealthCheck()
-            check.check_status()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
-    def test_check_status__no_workers(self):
+    @pytest.mark.asyncio
+    async def test_check_status__no_workers(self):
         """Raise ServiceUnavailable when no workers respond."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.return_value = {}
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "unavailable" in str(exc_info.value).lower()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "unavailable" in str(result.error).lower()
 
-    def test_check_status__unexpected_response(self):
+    @pytest.mark.asyncio
+    async def test_check_status__unexpected_response(self):
         """Raise ServiceUnavailable when worker response is incorrect."""
         mock_result = {"celery@worker1": {"bad": "response"}}
 
@@ -42,38 +46,46 @@ class TestCelery:
             mock_app.control.ping.return_value = [mock_result]
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "incorrect" in str(exc_info.value).lower()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "incorrect" in str(result.error).lower()
 
-    def test_check_status__oserror(self):
+    @pytest.mark.asyncio
+    async def test_check_status__oserror(self):
         """Raise ServiceUnavailable on OS error."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = OSError("os error")
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__not_implemented_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__not_implemented_error(self):
         """Raise ServiceUnavailable when result backend is not configured."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = NotImplementedError("no result backend")
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__unknown_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable for unexpected exceptions."""
         with mock.patch("health_check.contrib.celery.app") as mock_app:
             mock_app.control.ping.side_effect = RuntimeError("unexpected")
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__missing_queue_worker(self):
+    @pytest.mark.asyncio
+    async def test_check_status__missing_queue_worker(self):
         """Raise ServiceUnavailable when a defined queue has no active workers."""
         mock_result = {"celery@worker1": {"ok": "pong"}}
 
@@ -89,6 +101,7 @@ class TestCelery:
             mock_app.control.inspect.return_value = mock_inspect
 
             check = CeleryPingHealthCheck()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "missing_queue" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "missing_queue" in str(result.error)

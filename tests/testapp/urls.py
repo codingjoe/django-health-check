@@ -47,7 +47,6 @@ else:
                     "health_check.contrib.celery.Ping",
                     "health_check.contrib.celery.Ping",
                 ],
-                use_threading=False,
             ),
             name="health_check_celery",
         )

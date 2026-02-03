@@ -4,7 +4,8 @@ import dataclasses
 import datetime
 import typing
 
-from celery.app import default_app
+import celery
+from celery.app import default_app as app
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -22,12 +23,12 @@ class Ping(HealthCheck):
     """
 
     CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
-    app = default_app
+    app: celery.Celery = dataclasses.field(default_factory=lambda: app)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
 
-    async def run(self):
+    def run(self):
         try:
             ping_result = self.app.control.ping(timeout=self.timeout.total_seconds())
         except OSError as e:
@@ -42,32 +43,30 @@ class Ping(HealthCheck):
             if not ping_result:
                 raise ServiceUnavailable("Celery workers unavailable")
             else:
-                self._check_ping_result(ping_result)
+                self.check_active_queues(*self.active_workers(ping_result))
 
-    def _check_ping_result(self, ping_result):
-        active_workers = []
-
+    def active_workers(self, ping_result):
         for result in ping_result:
             worker, response = list(result.items())[0]
             if response != self.CORRECT_PING_RESPONSE:
                 raise ServiceUnavailable(
                     f"Celery worker {worker} response was incorrect"
                 )
-            active_workers.append(worker)
+            yield worker
 
-        if not self.errors:
-            self._check_active_queues(active_workers)
+    def check_active_queues(self, *active_workers):
+        defined_queues = {
+            queue.name
+            for queue in getattr(self.app.conf, "task_queues", None)
+            or getattr(self.app.conf, "CELERY_QUEUES", None)
+        }
+        active_queues = {
+            queue.get("name")
+            for queues in self.app.control.inspect(active_workers)
+            .active_queues()
+            .values()
+            for queue in queues
+        }
 
-    def _check_active_queues(self, active_workers):
-        defined_queues = getattr(self.app.conf, "task_queues", None) or getattr(
-            self.app.conf, "CELERY_QUEUES", None
-        )
-
-        defined_queues = {queue.name for queue in defined_queues}
-        active_queues = set()
-
-        for queues in self.app.control.inspect(active_workers).active_queues().values():
-            active_queues.update([queue.get("name") for queue in queues])
-
-        for queue in defined_queues.difference(active_queues):
+        for queue in defined_queues - active_queues:
             raise ServiceUnavailable(f"No worker for Celery task queue {queue}")

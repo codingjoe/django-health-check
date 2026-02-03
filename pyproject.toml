@@ -67,6 +67,7 @@ dev = [
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-asyncio",
   "pytest-django",
   "django-storages",
   "boto3",
@@ -77,6 +78,9 @@ docs = [
   "mkdocs-material",
   "markdown-callouts",
   "Pygments",
+  "celery",
+  "rabbitmq",
+  "redis",
 ]
 
 [tool.flit.module]

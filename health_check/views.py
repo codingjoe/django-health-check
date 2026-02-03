@@ -164,15 +164,18 @@ class HealthCheckView(TemplateView):
     def render_to_response_json(self, status):
         """Return JSON response with health check results."""
         return JsonResponse(
-            {label: str(p.pretty_status()) for label, p in self.results.items()},
+            {
+                repr(result.check): "OK" if not result.error else str(result.error)
+                for result in self.results
+            },
             status=status,
         )
 
     def render_to_response_text(self, status):
         """Return plain text response with health check results."""
         lines = (
-            f"{label}: {result.pretty_status()}"
-            for label, result in self.results.items()
+            f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
+            for result in self.results
         )
         return HttpResponse(
             "\n".join(lines) + "\n",
@@ -209,7 +212,7 @@ class HealthCheckView(TemplateView):
 
         # Add status metrics for each check
         for result in self.results:
-            safe_label = self._escape_openmetrics_label_value(repr(result))
+            safe_label = self._escape_openmetrics_label_value(repr(result.check))
             has_errors |= bool(result.error)
             lines.append(
                 f'django_health_check_status{{check="{safe_label}"}} {not result.error:d}'
@@ -223,7 +226,7 @@ class HealthCheckView(TemplateView):
         ]
 
         for result in self.results:
-            safe_label = self._escape_openmetrics_label_value(repr(result))
+            safe_label = self._escape_openmetrics_label_value(repr(result.check))
             lines.append(
                 f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
             )
@@ -254,9 +257,9 @@ class HealthCheckView(TemplateView):
 
         for result in self.results:
             feed.add_item(
-                title=repr(result),
+                title=repr(result.check),
                 link=self.request.build_absolute_uri(),
-                description=f"{result:r}\nResponse time: {result.time_taken:.3f}s",
+                description=f"{repr(result.check)}\nResponse time: {result.time_taken:.3f}s",
                 pubdate=timezone.now(),
                 updateddate=timezone.now(),
                 author_name=self.feed_author,
@@ -270,7 +273,9 @@ class HealthCheckView(TemplateView):
         )
         return response
 
-    def get_checks(self) -> typing.Generator[typing.Callable[..., typing.Coroutine]]:
+    def get_checks(
+        self,
+    ) -> typing.Generator[typing.Callable[..., typing.Coroutine], None, None]:
         """Yield instantiated health checks callable."""
         for check in self.checks:
             try:
