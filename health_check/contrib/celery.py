@@ -5,7 +5,7 @@ import datetime
 import typing
 
 import celery
-from celery.app import default_app
+from celery.app import app_or_default
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -17,13 +17,13 @@ class Ping(HealthCheck):
     Check Celery worker availability using the ping control command.
 
     Args:
-        app: Celery application instance to use for the health check.
+        app: Celery application instance to use for the health check, defaults to the [default Celery app][celery.app.default_app].
         timeout: Timeout duration for the ping command.
 
     """
 
     CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
-    app: celery.Celery = dataclasses.field(default_factory=lambda: default_app)
+    app: celery.Celery = dataclasses.field(default_factory=app_or_default)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
