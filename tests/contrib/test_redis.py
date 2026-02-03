@@ -80,7 +80,7 @@ class TestRedis:
         if not redis_url:
             pytest.skip("REDIS_URL not set; skipping integration test")
 
-        from redis import Redis as RedisClient
+        from redis.asyncio import Redis as RedisClient
 
         client = RedisClient.from_url(redis_url)
         check = RedisHealthCheck(client=client)
@@ -96,7 +96,7 @@ class TestRedis:
         if not sentinel_url:
             pytest.skip("REDIS_SENTINEL_URL not set; skipping integration test")
 
-        from redis.sentinel import Sentinel
+        from redis.asyncio import Sentinel
 
         # Parse sentinel configuration from environment
         sentinel_nodes = os.getenv("REDIS_SENTINEL_NODES", "localhost:26379")

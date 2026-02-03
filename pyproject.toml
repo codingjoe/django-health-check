@@ -77,8 +77,10 @@ docs = [
   "mkdocstrings[python]>=0.18",
   "mkdocs-material",
   "markdown-callouts",
-  "celery",
   "Pygments",
+  "celery",
+  "rabbitmq",
+  "redis",
 ]
 
 [tool.flit.module]
