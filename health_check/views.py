@@ -147,7 +147,8 @@ class HealthCheckView(_MainView):
 
     checks: list[str | tuple[str, dict]] | None = None
 
-    def as_view(self, **initkwargs):
+    @classmethod
+    def as_view(cls, **initkwargs):
         if "warnings_as_errors" in initkwargs:
             warnings.warn(
                 "`warnings_as_errors` argument is deprecated and will be removed the next major version.",
