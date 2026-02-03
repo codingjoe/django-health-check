@@ -19,12 +19,12 @@ class Kafka(HealthCheck):
     Check Kafka service by connecting to a Kafka broker and listing topics.
 
     Args:
-        bootstrap_servers: Comma-separated list of Kafka bootstrap servers, e.g., 'localhost:9092'.
+        bootstrap_servers: List of Kafka bootstrap servers, e.g., ['localhost:9092'].
         timeout: Timeout duration for the connection check as a datetime.timedelta.
 
     """
 
-    bootstrap_servers: str
+    bootstrap_servers: list[str]
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
@@ -39,7 +39,7 @@ class Kafka(HealthCheck):
         timeout_ms = int(self.timeout.total_seconds() * 1000)
         consumer = AIOConsumer(
             {
-                "bootstrap.servers": self.bootstrap_servers,
+                "bootstrap.servers": ",".join(self.bootstrap_servers),
                 "client.id": "health-check",
                 "group.id": "health-check",
                 "session.timeout.ms": timeout_ms,
@@ -50,9 +50,10 @@ class Kafka(HealthCheck):
         try:
             # Try to list topics to verify connection
             # This will raise an exception if Kafka is not available
-            if (cluster_metadata := await consumer.list_topics(
+            cluster_metadata = await consumer.list_topics(
                 timeout=self.timeout.total_seconds()
-            )) is None or cluster_metadata.topics is None:
+            )
+            if not cluster_metadata or not cluster_metadata.topics:
                 raise ServiceUnavailable("Failed to retrieve Kafka topics.")
 
             logger.debug(

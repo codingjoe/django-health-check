@@ -29,7 +29,7 @@ class TestKafka:
             mock_metadata.topics = {"test-topic": mock.MagicMock()}
             mock_consumer.list_topics.return_value = mock_metadata
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             result = await check.get_result()
             assert result.error is None
 
@@ -46,7 +46,7 @@ class TestKafka:
             kafka_error = KafkaError(1)  # Error code for broker not available
             mock_consumer.list_topics.side_effect = KafkaException(kafka_error)
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
@@ -63,7 +63,7 @@ class TestKafka:
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.list_topics.return_value = None
 
-            check = KafkaHealthCheck(bootstrap_servers="localhost:9092")
+            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
@@ -84,7 +84,7 @@ class TestKafka:
             mock_consumer.list_topics.return_value = mock_metadata
 
             check = KafkaHealthCheck(
-                bootstrap_servers="localhost:9092",
+                bootstrap_servers=["localhost:9092"],
                 timeout=datetime.timedelta(seconds=5),
             )
             await check.get_result()
@@ -102,6 +102,6 @@ class TestKafka:
         if not kafka_servers:
             pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test")
 
-        check = KafkaHealthCheck(bootstrap_servers=kafka_servers)
+        check = KafkaHealthCheck(bootstrap_servers=kafka_servers.split(","))
         result = await check.get_result()
         assert result.error is None
