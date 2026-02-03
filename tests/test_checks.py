@@ -180,6 +180,26 @@ class TestDatabaseExceptionHandling:
 
     @pytest.mark.django_db
     @pytest.mark.asyncio
+    async def test_check_status__query_returns_unexpected_result(self):
+        """Raise ServiceUnavailable when query does not return (1,)."""
+        with mock.patch("health_check.checks.connections") as mock_connections:
+            mock_connection = mock.MagicMock()
+            mock_connections.__getitem__.return_value = mock_connection
+            mock_cursor = mock.MagicMock()
+            mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = (0,)
+            mock_connection.ops.compiler.return_value = mock.MagicMock(
+                return_value=mock.MagicMock(compile=lambda x: ("SELECT 0", []))
+            )
+
+            check = Database()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "did not return the expected result" in str(result.error)
+
+    @pytest.mark.django_db
+    @pytest.mark.asyncio
     async def test_check_status__database_exception(self):
         """Raise ServiceUnavailable on database exception."""
         with mock.patch("health_check.checks.connections") as mock_connections:
@@ -270,24 +290,6 @@ class TestDNSExceptionHandling:
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "DNS resolution failed" in str(result.error)
-
-    @pytest.mark.asyncio
-    async def test_check_status__unknown_exception(self):
-        """Raise ServiceUnavailable on unknown exception."""
-        with mock.patch(
-            "health_check.checks.dns.asyncresolver.Resolver"
-        ) as mock_resolver_class:
-            mock_resolver = mock.MagicMock()
-            mock_resolver_class.return_value = mock_resolver
-            mock_resolver.resolve = mock.AsyncMock(
-                side_effect=RuntimeError("Unexpected error")
-            )
-
-            check = DNS(hostname="example.com")
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Unknown DNS error" in str(result.error)
 
 
 class TestDiskExceptionHandling:
@@ -385,21 +387,6 @@ class TestMailExceptionHandling:
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "Connection refused" in str(result.error)
-            mock_connection.close.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_check_status__mail_unknown_exception(self):
-        """Raise ServiceUnavailable for unknown exceptions during mail check."""
-        with mock.patch("health_check.checks.get_connection") as mock_get_connection:
-            mock_connection = mock.MagicMock()
-            mock_get_connection.return_value = mock_connection
-            mock_connection.open.side_effect = RuntimeError("Unknown error")
-
-            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Unknown error" in str(result.error)
             mock_connection.close.assert_called_once()
 
 
@@ -555,20 +542,6 @@ class TestStorageExceptionHandling:
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "does not match" in str(result.error)
-
-    @pytest.mark.asyncio
-    async def test_check_status__storage_unknown_exception(self):
-        """Raise ServiceUnavailable for unknown exceptions."""
-        with mock.patch("health_check.checks.storages") as mock_storages:
-            mock_storage = mock.MagicMock()
-            mock_storages.__getitem__.return_value = mock_storage
-            mock_storage.save.side_effect = RuntimeError("Unknown error")
-
-            check = Storage()
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Unknown exception" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__service_unavailable_passthrough(self):

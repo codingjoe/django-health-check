@@ -75,25 +75,6 @@ class TestKafka:
             mock_consumer.close.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_check_status__unknown_error(self):
-        """Raise ServiceUnavailable on unexpected exceptions."""
-        with mock.patch(
-            "health_check.contrib.kafka.KafkaConsumer"
-        ) as mock_consumer_cls:
-            mock_consumer = mock.MagicMock()
-            mock_consumer_cls.return_value = mock_consumer
-            mock_consumer.topics.side_effect = RuntimeError("unexpected")
-
-            check = KafkaHealthCheck(bootstrap_servers=["localhost:9092"])
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Unknown error" in str(result.error)
-
-            # Verify consumer was closed
-            mock_consumer.close.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_check_status__custom_timeout(self):
         """Use custom timeout when provided."""
         with mock.patch(

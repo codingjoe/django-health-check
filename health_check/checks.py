@@ -170,8 +170,6 @@ class DNS(HealthCheck):
             ) from e
         except dns.exception.DNSException as e:
             raise ServiceUnavailable(f"DNS resolution failed: {e}") from e
-        except Exception as e:
-            raise ServiceUnavailable("Unknown DNS error") from e
         else:
             logger.debug(
                 "Successfully resolved %s to %s",
@@ -238,8 +236,6 @@ class Mail(HealthCheck):
             ) from e
         except ConnectionRefusedError as e:
             raise ServiceUnavailable("Connection refused error") from e
-        except Exception as e:
-            raise ServiceUnavailable(f"Unknown error {e.__class__}") from e
         finally:
             connection.close()
         logger.debug(
@@ -324,13 +320,8 @@ class Storage(HealthCheck):
             raise ServiceUnavailable("File was not deleted")
 
     async def run(self):
-        try:
-            # write the file to the storage backend
-            file_name = self.get_file_name()
-            file_content = self.get_file_content()
-            file_name = self.check_save(file_name, file_content)
-            self.check_delete(file_name)
-        except ServiceUnavailable:
-            raise
-        except Exception as e:
-            raise ServiceUnavailable("Unknown exception") from e
+        # write the file to the storage backend
+        file_name = self.get_file_name()
+        file_content = self.get_file_content()
+        file_name = self.check_save(file_name, file_content)
+        self.check_delete(file_name)
