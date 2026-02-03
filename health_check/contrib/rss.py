@@ -59,10 +59,10 @@ class AWS(HealthCheck):
             raise ServiceUnavailable(
                 f"HTTP error {e.response.status_code} fetching RSS feed"
             ) from e
-        except httpx.RequestError as e:
-            raise ServiceUnavailable(f"Failed to fetch RSS feed: {e}") from e
         except httpx.TimeoutException as e:
             raise ServiceUnavailable("RSS feed request timed out") from e
+        except httpx.RequestError as e:
+            raise ServiceUnavailable(f"Failed to fetch RSS feed: {e}") from e
 
         try:
             root = ElementTree.fromstring(content)  # noqa: S314
