@@ -259,7 +259,7 @@ class HealthCheckView(TemplateView):
             feed.add_item(
                 title=repr(result.check),
                 link=self.request.build_absolute_uri(),
-                description=f"{repr(result.check)}\nResponse time: {result.time_taken:.3f}s",
+                description=f"{result.check!r}\nResponse time: {result.time_taken:.3f}s",
                 pubdate=timezone.now(),
                 updateddate=timezone.now(),
                 author_name=self.feed_author,
@@ -276,7 +276,7 @@ class HealthCheckView(TemplateView):
     def get_checks(
         self,
     ) -> typing.Generator[HealthCheck, None, None]:
-        """Yield instantiated health checks callable."""
+        """Yield instantiated health check callables."""
         for check in self.checks:
             try:
                 check, options = check

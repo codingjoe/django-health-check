@@ -50,7 +50,7 @@ class TestKafka:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
-            assert "Unable to connect to Kafka" in str(result.error)
+            assert "Unable to connect" in str(result.error)
 
             # Verify consumer was closed
             mock_consumer.close.assert_awaited_once()

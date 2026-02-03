@@ -5,7 +5,7 @@ import datetime
 import logging
 
 from confluent_kafka.aio import AIOConsumer
-from confluent_kafka.error import KafkaError, KafkaException
+from confluent_kafka.error import KafkaException
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -48,9 +48,6 @@ class Kafka(HealthCheck):
         )
 
         try:
-            # Try to list topics to verify connection
-            # This will raise an exception if Kafka is not available
-
             if not (
                 (
                     cluster_metadata := await consumer.list_topics(
@@ -61,17 +58,12 @@ class Kafka(HealthCheck):
             ):
                 raise ServiceUnavailable("Failed to retrieve Kafka topics.")
 
+        except KafkaException as e:
+            raise ServiceUnavailable("Unable to connect") from e
+        else:
             logger.debug(
                 "Connection established. Kafka is healthy. Found %d topics.",
                 len(cluster_metadata.topics),
             )
-
-        except KafkaException as e:
-            kafka_error = e.args[0] if e.args else None
-            if isinstance(kafka_error, KafkaError):
-                raise ServiceUnavailable(
-                    f"Unable to connect to Kafka: {kafka_error.str()}"
-                ) from e
-            raise ServiceUnavailable(f"Unable to connect to Kafka: {e}") from e
         finally:
             await consumer.close()
