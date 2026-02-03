@@ -29,7 +29,13 @@ urlpatterns = [
     # Failing endpoint for testing error handling
     path(
         "health/fail/",
-        HealthCheckView.as_view(checks=[AlwaysFailingCheck]),
+        HealthCheckView.as_view(
+            checks=[
+                AlwaysFailingCheck,
+                "health_check.checks.Database",
+                "health_check.checks.Cache",
+            ]
+        ),
         name="health_check_fail",
     ),
 ]
