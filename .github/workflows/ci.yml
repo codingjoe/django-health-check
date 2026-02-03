@@ -45,7 +45,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv run --with Django~=${{ matrix.django-version }}.0 pytest
+      - run: uv run --no-dev --group=test --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -107,7 +107,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv run --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
+      - run: uv run --no-dev --group=test --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
