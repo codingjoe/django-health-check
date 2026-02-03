@@ -61,7 +61,8 @@ class Kafka(HealthCheck):
             )
 
         except KafkaException as e:
-            if (kafka_error := e.args[0] if e.args else None) and isinstance(kafka_error, KafkaError):
+            kafka_error = e.args[0] if e.args else None
+            if isinstance(kafka_error, KafkaError):
                 raise ServiceUnavailable(
                     f"Unable to connect to Kafka: {kafka_error.str()}"
                 ) from e

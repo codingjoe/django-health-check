@@ -65,10 +65,7 @@ class AWS(HealthCheck):
                     f"HTTP error {e.response.status_code} fetching RSS feed"
                 ) from e
 
-            try:
-                content = response.text
-            except Exception as e:
-                raise ServiceUnavailable(f"Failed to read RSS feed response: {e}") from e
+            content = response.text
 
         try:
             root = ElementTree.fromstring(content)  # noqa: S314
