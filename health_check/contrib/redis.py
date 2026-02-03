@@ -57,8 +57,6 @@ class Redis(HealthCheck):
             raise ServiceUnavailable(
                 "Unable to connect to Redis: Connection Error"
             ) from e
-        except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:

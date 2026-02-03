@@ -61,17 +61,6 @@ class TestRedis:
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
 
-    @pytest.mark.asyncio
-    async def test_redis__unknown_error(self):
-        """Raise ServiceUnavailable for unexpected exceptions."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.side_effect = RuntimeError("unexpected")
-
-        check = RedisHealthCheck(client=mock_client)
-        result = await check.result
-        assert result.error is not None
-        assert isinstance(result.error, ServiceUnavailable)
-
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):

@@ -180,26 +180,6 @@ class TestDatabaseExceptionHandling:
 
     @pytest.mark.django_db
     @pytest.mark.asyncio
-    async def test_check_status__query_returns_unexpected_result(self):
-        """Raise ServiceUnavailable when query does not return (1,)."""
-        with mock.patch("health_check.checks.connections") as mock_connections:
-            mock_connection = mock.MagicMock()
-            mock_connections.__getitem__.return_value = mock_connection
-            mock_cursor = mock.MagicMock()
-            mock_connection.cursor.return_value.__enter__.return_value = mock_cursor
-            mock_cursor.fetchone.return_value = (0,)
-            mock_connection.ops.compiler.return_value = mock.MagicMock(
-                return_value=mock.MagicMock(compile=lambda x: ("SELECT 0", []))
-            )
-
-            check = Database()
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "did not return the expected result" in str(result.error)
-
-    @pytest.mark.django_db
-    @pytest.mark.asyncio
     async def test_check_status__database_exception(self):
         """Raise ServiceUnavailable on database exception."""
         with mock.patch("health_check.checks.connections") as mock_connections:

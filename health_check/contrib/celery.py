@@ -37,8 +37,6 @@ class Ping(HealthCheck):
             raise ServiceUnavailable(
                 "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
             ) from e
-        except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
         else:
             if not ping_result:
                 raise ServiceUnavailable("Celery workers unavailable")

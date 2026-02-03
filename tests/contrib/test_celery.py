@@ -66,13 +66,15 @@ class TestCelery:
     @pytest.mark.asyncio
     async def test_check_status__not_implemented_error(self):
         """Raise ServiceUnavailable when result backend is not configured."""
-        with mock.patch("celery.app.default_app") as mock_app:
-            mock_app.control.ping.side_effect = NotImplementedError("no result backend")
+        mock_app = mock.MagicMock()
+        mock_app.control.ping.side_effect = NotImplementedError("no result backend")
+        check = CeleryPingHealthCheck()
+        check.app = mock_app
 
-            check = CeleryPingHealthCheck()
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
+        result = await check.result
+        assert result.error is not None
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "CELERY_RESULT_BACKEND" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__unknown_error(self):

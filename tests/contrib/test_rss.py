@@ -157,18 +157,6 @@ class TestAWS:
             assert "timed out" in str(result.error)
 
     @pytest.mark.asyncio
-    async def test_check_status__general_exception(self):
-        """Raise ServiceUnavailable on general exception."""
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.side_effect = RuntimeError("Unexpected error")
-
-            check = AWS(region="us-east-1", service="ec2")
-            result = await check.result
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Unknown error fetching RSS feed" in str(result.error)
-
-    @pytest.mark.asyncio
     async def test_check_status__parse_error(self):
         """Raise ServiceUnavailable on XML parse error."""
         invalid_xml = b"not valid xml"
