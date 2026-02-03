@@ -16,7 +16,8 @@ from health_check.exceptions import ServiceUnavailable
 class TestRabbitMQ:
     """Test RabbitMQ health check."""
 
-    def test_check_status__success(self):
+    @pytest.mark.asyncio
+    async def test_check_status__success(self):
         """Connect to RabbitMQ successfully."""
         with mock.patch("health_check.contrib.rabbitmq.Connection") as mock_conn_cls:
             mock_conn = mock.MagicMock()
@@ -26,10 +27,11 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            check.check_status()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
-    def test_check_status__connection_refused(self):
+    @pytest.mark.asyncio
+    async def test_check_status__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
         with mock.patch("health_check.contrib.rabbitmq.Connection") as mock_conn_cls:
             mock_conn = mock.MagicMock()
@@ -38,10 +40,12 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__authentication_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__authentication_error(self):
         """Raise ServiceUnavailable on authentication failure."""
         with mock.patch("health_check.contrib.rabbitmq.Connection") as mock_conn_cls:
             mock_conn = mock.MagicMock()
@@ -50,10 +54,12 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__os_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__os_error(self):
         """Raise ServiceUnavailable on OS error."""
         with mock.patch("health_check.contrib.rabbitmq.Connection") as mock_conn_cls:
             mock_conn = mock.MagicMock()
@@ -62,10 +68,12 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
-    def test_check_status__unknown_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable on unexpected exceptions."""
         with mock.patch("health_check.contrib.rabbitmq.Connection") as mock_conn_cls:
             mock_conn = mock.MagicMock()
@@ -74,16 +82,18 @@ class TestRabbitMQ:
             mock_conn_cls.return_value = mock_conn
 
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
-            with pytest.raises(ServiceUnavailable):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
     @pytest.mark.integration
-    def test_check_status__real_rabbitmq(self):
+    @pytest.mark.asyncio
+    async def test_check_status__real_rabbitmq(self):
         """Connect to real RabbitMQ server when BROKER_URL is configured."""
         broker_url = os.getenv("BROKER_URL") or os.getenv("RABBITMQ_URL")
         if not broker_url:
             pytest.skip("BROKER_URL/RABBITMQ_URL not set; skipping integration test")
 
         check = RabbitMQHealthCheck(amqp_url=broker_url)
-        check.check_status()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None

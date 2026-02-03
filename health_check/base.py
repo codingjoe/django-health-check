@@ -70,6 +70,10 @@ class HealthCheck(abc.ABC):
         """
         ...
 
+    def pretty_status(self) -> str:
+        """Return human-readable status string, always 'OK' for the check itself."""
+        return "OK"
+
     @cached_property
     async def result(self: HealthCheck) -> HealthCheckResult:
         start = timeit.default_timer()
