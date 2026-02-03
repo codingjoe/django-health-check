@@ -40,7 +40,7 @@ class HealthCheck(abc.ABC):
         ...    async def run(self):
         ...        # Implement health check logic here
 
-    Subclasses should be [dataclases][dataclasses.dataclass] or implement their own `__repr__` method
+    Subclasses should be [dataclasses][dataclasses.dataclass] or implement their own `__repr__` method
     to provide meaningful representations in health check reports.
 
     Warning:

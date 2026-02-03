@@ -78,7 +78,7 @@ docs = [
   "markdown-callouts",
   "Pygments",
   "celery",
-  "rabbitmq",
+  "kombu",
   "redis",
 ]
 

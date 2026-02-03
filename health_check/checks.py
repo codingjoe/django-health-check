@@ -319,7 +319,7 @@ class Storage(HealthCheck):
         if self.storage.exists(file_name):
             raise ServiceUnavailable("File was not deleted")
 
-    async def run(self):
+    def run(self):
         # write the file to the storage backend
         file_name = self.get_file_name()
         file_content = self.get_file_content()
