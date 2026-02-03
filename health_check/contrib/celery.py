@@ -5,7 +5,7 @@ import datetime
 import typing
 
 import celery
-from celery.app import default_app as app
+from celery.app import default_app
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -23,7 +23,7 @@ class Ping(HealthCheck):
     """
 
     CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
-    app: celery.Celery = dataclasses.field(default_factory=lambda: app)
+    app: celery.Celery = dataclasses.field(default_factory=lambda: default_app)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )

@@ -18,7 +18,7 @@ class TestCelery:
         """Report healthy when workers respond correctly."""
         mock_result = {"celery@worker1": {"ok": "pong"}}
 
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.return_value = [mock_result]
 
             check = CeleryPingHealthCheck()
@@ -28,7 +28,7 @@ class TestCelery:
     @pytest.mark.asyncio
     async def test_check_status__no_workers(self):
         """Raise ServiceUnavailable when no workers respond."""
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.return_value = {}
 
             check = CeleryPingHealthCheck()
@@ -42,7 +42,7 @@ class TestCelery:
         """Raise ServiceUnavailable when worker response is incorrect."""
         mock_result = {"celery@worker1": {"bad": "response"}}
 
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.return_value = [mock_result]
 
             check = CeleryPingHealthCheck()
@@ -54,7 +54,7 @@ class TestCelery:
     @pytest.mark.asyncio
     async def test_check_status__oserror(self):
         """Raise ServiceUnavailable on OS error."""
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.side_effect = OSError("os error")
 
             check = CeleryPingHealthCheck()
@@ -65,7 +65,7 @@ class TestCelery:
     @pytest.mark.asyncio
     async def test_check_status__not_implemented_error(self):
         """Raise ServiceUnavailable when result backend is not configured."""
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.side_effect = NotImplementedError("no result backend")
 
             check = CeleryPingHealthCheck()
@@ -76,7 +76,7 @@ class TestCelery:
     @pytest.mark.asyncio
     async def test_check_status__unknown_error(self):
         """Raise ServiceUnavailable for unexpected exceptions."""
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.side_effect = RuntimeError("unexpected")
 
             check = CeleryPingHealthCheck()
@@ -89,7 +89,7 @@ class TestCelery:
         """Raise ServiceUnavailable when a defined queue has no active workers."""
         mock_result = {"celery@worker1": {"ok": "pong"}}
 
-        with mock.patch("health_check.contrib.celery.app") as mock_app:
+        with mock.patch("health_check.contrib.celery.default_app") as mock_app:
             mock_app.control.ping.return_value = [mock_result]
             mock_queue = mock.MagicMock()
             mock_queue.name = "missing_queue"
