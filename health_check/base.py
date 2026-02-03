@@ -79,8 +79,8 @@ class HealthCheck(abc.ABC):
             ) else await asyncio.to_thread(self.run)
         except HealthCheckException as e:
             error = e
-        except BaseException as e:
-            logger.exception("Unexpected exception during health check", e)
+        except BaseException:
+            logger.exception("Unexpected exception during health check")
             error = HealthCheckException("unknown error")
         else:
             error = None
