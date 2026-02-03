@@ -1,61 +1,60 @@
 import pytest
 
-from health_check.base import HealthCheck
+from health_check.base import HealthCheck, HealthCheckResult
+from health_check.exceptions import HealthCheckException
 
 
 class TestHealthCheck:
-    def test_check_status__not_implemented(self):
-        """Raise NotImplementedError when check_status is not implemented."""
-        with pytest.raises(NotImplementedError):
-            HealthCheck().check_status()
-
-    def test_run_check__success(self):
-        """Execute check_status without errors."""
+    @pytest.mark.asyncio
+    async def test_run__success(self):
+        """Execute run without errors."""
 
         class SuccessCheck(HealthCheck):
             async def run(self):
                 pass
 
         check = SuccessCheck()
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
+        assert isinstance(result, HealthCheckResult)
+        assert result.check is check
 
-    def test_run_check__unexpected_exception_reraised(self):
-        """Re-raise unexpected exceptions that are not HealthCheckException."""
+    @pytest.mark.asyncio
+    async def test_run__unexpected_exception_handled(self):
+        """Catch unexpected exceptions and convert to HealthCheckException."""
 
         class UnexpectedErrorCheck(HealthCheck):
             async def run(self):
                 raise RuntimeError("Unexpected error")
 
         check = UnexpectedErrorCheck()
-        with pytest.raises(RuntimeError) as exc_info:
-            check.run_check()
-        assert str(exc_info.value) == "Unexpected error"
+        result = await check.result
+        assert result.error is not None
+        assert isinstance(result.error, HealthCheckException)
+        assert str(result.error) == "Unknown Error: unknown error"
 
-    def test_status__healthy(self):
-        """Return 1 when no errors are present."""
-        ht = HealthCheck()
-        assert ht.status == 1
+    @pytest.mark.asyncio
+    async def test_run__sync_check(self):
+        """Execute synchronous run method in thread."""
 
-    def test_status__unhealthy(self):
-        """Return 0 when errors are present."""
-        ht = HealthCheck()
-        ht.errors = [1]
-        assert ht.status == 0
+        class SyncCheck(HealthCheck):
+            def run(self):
+                pass
 
-    def test_pretty_status__no_errors(self):
-        """Return 'OK' when no errors are present."""
-        ht = HealthCheck()
-        assert ht.pretty_status() == "OK"
+        check = SyncCheck()
+        result = await check.result
+        assert result.error is None
+        assert isinstance(result, HealthCheckResult)
 
-    def test_pretty_status__single_error(self):
-        """Return error string when single error exists."""
-        ht = HealthCheck()
-        ht.errors = ["foo"]
-        assert ht.pretty_status() == "foo"
+    @pytest.mark.asyncio
+    async def test_result__timing(self):
+        """Result includes execution time."""
 
-    def test_pretty_status__multiple_errors(self):
-        """Return newline-separated errors when multiple errors exist."""
-        ht = HealthCheck()
-        ht.errors = ["foo", "bar", 123]
-        assert ht.pretty_status() == "foo\nbar\n123"
+        class SlowCheck(HealthCheck):
+            async def run(self):
+                import asyncio
+                await asyncio.sleep(0.01)
+
+        check = SlowCheck()
+        result = await check.result
+        assert result.time_taken > 0

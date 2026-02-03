@@ -6,6 +6,7 @@ import tempfile
 from unittest import mock
 
 import pytest
+from django import db
 from django.core.cache import CacheKeyWarning
 from django.test import override_settings
 
@@ -20,80 +21,87 @@ from health_check.exceptions import (
 class TestCache:
     """Test the Cache health check."""
 
-    def test_run_check__cache_working(self):
+    @pytest.mark.asyncio
+    async def test_run_check__cache_working(self):
         """Cache backend successfully sets and retrieves values."""
         check = Cache()
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
 
 
 class TestDatabase:
     """Test the Database health check."""
 
     @pytest.mark.django_db
-    def test_run_check__database_available(self):
+    @pytest.mark.asyncio
+    async def test_run_check__database_available(self):
         """Database connection returns successful query result."""
         check = Database()
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
 
 
 class TestDNS:
     """Test the DNS health check."""
 
-    def test_run_check__dns_working(self):
+    @pytest.mark.asyncio
+    async def test_run_check__dns_working(self):
         """DNS resolution completes successfully for localhost."""
         check = DNS(hostname="github.com")
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
 
 
 class TestDisk:
     """Test the Disk health check."""
 
-    def test_run_check__disk_accessible(self):
+    @pytest.mark.asyncio
+    async def test_run_check__disk_accessible(self):
         """Disk space check completes successfully."""
         check = Disk()
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
 
-    def test_run_check__custom_path(self):
+    @pytest.mark.asyncio
+    async def test_run_check__custom_path(self):
         """Disk check succeeds with custom path."""
         with tempfile.TemporaryDirectory() as tmpdir:
             check = Disk(path=tmpdir)
-            check.run_check()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
 
 class TestMemory:
     """Test the Memory health check."""
 
-    def test_run_check__memory_available(self):
+    @pytest.mark.asyncio
+    async def test_run_check__memory_available(self):
         """Memory check completes successfully."""
         check = Memory()
-        check.run_check()
-        assert check.errors == []
+        result = await check.result
+        assert result.error is None
 
 
 class TestMail:
     """Test the Mail health check."""
 
-    def test_run_check__locmem_backend(self):
+    @pytest.mark.asyncio
+    async def test_run_check__locmem_backend(self):
         """Mail check completes with locmem backend."""
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
-            check = Mail()
-            check.run_check()
+        check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
+        result = await check.result
+        assert result.error is None
 
 
 class TestStorage:
     """Test the Storage health check."""
 
-    def test_run_check__default_storage(self):
+    @pytest.mark.asyncio
+    async def test_run_check__default_storage(self):
         """Storage check completes without exceptions."""
         check = Storage()
-        check.run_check()
+        result = await check.result
+        assert result.error is None
 
 
 class TestServiceUnavailable:
@@ -105,81 +113,73 @@ class TestServiceUnavailable:
         assert str(exc) == "Unavailable: Test error"
 
 
-class TestCheckStatus:
-    """Test check status and rendering."""
-
-    def test_status__without_errors(self):
-        """Status returns 1 when no errors are present."""
-        check = Cache()
-        check.run_check()
-        assert check.status == 1
-        assert len(check.errors) == 0
-
-    def test_pretty_status__no_errors(self):
-        """Return 'OK' when no errors are present."""
-        check = Cache()
-        check.errors = []
-        assert check.pretty_status() == "OK"
-
-
 class TestCacheExceptionHandling:
     """Test Cache exception handling for uncovered code paths."""
 
-    def test_check_status__cache_key_warning(self):
+    @pytest.mark.asyncio
+    async def test_check_status__cache_key_warning(self):
         """Raise ServiceReturnedUnexpectedResult when CacheKeyWarning is raised during set."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
-            mock_cache.set.side_effect = CacheKeyWarning("Invalid key")
+            mock_cache.aset = mock.AsyncMock(side_effect=CacheKeyWarning("Invalid key"))
 
             check = Cache()
-            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
-                check.check_status()
-            assert "Cache key warning" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Cache key warning" in str(result.error)
 
-    def test_check_status__value_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__value_error(self):
         """Raise ServiceReturnedUnexpectedResult when ValueError is raised during cache operation."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
-            mock_cache.set.side_effect = ValueError("Invalid value")
+            mock_cache.aset = mock.AsyncMock(side_effect=ValueError("Invalid value"))
 
             check = Cache()
-            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
-                check.check_status()
-            assert "ValueError" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "ValueError" in str(result.error)
 
-    def test_check_status__connection_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__connection_error(self):
         """Raise ServiceReturnedUnexpectedResult when ConnectionError is raised during cache operation."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
-            mock_cache.set.side_effect = ConnectionError("Connection failed")
+            mock_cache.aset = mock.AsyncMock(side_effect=ConnectionError("Connection failed"))
 
             check = Cache()
-            with pytest.raises(ServiceReturnedUnexpectedResult) as exc_info:
-                check.check_status()
-            assert "Connection Error" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Connection Error" in str(result.error)
 
-    def test_check_status__cache_value_mismatch(self):
+    @pytest.mark.asyncio
+    async def test_check_status__cache_value_mismatch(self):
         """Raise ServiceUnavailable when cached value does not match set value."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
-            mock_cache.set.return_value = None
-            mock_cache.get.return_value = "wrong-value"
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+            mock_cache.aget = mock.AsyncMock(return_value="wrong-value")
 
             check = Cache()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "does not match" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not match" in str(result.error)
 
 
 class TestDatabaseExceptionHandling:
     """Test Database exception handling for uncovered code paths."""
 
     @pytest.mark.django_db
-    def test_check_status__query_returns_unexpected_result(self):
+    @pytest.mark.asyncio
+    async def test_check_status__query_returns_unexpected_result(self):
         """Raise ServiceUnavailable when query does not return (1,)."""
         with mock.patch("health_check.checks.connections") as mock_connections:
             mock_connection = mock.MagicMock()
@@ -192,111 +192,124 @@ class TestDatabaseExceptionHandling:
             )
 
             check = Database()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "did not return the expected result" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "did not return the expected result" in str(result.error)
 
     @pytest.mark.django_db
-    def test_check_status__database_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__database_exception(self):
         """Raise ServiceUnavailable on database exception."""
         with mock.patch("health_check.checks.connections") as mock_connections:
             mock_connection = mock.MagicMock()
             mock_connections.__getitem__.return_value = mock_connection
-            mock_connection.ops.compiler.side_effect = RuntimeError("Database error")
+            # Raise a database error (not a generic RuntimeError)
+            mock_connection.ops.compiler.side_effect = db.Error("Database error")
 
             check = Database()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Database health check failed" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
 
 
 class TestDNSExceptionHandling:
     """Test DNS exception handling for uncovered code paths."""
 
-    def test_check_status__nonexistent_hostname(self):
+    @pytest.mark.asyncio
+    async def test_check_status__nonexistent_hostname(self):
         """Raise ServiceUnavailable when hostname does not exist."""
         check = DNS(hostname="this-domain-does-not-exist-12345.invalid")
-        check.run_check()
-        assert len(check.errors) == 1
-        assert "does not exist" in str(check.errors[0])
+        result = await check.result
+        assert result.error is not None
+        assert "does not exist" in str(result.error)
 
-    def test_check_status__no_answer(self):
+    @pytest.mark.asyncio
+    async def test_check_status__no_answer(self):
         """Raise ServiceUnavailable when DNS returns no answer for A record."""
         # Test with a hostname that has no A record (MX-only domain for example)
         # Using a TXT-only record subdomain or similar
         check = DNS(hostname="_dmarc.github.com")
-        check.run_check()
-        assert len(check.errors) == 1
+        result = await check.result
+        assert result.error is not None
         # Will get either no answer or NXDOMAIN
-        error_msg = str(check.errors[0]).lower()
+        error_msg = str(result.error).lower()
         assert "no answer" in error_msg or "does not exist" in error_msg
 
-    def test_check_status__timeout(self):
+    @pytest.mark.asyncio
+    async def test_check_status__timeout(self):
         """Raise ServiceUnavailable when DNS query times out."""
         # Use a very short timeout to trigger timeout error
         check = DNS(
             hostname="example.com",
             timeout=datetime.timedelta(microseconds=1),
         )
-        check.run_check()
-        assert len(check.errors) == 1
-        assert "timeout" in str(check.errors[0]).lower()
+        result = await check.result
+        assert result.error is not None
+        assert "timeout" in str(result.error).lower()
 
-    def test_check_status__not_a_nameserver(self):
+    @pytest.mark.asyncio
+    async def test_check_status__not_a_nameserver(self):
         """Raise ServiceUnavailable when nameserver is unreachable."""
         # Use an invalid/unreachable nameserver
         check = DNS(hostname="example.com", nameservers=["192.0.2.1"])
-        check.run_check()
-        assert len(check.errors) == 1
+        result = await check.result
+        assert result.error is not None
         # Could be timeout or no nameservers error
-        error_msg = str(check.errors[0]).lower()
+        error_msg = str(result.error).lower()
         assert "timeout" in error_msg or "nameserver" in error_msg
 
-    def test_check_status__no_nameservers(self):
+    @pytest.mark.asyncio
+    async def test_check_status__no_nameservers(self):
         """Raise ServiceUnavailable when nameserver is unreachable."""
         # Use an invalid/unreachable nameserver
         check = DNS(hostname="example.com", nameservers=[])
-        check.run_check()
-        assert len(check.errors) == 1
+        result = await check.result
+        assert result.error is not None
         # Could be timeout or no nameservers error
-        error_msg = str(check.errors[0]).lower()
+        error_msg = str(result.error).lower()
         assert "timeout" in error_msg or "nameserver" in error_msg
 
-    def test_check_status__dns_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__dns_exception(self):
         """Raise ServiceUnavailable on general DNS exception."""
         import dns.exception
 
         with mock.patch(
-            "health_check.checks.dns.resolver.Resolver"
+            "health_check.checks.dns.asyncresolver.Resolver"
         ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
-            mock_resolver.resolve.side_effect = dns.exception.DNSException("DNS error")
+            mock_resolver.resolve = mock.AsyncMock(side_effect=dns.exception.DNSException("DNS error"))
 
             check = DNS(hostname="example.com")
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "DNS resolution failed" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "DNS resolution failed" in str(result.error)
 
-    def test_check_status__unknown_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__unknown_exception(self):
         """Raise ServiceUnavailable on unknown exception."""
         with mock.patch(
-            "health_check.checks.dns.resolver.Resolver"
+            "health_check.checks.dns.asyncresolver.Resolver"
         ) as mock_resolver_class:
             mock_resolver = mock.MagicMock()
             mock_resolver_class.return_value = mock_resolver
-            mock_resolver.resolve.side_effect = RuntimeError("Unexpected error")
+            mock_resolver.resolve = mock.AsyncMock(side_effect=RuntimeError("Unexpected error"))
 
             check = DNS(hostname="example.com")
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Unknown DNS error" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Unknown DNS error" in str(result.error)
 
 
 class TestDiskExceptionHandling:
     """Test Disk exception handling for uncovered code paths."""
 
-    def test_check_status__disk_usage_exceeds_threshold(self):
+    @pytest.mark.asyncio
+    async def test_check_status__disk_usage_exceeds_threshold(self):
         """Raise ServiceWarning when disk usage exceeds threshold."""
         with mock.patch("health_check.checks.psutil.disk_usage") as mock_disk_usage:
             mock_disk_usage_result = mock.MagicMock()
@@ -304,11 +317,13 @@ class TestDiskExceptionHandling:
             mock_disk_usage.return_value = mock_disk_usage_result
 
             check = Disk(max_disk_usage_percent=90.0)
-            with pytest.raises(ServiceWarning) as exc_info:
-                check.check_status()
-            assert "95.5" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "95.5" in str(result.error)
 
-    def test_check_status__disk_check_disabled(self):
+    @pytest.mark.asyncio
+    async def test_check_status__disk_check_disabled(self):
         """No warning when disk usage check is disabled."""
         with mock.patch("health_check.checks.psutil.disk_usage") as mock_disk_usage:
             mock_disk_usage_result = mock.MagicMock()
@@ -316,34 +331,36 @@ class TestDiskExceptionHandling:
             mock_disk_usage.return_value = mock_disk_usage_result
 
             check = Disk(max_disk_usage_percent=None)
-            check.check_status()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
-    def test_check_status__disk_value_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__disk_value_error(self):
         """Raise ServiceReturnedUnexpectedResult when ValueError is raised during disk check."""
         with mock.patch("health_check.checks.psutil.disk_usage") as mock_disk_usage:
             mock_disk_usage.side_effect = ValueError("Invalid path")
 
             check = Disk()
-            with pytest.raises(ServiceReturnedUnexpectedResult):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
 
 class TestMailExceptionHandling:
     """Test Mail exception handling for uncovered code paths."""
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_check_status__success(self, caplog):
+    @pytest.mark.asyncio
+    async def test_check_status__success(self, caplog):
         """Successfully open and close connection logs debug message."""
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.return_value = None
 
-            check = Mail()
+            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
             with caplog.at_level(logging.DEBUG, logger="health_check.checks"):
-                check.check_status()
-            assert check.errors == []
+                result = await check.result
+            assert result.error is None
             # Verify debug logging was called
             assert any(
                 "Trying to open connection to mail backend" in record.message
@@ -351,8 +368,8 @@ class TestMailExceptionHandling:
                 for record in caplog.records
             )
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_check_status__smtp_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__smtp_exception(self):
         """Raise ServiceUnavailable when SMTPException is raised."""
         import smtplib
 
@@ -361,14 +378,15 @@ class TestMailExceptionHandling:
             mock_get_connection.return_value = mock_connection
             mock_connection.open.side_effect = smtplib.SMTPException("SMTP error")
 
-            check = Mail()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "SMTP server" in str(exc_info.value)
+            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "SMTP server" in str(result.error)
             mock_connection.close.assert_called_once()
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_check_status__connection_refused_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__connection_refused_error(self):
         """Raise ServiceUnavailable when ConnectionRefusedError is raised."""
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
@@ -377,31 +395,34 @@ class TestMailExceptionHandling:
                 "Connection refused"
             )
 
-            check = Mail()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Connection refused" in str(exc_info.value)
+            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Connection refused" in str(result.error)
             mock_connection.close.assert_called_once()
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_check_status__mail_unknown_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__mail_unknown_exception(self):
         """Raise ServiceUnavailable for unknown exceptions during mail check."""
         with mock.patch("health_check.checks.get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.side_effect = RuntimeError("Unknown error")
 
-            check = Mail()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Unknown error" in str(exc_info.value)
+            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Unknown error" in str(result.error)
             mock_connection.close.assert_called_once()
 
 
 class TestMemoryExceptionHandling:
     """Test Memory exception handling for uncovered code paths."""
 
-    def test_check_status__min_memory_available_exceeded(self):
+    @pytest.mark.asyncio
+    async def test_check_status__min_memory_available_exceeded(self):
         """Raise ServiceWarning when available memory is below threshold."""
         with mock.patch(
             "health_check.checks.psutil.virtual_memory"
@@ -413,11 +434,13 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(min_gibibytes_available=1.0)
-            with pytest.raises(ServiceWarning) as exc_info:
-                check.check_status()
-            assert "RAM" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "RAM" in str(result.error)
 
-    def test_check_status__max_memory_usage_exceeded(self):
+    @pytest.mark.asyncio
+    async def test_check_status__max_memory_usage_exceeded(self):
         """Raise ServiceWarning when memory usage exceeds threshold."""
         with mock.patch(
             "health_check.checks.psutil.virtual_memory"
@@ -429,11 +452,13 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(max_memory_usage_percent=90.0)
-            with pytest.raises(ServiceWarning) as exc_info:
-                check.check_status()
-            assert "95" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "95" in str(result.error)
 
-    def test_check_status__memory_checks_disabled(self):
+    @pytest.mark.asyncio
+    async def test_check_status__memory_checks_disabled(self):
         """No warning when memory checks are disabled."""
         with mock.patch(
             "health_check.checks.psutil.virtual_memory"
@@ -445,10 +470,11 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.return_value = mock_memory
 
             check = Memory(min_gibibytes_available=None, max_memory_usage_percent=None)
-            check.check_status()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
-    def test_check_status__memory_value_error(self):
+    @pytest.mark.asyncio
+    async def test_check_status__memory_value_error(self):
         """Raise ServiceReturnedUnexpectedResult when ValueError is raised during memory check."""
         with mock.patch(
             "health_check.checks.psutil.virtual_memory"
@@ -456,14 +482,16 @@ class TestMemoryExceptionHandling:
             mock_virtual_memory.side_effect = ValueError("Invalid memory call")
 
             check = Memory()
-            with pytest.raises(ServiceReturnedUnexpectedResult):
-                check.check_status()
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
 
 class TestStorageExceptionHandling:
     """Test Storage exception handling for uncovered code paths."""
 
-    def test_check_status__success(self):
+    @pytest.mark.asyncio
+    async def test_check_status__success(self):
         """Storage check completes successfully without exceptions."""
         with (
             mock.patch("health_check.checks.storages") as mock_storages,
@@ -482,10 +510,11 @@ class TestStorageExceptionHandling:
             get_file_content.return_value = b"# generated by health_check.Storage at"
 
             check = Storage()
-            check.check_status()
-            assert check.errors == []
+            result = await check.result
+            assert result.error is None
 
-    def test_check_status__not_deleted(self):
+    @pytest.mark.asyncio
+    async def test_check_status__not_deleted(self):
         """Storage check completes successfully without exceptions."""
         with (
             mock.patch("health_check.checks.storages") as mock_storages,
@@ -504,11 +533,13 @@ class TestStorageExceptionHandling:
             get_file_content.return_value = b"# generated by health_check.Storage at"
 
             check = Storage()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "File was not deleted" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "File was not deleted" in str(result.error)
 
-    def test_check_status__file_not_saved(self):
+    @pytest.mark.asyncio
+    async def test_check_status__file_not_saved(self):
         """Raise ServiceUnavailable when file does not exist after save."""
         with mock.patch("health_check.checks.storages") as mock_storages:
             mock_storage = mock.MagicMock()
@@ -517,11 +548,13 @@ class TestStorageExceptionHandling:
             mock_storage.exists.return_value = False
 
             check = Storage()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "does not exist" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not exist" in str(result.error)
 
-    def test_check_status__file_content_mismatch(self):
+    @pytest.mark.asyncio
+    async def test_check_status__file_content_mismatch(self):
         """Raise ServiceUnavailable when file content does not match."""
         with mock.patch("health_check.checks.storages") as mock_storages:
             mock_storage = mock.MagicMock()
@@ -533,11 +566,13 @@ class TestStorageExceptionHandling:
             mock_storage.open.return_value.__enter__.return_value = mock_file
 
             check = Storage()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "does not match" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not match" in str(result.error)
 
-    def test_check_status__storage_unknown_exception(self):
+    @pytest.mark.asyncio
+    async def test_check_status__storage_unknown_exception(self):
         """Raise ServiceUnavailable for unknown exceptions."""
         with mock.patch("health_check.checks.storages") as mock_storages:
             mock_storage = mock.MagicMock()
@@ -545,11 +580,13 @@ class TestStorageExceptionHandling:
             mock_storage.save.side_effect = RuntimeError("Unknown error")
 
             check = Storage()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Unknown exception" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Unknown exception" in str(result.error)
 
-    def test_check_status__service_unavailable_passthrough(self):
+    @pytest.mark.asyncio
+    async def test_check_status__service_unavailable_passthrough(self):
         """Re-raise ServiceUnavailable exceptions."""
         with mock.patch("health_check.checks.storages") as mock_storages:
             mock_storage = mock.MagicMock()
@@ -557,9 +594,10 @@ class TestStorageExceptionHandling:
             mock_storage.save.side_effect = ServiceUnavailable("Service down")
 
             check = Storage()
-            with pytest.raises(ServiceUnavailable) as exc_info:
-                check.check_status()
-            assert "Service down" in str(exc_info.value)
+            result = await check.result
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Service down" in str(result.error)
 
 
 class TestSelectOneExpression:

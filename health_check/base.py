@@ -80,7 +80,7 @@ class HealthCheck(abc.ABC):
         except HealthCheckException as e:
             error = e
         except BaseException as e:
-            logger.exception("Unexpected exception during health check", e)
+            logger.exception("Unexpected exception during health check: %s", e)
             error = HealthCheckException("unknown error")
         else:
             error = None
