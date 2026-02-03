@@ -39,7 +39,5 @@ class RabbitMQ(HealthCheck):
             ) from e
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
-        except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. RabbitMQ is healthy.")

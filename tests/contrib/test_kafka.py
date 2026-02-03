@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("confluent_kafka")
 
-from confluent_kafka import KafkaError, KafkaException
+from confluent_kafka.error import KafkaError, KafkaException
 
 from health_check.contrib.kafka import Kafka as KafkaHealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -20,8 +20,8 @@ class TestKafka:
     @pytest.mark.asyncio
     async def test_check_status__success(self):
         """Connect to Kafka successfully when topics are retrieved."""
-        with mock.patch("health_check.contrib.kafka.Consumer") as mock_consumer_cls:
-            mock_consumer = mock.MagicMock()
+        with mock.patch("health_check.contrib.kafka.AIOConsumer") as mock_consumer_cls:
+            mock_consumer = mock.AsyncMock()
             mock_consumer_cls.return_value = mock_consumer
 
             # Mock cluster metadata response
@@ -34,13 +34,13 @@ class TestKafka:
             assert result.error is None
 
             # Verify consumer was closed
-            mock_consumer.close.assert_called_once()
+            mock_consumer.close.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_check_status__kafka_exception(self):
         """Raise ServiceUnavailable when KafkaException is raised."""
-        with mock.patch("health_check.contrib.kafka.Consumer") as mock_consumer_cls:
-            mock_consumer = mock.MagicMock()
+        with mock.patch("health_check.contrib.kafka.AIOConsumer") as mock_consumer_cls:
+            mock_consumer = mock.AsyncMock()
             mock_consumer_cls.return_value = mock_consumer
 
             kafka_error = KafkaError(1)  # Error code for broker not available
@@ -53,13 +53,13 @@ class TestKafka:
             assert "Unable to connect to Kafka" in str(result.error)
 
             # Verify consumer was closed
-            mock_consumer.close.assert_called_once()
+            mock_consumer.close.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_check_status__topics_is_none(self):
         """Raise ServiceUnavailable when metadata is None."""
-        with mock.patch("health_check.contrib.kafka.Consumer") as mock_consumer_cls:
-            mock_consumer = mock.MagicMock()
+        with mock.patch("health_check.contrib.kafka.AIOConsumer") as mock_consumer_cls:
+            mock_consumer = mock.AsyncMock()
             mock_consumer_cls.return_value = mock_consumer
             mock_consumer.list_topics.return_value = None
 
@@ -70,13 +70,13 @@ class TestKafka:
             assert "Failed to retrieve Kafka topics" in str(result.error)
 
             # Verify consumer was closed
-            mock_consumer.close.assert_called_once()
+            mock_consumer.close.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_check_status__custom_timeout(self):
         """Use custom timeout when provided."""
-        with mock.patch("health_check.contrib.kafka.Consumer") as mock_consumer_cls:
-            mock_consumer = mock.MagicMock()
+        with mock.patch("health_check.contrib.kafka.AIOConsumer") as mock_consumer_cls:
+            mock_consumer = mock.AsyncMock()
             mock_consumer_cls.return_value = mock_consumer
 
             mock_metadata = mock.MagicMock()

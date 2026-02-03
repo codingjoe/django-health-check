@@ -29,7 +29,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -72,7 +72,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -111,7 +111,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -200,7 +200,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = invalid_xml
+            mock_response.text = invalid_xml.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -229,7 +229,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -259,7 +259,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()
@@ -288,7 +288,7 @@ class TestAWS:
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.content = rss_content
+            mock_response.text = rss_content.decode("utf-8")
             mock_response.raise_for_status = mock.MagicMock()
 
             mock_context = mock.AsyncMock()

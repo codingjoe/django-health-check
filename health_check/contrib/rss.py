@@ -45,24 +45,30 @@ class AWS(HealthCheck):
         """Check the RSS feed for incidents."""
         logger.debug("Fetching feed from %s", self.feed_url)
 
-        try:
-            async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:
+            try:
                 response = await client.get(
                     self.feed_url,
                     headers={"User-Agent": "django-health-check"},
                     timeout=self.timeout.total_seconds(),
                     follow_redirects=True,
                 )
+            except httpx.TimeoutException as e:
+                raise ServiceUnavailable("RSS feed request timed out") from e
+            except httpx.RequestError as e:
+                raise ServiceUnavailable(f"Failed to fetch RSS feed: {e}") from e
+
+            try:
                 response.raise_for_status()
-                content = response.content
-        except httpx.HTTPStatusError as e:
-            raise ServiceUnavailable(
-                f"HTTP error {e.response.status_code} fetching RSS feed"
-            ) from e
-        except httpx.TimeoutException as e:
-            raise ServiceUnavailable("RSS feed request timed out") from e
-        except httpx.RequestError as e:
-            raise ServiceUnavailable(f"Failed to fetch RSS feed: {e}") from e
+            except httpx.HTTPStatusError as e:
+                raise ServiceUnavailable(
+                    f"HTTP error {e.response.status_code} fetching RSS feed"
+                ) from e
+
+            try:
+                content = response.text
+            except Exception as e:
+                raise ServiceUnavailable(f"Failed to read RSS feed response: {e}") from e
 
         try:
             root = ElementTree.fromstring(content)  # noqa: S314

@@ -73,7 +73,7 @@ class TestRabbitMQ:
 
     @pytest.mark.asyncio
     async def test_check_status__unknown_error(self):
-        """Raise ServiceUnavailable on unexpected exceptions."""
+        """Unexpected exceptions are caught by base class and logged."""
         with mock.patch(
             "health_check.contrib.rabbitmq.aio_pika.connect_robust"
         ) as mock_connect:
@@ -82,7 +82,8 @@ class TestRabbitMQ:
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             result = await check.get_result()
             assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
+            # Base class catches unexpected exceptions and converts to HealthCheckException
+            assert "unknown error" in str(result.error)
 
     @pytest.mark.integration
     @pytest.mark.asyncio
