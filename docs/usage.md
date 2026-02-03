@@ -113,72 +113,10 @@ These endpoints always return a 200 status code with health check results in the
 
 ## Writing a custom health check
 
-You can write your own health checks by inheriting from [HealthCheck][health_check.HealthCheck]
-and implementing the `check_status` method. For example:
-
-```python
-import dataclasses
-from health_check import HealthCheck
-
-
-@dataclasses.dataclass
-class MyHealthCheckBackend(HealthCheck):
-    #: The status endpoints will respond with a 200 status code
-    #: even if the check errors.
-    critical_service = False
-
-    def check_status(self):
-        # The test code goes here.
-        # Raise a `HealthCheckException` if the check fails,
-        # similar to Django's form validation.
-        pass
-```
+You can write your own health checks by inheriting from
+[HealthCheck][health_check.HealthCheck] and implementing the `run` method.
 
 ::: health_check.HealthCheck
-
-## Customizing output
-
-You can customize HTML or JSON rendering by inheriting from [HealthCheckView][health_check.views.HealthCheckView]
-and customizing the [template_name][django.views.generic.base.TemplateView], [render_to_response_json][health_check.views.HealthCheckView] properties:
-
-```python
-# views.py
-from django.http import HttpResponse, JsonResponse
-
-from health_check.views import HealthCheckView
-
-
-class HealthCheckCustomView(HealthCheckView):
-    template_name = "myapp/health_check_dashboard.html"  # customize the used templates
-
-    def render_to_response_json(self, status):  # customize JSON output
-        return JsonResponse(
-            {
-                label: "COOL" if status == 200 else "SWEATY"
-                for label, check in self.results.items()
-            },
-            status=status,
-        )
-
-
-# urls.py
-from django.urls import path
-
-from . import views
-
-urlpatterns = [
-    # …
-    path(
-        "ht/",
-        views.HealthCheckCustomView.as_view(
-            checks=["myapp.health_checks.MyHealthCheckBackend"]
-        ),
-        name="health_check_custom",
-    ),
-]
-```
-
-::: health_check.views.HealthCheckView
 
 ## Django command
 

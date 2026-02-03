@@ -14,7 +14,6 @@ keywords = ["django", "postgresql"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: Django",
-  "Framework :: Django :: 4.2",
   "Framework :: Django :: 5.2",
   "Framework :: Django :: 6.0",
   "Intended Audience :: Developers",
@@ -39,16 +38,17 @@ dynamic = [
   "description",
 ]
 dependencies = [
-  "Django>=4.2",
+  "Django>=5.2",
   "dnspython>=2.0.0",
   "psutil",
 ]
 
 [project.optional-dependencies]
 celery = ["celery>=5.0.0"]
-kafka = ["kafka-python>=2.0.0"]
-rabbitmq = ["kombu>=5.0.0"]
-redis = ["redis>=3.0.0"]
+kafka = ["confluent-kafka>=2.0.0"]
+rabbitmq = ["aio-pika>=9.0.0"]
+redis = ["redis>=4.2.0"]
+rss = ["httpx>=0.27.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
@@ -67,6 +67,7 @@ dev = [
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-asyncio",
   "pytest-django",
   "django-storages",
   "boto3",

@@ -1,10 +1,8 @@
+import asyncio
 import re
 import typing
-from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
-from functools import cached_property
 
-from django.db import connections, transaction
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.cache import patch_vary_headers
@@ -15,7 +13,6 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
 from health_check.base import HealthCheck
-from health_check.exceptions import ServiceWarning
 
 
 class MediaType:
@@ -96,8 +93,6 @@ class HealthCheckView(TemplateView):
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
-    use_threading: bool = True
-    warnings_as_errors: bool = True
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
     ] = (
@@ -110,51 +105,19 @@ class HealthCheckView(TemplateView):
         "health_check.checks.Storage",
     )
 
-    def run_check(self):
-        errors = []
-
-        def _run(check_instance):
-            check_instance.run_check()
-            try:
-                return check_instance
-            finally:
-                if self.use_threading:
-                    # DB connections are thread-local so we need to close them here
-                    connections.close_all()
-
-        def _collect_errors(check_instance):
-            if check_instance.critical_service:
-                if not self.warnings_as_errors:
-                    errors.extend(
-                        e
-                        for e in check_instance.errors
-                        if not isinstance(e, ServiceWarning)
-                    )
-                else:
-                    errors.extend(check_instance.errors)
-
-        if self.use_threading:
-            with ThreadPoolExecutor(
-                max_workers=len(self.results.values()) or 1
-            ) as executor:
-                for result in executor.map(_run, self.results.values()):
-                    _collect_errors(result)
-        else:
-            for result in self.results.values():
-                _run(result)
-                _collect_errors(result)
-        return errors
-
     @method_decorator(transaction.non_atomic_requests)
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
+    async def dispatch(self, request, *args, **kwargs):
+        response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
         return response
 
     @method_decorator(never_cache)
-    def get(self, request, *args, **kwargs):
-        health_check_has_error = self.run_check()
-        status_code = 500 if health_check_has_error else 200
+    async def get(self, request, *args, **kwargs):
+        self.results = await asyncio.gather(
+            *(check.get_result() for check in self.get_checks())
+        )
+        has_errors = any(result.error for result in self.results)
+        status_code = 500 if has_errors else 200
         format_override = request.GET.get("format")
 
         match format_override:
@@ -194,22 +157,25 @@ class HealthCheckView(TemplateView):
     def get_context_data(self, **kwargs):
         return {
             **super().get_context_data(**kwargs),
-            "plugins": self.results.values(),
-            "errors": any(p.errors for p in self.results.values()),
+            "results": self.results,
+            "errors": any(result.error for result in self.results),
         }
 
     def render_to_response_json(self, status):
         """Return JSON response with health check results."""
         return JsonResponse(
-            {label: str(p.pretty_status()) for label, p in self.results.items()},
+            {
+                repr(result.check): "OK" if not result.error else str(result.error)
+                for result in self.results
+            },
             status=status,
         )
 
     def render_to_response_text(self, status):
         """Return plain text response with health check results."""
         lines = (
-            f"{label}: {result.pretty_status()}"
-            for label, result in self.results.items()
+            f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
+            for result in self.results
         )
         return HttpResponse(
             "\n".join(lines) + "\n",
@@ -245,11 +211,11 @@ class HealthCheckView(TemplateView):
         has_errors: bool = False
 
         # Add status metrics for each check
-        for label, result in self.results.items():
-            safe_label = self._escape_openmetrics_label_value(label)
-            has_errors |= bool(result.errors)
+        for result in self.results:
+            safe_label = self._escape_openmetrics_label_value(repr(result.check))
+            has_errors |= bool(result.error)
             lines.append(
-                f'django_health_check_status{{check="{safe_label}"}} {not result.errors:d}'
+                f'django_health_check_status{{check="{safe_label}"}} {not result.error:d}'
             )
 
         # Add response time metrics
@@ -259,8 +225,8 @@ class HealthCheckView(TemplateView):
             "# TYPE django_health_check_response_time_seconds gauge",
         ]
 
-        for label, result in self.results.items():
-            safe_label = self._escape_openmetrics_label_value(label)
+        for result in self.results:
+            safe_label = self._escape_openmetrics_label_value(repr(result.check))
             lines.append(
                 f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
             )
@@ -289,15 +255,15 @@ class HealthCheckView(TemplateView):
             feed_url=self.request.build_absolute_uri(),
         )
 
-        for result in self.results.values():
+        for result in self.results:
             feed.add_item(
-                title=str(result),
+                title=repr(result.check),
                 link=self.request.build_absolute_uri(),
-                description=f"{result.pretty_status()}\nResponse time: {result.time_taken:.3f}s",
+                description=f"{result.check!r}\nResponse time: {result.time_taken:.3f}s",
                 pubdate=timezone.now(),
                 updateddate=timezone.now(),
                 author_name=self.feed_author,
-                categories=["error", "unhealthy"] if result.errors else ["healthy"],
+                categories=["error", "unhealthy"] if result.error else ["healthy"],
             )
 
         response = HttpResponse(
@@ -307,7 +273,10 @@ class HealthCheckView(TemplateView):
         )
         return response
 
-    def get_results(self):
+    def get_checks(
+        self,
+    ) -> typing.Generator[HealthCheck, None, None]:
+        """Yield instantiated health check callables."""
         for check in self.checks:
             try:
                 check, options = check
@@ -315,9 +284,4 @@ class HealthCheckView(TemplateView):
                 options = {}
             if isinstance(check, str):
                 check = import_string(check)
-            check_instance = check(**options)
-            yield repr(check_instance), check_instance
-
-    @cached_property
-    def results(self):
-        return OrderedDict(self.get_results())
+            yield check(**options)

@@ -9,7 +9,7 @@ from health_check.views import HealthCheckView
 class AlwaysFailingCheck(HealthCheck):
     """Health check that always fails for testing purposes."""
 
-    def check_status(self):
+    async def run(self):
         raise HealthCheckException("Test failure")
 
 
@@ -47,7 +47,6 @@ else:
                     "health_check.contrib.celery.Ping",
                     "health_check.contrib.celery.Ping",
                 ],
-                use_threading=False,
             ),
             name="health_check_celery",
         )

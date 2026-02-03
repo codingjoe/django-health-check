@@ -4,8 +4,8 @@ import dataclasses
 import datetime
 import logging
 
-from kafka import KafkaConsumer
-from kafka.errors import KafkaError
+from confluent_kafka.aio import AIOConsumer
+from confluent_kafka.error import KafkaException
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -29,43 +29,41 @@ class Kafka(HealthCheck):
         default=datetime.timedelta(seconds=10), repr=False
     )
 
-    def check_status(self):
+    async def run(self):
         logger.debug(
             "Connecting to Kafka bootstrap servers %r ...",
             self.bootstrap_servers,
         )
 
-        consumer = None
+        # Create a consumer with minimal configuration for health check
+        timeout_ms = int(self.timeout.total_seconds() * 1000)
+        consumer = AIOConsumer(
+            {
+                "bootstrap.servers": ",".join(self.bootstrap_servers),
+                "client.id": "health-check",
+                "group.id": "health-check",
+                "session.timeout.ms": timeout_ms,
+                "socket.timeout.ms": timeout_ms,
+            }
+        )
+
         try:
-            # Create a consumer with minimal configuration for health check
-            timeout_ms = int(self.timeout.total_seconds() * 1000)
-            consumer = KafkaConsumer(
-                bootstrap_servers=self.bootstrap_servers,
-                client_id="health-check",
-                request_timeout_ms=timeout_ms,
-                # Note: connections_max_idle_ms must be larger than request_timeout_ms
-                # We use a value slightly larger than request_timeout_ms
-                connections_max_idle_ms=timeout_ms + 1000,
-            )
-
-            # Try to list topics to verify connection
-            # This will raise an exception if Kafka is not available
-            topics = consumer.topics()
-
-            if topics is None:
+            if not (
+                (
+                    cluster_metadata := await consumer.list_topics(
+                        timeout=self.timeout.total_seconds()
+                    )
+                )
+                and cluster_metadata.topics
+            ):
                 raise ServiceUnavailable("Failed to retrieve Kafka topics.")
 
+        except KafkaException as e:
+            raise ServiceUnavailable("Unable to connect") from e
+        else:
             logger.debug(
                 "Connection established. Kafka is healthy. Found %d topics.",
-                len(topics),
+                len(cluster_metadata.topics),
             )
-
-        except KafkaError as e:
-            raise ServiceUnavailable(f"Unable to connect to Kafka: {e}") from e
-        except ServiceUnavailable:
-            raise
-        except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
         finally:
-            if consumer is not None:
-                consumer.close()
+            await consumer.close()
