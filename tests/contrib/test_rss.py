@@ -25,11 +25,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
@@ -63,11 +68,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
@@ -97,11 +107,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             mock_now = datetime.datetime(
                 2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
@@ -119,10 +134,20 @@ class TestAWS:
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):
         """Raise ServiceUnavailable on HTTP error."""
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            from urllib.error import HTTPError
+        import httpx
 
-            mock_urlopen.side_effect = HTTPError("url", 404, "Not Found", {}, None)
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 404
+            mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "Not Found", request=mock.MagicMock(), response=mock_response
+            )
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -132,11 +157,15 @@ class TestAWS:
 
     @pytest.mark.asyncio
     async def test_check_status__url_error(self):
-        """Raise ServiceUnavailable on URL error."""
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            from urllib.error import URLError
+        """Raise ServiceUnavailable on request error."""
+        import httpx
 
-            mock_urlopen.side_effect = URLError("Connection refused")
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                side_effect=httpx.RequestError("Connection refused")
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -147,8 +176,14 @@ class TestAWS:
     @pytest.mark.asyncio
     async def test_check_status__timeout_error(self):
         """Raise ServiceUnavailable on timeout."""
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.side_effect = TimeoutError("Timed out")
+        import httpx
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                side_effect=httpx.TimeoutException("Timed out")
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -161,11 +196,16 @@ class TestAWS:
         """Raise ServiceUnavailable on XML parse error."""
         invalid_xml = b"not valid xml"
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = invalid_xml
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = invalid_xml
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -185,11 +225,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -210,11 +255,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.result
@@ -234,11 +284,16 @@ class TestAWS:
   </channel>
 </rss>"""
 
-        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
-            mock_response.read.return_value = rss_content
-            mock_response.__enter__.return_value = mock_response
-            mock_urlopen.return_value = mock_response
+            mock_response.content = rss_content
+            mock_response.raise_for_status = mock.MagicMock()
+            
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
 
             mock_now = datetime.datetime(
                 2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc

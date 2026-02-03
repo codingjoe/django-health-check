@@ -6,7 +6,6 @@ import dataclasses
 import inspect
 import logging
 import timeit
-from functools import cached_property
 
 from health_check.exceptions import HealthCheckException
 
@@ -50,6 +49,10 @@ class HealthCheck(abc.ABC):
 
     """
 
+    _result_cache: HealthCheckResult | None = dataclasses.field(
+        default=None, init=False, repr=False, compare=False
+    )
+
     @abc.abstractmethod
     async def run(self) -> None:
         """
@@ -74,8 +77,11 @@ class HealthCheck(abc.ABC):
         """Return human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
-    @cached_property
     async def result(self: HealthCheck) -> HealthCheckResult:
+        """Execute the health check and return the result, with caching."""
+        if self._result_cache is not None:
+            return self._result_cache
+
         start = timeit.default_timer()
         try:
             await self.run() if inspect.iscoroutinefunction(
@@ -88,8 +94,10 @@ class HealthCheck(abc.ABC):
             error = HealthCheckException("unknown error")
         else:
             error = None
-        return HealthCheckResult(
+
+        self._result_cache = HealthCheckResult(
             check=self,
             error=error,
             time_taken=timeit.default_timer() - start,
         )
+        return self._result_cache
