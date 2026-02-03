@@ -67,6 +67,7 @@ dev = [
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-asyncio",
   "pytest-django",
   "django-storages",
   "boto3",

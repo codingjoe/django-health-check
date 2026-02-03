@@ -113,11 +113,7 @@ class Database(HealthCheck):
                 cursor.execute(*compiler.compile(_SelectOne()))
                 result = cursor.fetchone()
         except db.Error as e:
-            try:
-                msg = str(e).rsplit(":")[0]
-            except IndexError:
-                msg = "unknown database error"
-            raise ServiceUnavailable(msg) from e
+            raise ServiceUnavailable(str(e).rsplit(":")[0]) from e
         else:
             if result != (1,):
                 raise ServiceUnavailable(

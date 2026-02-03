@@ -20,7 +20,7 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__ok(self):
         """Ping Redis successfully when using client parameter."""
-        mock_client = mock.MagicMock()
+        mock_client = mock.AsyncMock()
         mock_client.ping.return_value = True
 
         check = RedisHealthCheck(client=mock_client)
@@ -31,7 +31,7 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
-        mock_client = mock.MagicMock()
+        mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = ConnectionRefusedError("refused")
 
         check = RedisHealthCheck(client=mock_client)
@@ -42,7 +42,7 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__timeout(self):
         """Raise ServiceUnavailable when connection times out."""
-        mock_client = mock.MagicMock()
+        mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = RedisTimeoutError("timeout")
 
         check = RedisHealthCheck(client=mock_client)
@@ -53,7 +53,7 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__connection_error(self):
         """Raise ServiceUnavailable when connection fails."""
-        mock_client = mock.MagicMock()
+        mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = RedisConnectionError("connection error")
 
         check = RedisHealthCheck(client=mock_client)
@@ -64,7 +64,7 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__unknown_error(self):
         """Raise ServiceUnavailable for unexpected exceptions."""
-        mock_client = mock.MagicMock()
+        mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = RuntimeError("unexpected")
 
         check = RedisHealthCheck(client=mock_client)
