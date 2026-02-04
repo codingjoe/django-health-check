@@ -9,12 +9,7 @@ class HealthCheckException(Exception):
 
 
 class ServiceWarning(HealthCheckException):
-    """
-    Warning of service misbehavior.
-
-    If the `HealthCheckView.warnings_as_errors` is set to True,
-    this will be treated as and fail the health check.
-    """
+    """Warning of service misbehavior."""
 
     message_type = "Warning"
 
