@@ -3,7 +3,9 @@ import sys
 import urllib.error
 import urllib.request
 
-from django import test, urls
+import asgiref.sync
+from django import http as django_http
+from django import urls
 from django.core import management
 
 
@@ -17,9 +19,9 @@ class Command(management.BaseCommand):
             help="URL-pattern name of health check endpoint to test",
         )
         parser.add_argument(
-            "--make-http-request-directly",
+            "--no-http",
             action="store_true",
-            help="Make a direct http request to server",
+            help="Skip the HTTP stack and perform the checks directly",
         )
         parser.add_argument(
             "addrport",
@@ -35,10 +37,10 @@ class Command(management.BaseCommand):
         **options,
     ) -> None:
         endpoint = options.get("endpoint")
-        if options.get("make_http_request_directly"):
-            self.call_endpoint_via_http(endpoint, options.get("addrport"))
-        else:
+        if options.get("no_http"):
             self.call_endpoint_directly(endpoint)
+        else:
+            self.call_endpoint_via_http(endpoint, options.get("addrport"))
 
     def call_endpoint_via_http(
         self,
@@ -53,6 +55,9 @@ class Command(management.BaseCommand):
             headers={
                 "Accept": "text/plain",
             },
+        )
+        self.stdout.write(
+            self.style.SUCCESS(f"Checking health endpoint at {url}"),
         )
         try:
             response = urllib.request.urlopen(request)  # noqa: S310
@@ -78,19 +83,18 @@ class Command(management.BaseCommand):
                 ),
             )
 
-    def call_endpoint_directly(
+    @asgiref.sync.async_to_sync
+    async def call_endpoint_directly(
         self,
         endpoint: str,
     ) -> None:
         path = urls.reverse(endpoint)
         resolved = urls.resolve(path)
-        response = resolved.func(
-            test.RequestFactory().get(
-                path,
-                headers={
-                    "Accept": "text/plain",
-                },
-            ),
+        request = django_http.HttpRequest()
+        request.method = "GET"
+        request.META["HTTP_ACCEPT"] = "text/plain"
+        response = await resolved.func(
+            request,
             *resolved.args,
             **resolved.kwargs,
         )

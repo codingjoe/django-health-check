@@ -12,13 +12,14 @@ class TestHealthCheckCommand:
     """Test health_check management command."""
 
     @pytest.mark.django_db
-    def test_handle__success(self):
+    def test_handle__no_http__success(self):
         """Return exit code 0 when all checks pass."""
         stdout = StringIO()
         stderr = StringIO()
         call_command(
             "health_check",
             "health_check_test",
+            "--no-http",
             stdout=stdout,
             stderr=stderr,
         )
@@ -27,7 +28,7 @@ class TestHealthCheckCommand:
         assert "Database" in output and "Cache" in output
         assert "OK" in output or "working" in output
 
-    def test_handle__error(self):
+    def test_handle__no_http__error(self):
         """Return exit code 1 when checks fail."""
         stdout = StringIO()
         stderr = StringIO()
@@ -35,6 +36,7 @@ class TestHealthCheckCommand:
             call_command(
                 "health_check",
                 "health_check_fail",
+                "--no-http",
                 stdout=stdout,
                 stderr=stderr,
             )
@@ -57,7 +59,6 @@ class TestHealthCheckCommand:
             "health_check",
             "health_check_test",
             addrport,
-            "--make-http-request-directly",
             stdout=stdout,
             stderr=stderr,
         )
@@ -81,7 +82,6 @@ class TestHealthCheckCommand:
                 "health_check",
                 "health_check_fail",
                 addrport,
-                "--make-http-request-directly",
                 stdout=stdout,
                 stderr=stderr,
             )
@@ -99,7 +99,6 @@ class TestHealthCheckCommand:
                 "health_check",
                 "health_check_test",
                 "localhost:9999",
-                "--make-http-request-directly",
                 stdout=stdout,
                 stderr=stderr,
             )
