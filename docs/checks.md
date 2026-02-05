@@ -44,7 +44,37 @@ To enable cloud provider health checks, install the `rss` extra:
 pip install django-health-check[rss]
 ```
 
+### Base Classes
+
+::: health_check.contrib.rss.StatusFeedBase
+
+::: health_check.contrib.rss.RSSFeed
+
+::: health_check.contrib.rss.AtomFeed
+
+### RSS Feed Providers
+
 ::: health_check.contrib.rss.AWS
+
+::: health_check.contrib.rss.Heroku
+
+::: health_check.contrib.rss.Azure
+
+### Atom Feed Providers
+
+::: health_check.contrib.rss.GoogleCloud
+
+::: health_check.contrib.rss.FlyIO
+
+::: health_check.contrib.rss.PlatformSh
+
+::: health_check.contrib.rss.DigitalOcean
+
+::: health_check.contrib.rss.Render
+
+::: health_check.contrib.rss.Vercel
+
+::: health_check.contrib.rss.Railway
 
 ::: health_check.contrib.rss.Heroku
 

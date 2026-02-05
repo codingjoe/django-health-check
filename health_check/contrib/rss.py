@@ -103,68 +103,72 @@ class StatusFeedBase(HealthCheck):
         raise NotImplementedError
 
 
-def _extract_entries_rss(root):
-    """Extract entries from RSS 2.0 feed."""
-    return root.findall(".//item")
+class RSSFeed(StatusFeedBase):
+    """Base class for RSS 2.0 feed health checks."""
 
+    def _extract_entries(self, root):
+        """Extract entries from RSS 2.0 feed."""
+        return root.findall(".//item")
 
-def _extract_date_rss(entry):
-    """Extract publication date from RSS entry."""
-    pub_date = entry.find("pubDate")
-    if pub_date is not None and (date_text := pub_date.text):
-        try:
-            return email.utils.parsedate_to_datetime(date_text)
-        except (ValueError, TypeError):
-            pass
-
-
-def _extract_title_rss(entry):
-    """Extract title from RSS entry."""
-    if (title := entry.find("title")) is not None:
-        return title.text or "Untitled incident"
-    return "Untitled incident"
-
-
-def _extract_entries_atom(root):
-    """Extract entries from Atom feed."""
-    namespace = {"atom": "http://www.w3.org/2005/Atom"}
-    entries = root.findall(".//atom:entry", namespace)
-    if not entries:
-        entries = root.findall(".//{http://www.w3.org/2005/Atom}entry")
-    return entries
-
-
-def _extract_date_atom(entry):
-    """Extract publication date from Atom entry."""
-    namespace = {"atom": "http://www.w3.org/2005/Atom"}
-
-    for date_field in ["published", "updated"]:
-        date_element = entry.find(f"atom:{date_field}", namespace)
-        if date_element is None:
-            date_element = entry.find(f"{{http://www.w3.org/2005/Atom}}{date_field}")
-
-        if date_element is not None and (date_text := date_element.text):
+    def _extract_date(self, entry):
+        """Extract publication date from RSS entry."""
+        pub_date = entry.find("pubDate")
+        if pub_date is not None and (date_text := pub_date.text):
             try:
-                return datetime.datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+                return email.utils.parsedate_to_datetime(date_text)
             except (ValueError, TypeError):
                 pass
 
+    def _extract_title(self, entry):
+        """Extract title from RSS entry."""
+        if (title := entry.find("title")) is not None:
+            return title.text or "Untitled incident"
+        return "Untitled incident"
 
-def _extract_title_atom(entry):
-    """Extract title from Atom entry."""
-    namespace = {"atom": "http://www.w3.org/2005/Atom"}
 
-    title = entry.find("atom:title", namespace)
-    if title is None:
-        title = entry.find("{http://www.w3.org/2005/Atom}title")
+class AtomFeed(StatusFeedBase):
+    """Base class for Atom feed health checks."""
 
-    if title is not None:
-        return title.text or "Untitled incident"
-    return "Untitled incident"
+    def _extract_entries(self, root):
+        """Extract entries from Atom feed."""
+        namespace = {"atom": "http://www.w3.org/2005/Atom"}
+        entries = root.findall(".//atom:entry", namespace)
+        if not entries:
+            entries = root.findall(".//{http://www.w3.org/2005/Atom}entry")
+        return entries
+
+    def _extract_date(self, entry):
+        """Extract publication date from Atom entry."""
+        namespace = {"atom": "http://www.w3.org/2005/Atom"}
+
+        for date_field in ["published", "updated"]:
+            date_element = entry.find(f"atom:{date_field}", namespace)
+            if date_element is None:
+                date_element = entry.find(f"{{http://www.w3.org/2005/Atom}}{date_field}")
+
+            if date_element is not None and (date_text := date_element.text):
+                try:
+                    return datetime.datetime.fromisoformat(
+                        date_text.replace("Z", "+00:00")
+                    )
+                except (ValueError, TypeError):
+                    pass
+
+    def _extract_title(self, entry):
+        """Extract title from Atom entry."""
+        namespace = {"atom": "http://www.w3.org/2005/Atom"}
+
+        title = entry.find("atom:title", namespace)
+        if title is None:
+            title = entry.find("{http://www.w3.org/2005/Atom}title")
+
+        if title is not None:
+            return title.text or "Untitled incident"
+        return "Untitled incident"
 
 
 @dataclasses.dataclass
-class AWS(StatusFeedBase):
+class AWS(RSSFeed):
     """
     Check AWS service status via their public RSS status feeds.
 
@@ -190,18 +194,9 @@ class AWS(StatusFeedBase):
             f"https://status.aws.amazon.com/rss/{self.service}-{self.region}.rss"
         )
 
-    def _extract_entries(self, root):
-        return _extract_entries_rss(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_rss(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_rss(entry)
-
 
 @dataclasses.dataclass
-class Heroku(StatusFeedBase):
+class Heroku(RSSFeed):
     """
     Check Heroku platform status via their public RSS status feed.
 
@@ -221,18 +216,9 @@ class Heroku(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.heroku.com/feed"
 
-    def _extract_entries(self, root):
-        return _extract_entries_rss(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_rss(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_rss(entry)
-
 
 @dataclasses.dataclass
-class Azure(StatusFeedBase):
+class Azure(RSSFeed):
     """
     Check Azure platform status via their public RSS status feed.
 
@@ -254,18 +240,9 @@ class Azure(StatusFeedBase):
             "https://rssfeed.azure.status.microsoft.com/en-us/status/feed/"
         )
 
-    def _extract_entries(self, root):
-        return _extract_entries_rss(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_rss(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_rss(entry)
-
 
 @dataclasses.dataclass
-class GoogleCloud(StatusFeedBase):
+class GoogleCloud(AtomFeed):
     """
     Check Google Cloud platform status via their public Atom status feed.
 
@@ -285,18 +262,9 @@ class GoogleCloud(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.cloud.google.com/en/feed.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class FlyIO(StatusFeedBase):
+class FlyIO(AtomFeed):
     """
     Check Fly.io platform status via their public Atom status feed.
 
@@ -316,18 +284,9 @@ class FlyIO(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.flyio.net/history.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class PlatformSh(StatusFeedBase):
+class PlatformSh(AtomFeed):
     """
     Check Platform.sh platform status via their public Atom status feed.
 
@@ -347,18 +306,9 @@ class PlatformSh(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.platform.sh/history.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class DigitalOcean(StatusFeedBase):
+class DigitalOcean(AtomFeed):
     """
     Check DigitalOcean platform status via their public Atom status feed.
 
@@ -378,18 +328,9 @@ class DigitalOcean(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.digitalocean.com/history.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class Render(StatusFeedBase):
+class Render(AtomFeed):
     """
     Check Render platform status via their public Atom status feed.
 
@@ -409,18 +350,9 @@ class Render(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.render.com/history.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class Vercel(StatusFeedBase):
+class Vercel(AtomFeed):
     """
     Check Vercel platform status via their public Atom status feed.
 
@@ -440,18 +372,9 @@ class Vercel(StatusFeedBase):
     def __post_init__(self):
         self.feed_url: str = "https://status.vercel-status.com/history.atom"
 
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
-
 
 @dataclasses.dataclass
-class Railway(StatusFeedBase):
+class Railway(AtomFeed):
     """
     Check Railway platform status via their public Atom status feed.
 
@@ -470,12 +393,3 @@ class Railway(StatusFeedBase):
 
     def __post_init__(self):
         self.feed_url: str = "https://status.railway.com/history.atom"
-
-    def _extract_entries(self, root):
-        return _extract_entries_atom(root)
-
-    def _extract_date(self, entry):
-        return _extract_date_atom(entry)
-
-    def _extract_title(self, entry):
-        return _extract_title_atom(entry)
