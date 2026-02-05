@@ -2,7 +2,7 @@
 
 from io import StringIO
 from unittest.mock import Mock, patch
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 
 import pytest
@@ -110,12 +110,12 @@ class TestHealthCheckCommand:
 
         stdout = StringIO()
         stderr = StringIO()
-        
+
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
             mock_response.read.return_value = b"OK"
             mock_urlopen.return_value = mock_response
-            
+
             with patch("urllib.request.Request") as mock_request:
                 call_command(
                     "health_check",
@@ -184,7 +184,7 @@ class TestHealthCheckCommand:
                 hdrs={},
                 fp=None,
             )
-            
+
             with pytest.raises(SystemExit) as exc_info:
                 call_command(
                     "health_check",
@@ -193,7 +193,7 @@ class TestHealthCheckCommand:
                     stdout=stdout,
                     stderr=stderr,
                 )
-            
+
             assert exc_info.value.code == 2
             error_output = stderr.getvalue()
             assert "not reachable" in error_output
@@ -215,7 +215,7 @@ class TestHealthCheckCommand:
                 hdrs={},
                 fp=None,
             )
-            
+
             with pytest.raises(SystemExit) as exc_info:
                 call_command(
                     "health_check",
@@ -224,7 +224,7 @@ class TestHealthCheckCommand:
                     stdout=stdout,
                     stderr=stderr,
                 )
-            
+
             assert exc_info.value.code == 2
             error_output = stderr.getvalue()
             assert "Unexpected HTTP error" in error_output
@@ -240,7 +240,7 @@ class TestHealthCheckCommand:
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = TimeoutError("Connection timed out")
-            
+
             with pytest.raises(SystemExit) as exc_info:
                 call_command(
                     "health_check",
@@ -250,7 +250,7 @@ class TestHealthCheckCommand:
                     stdout=stdout,
                     stderr=stderr,
                 )
-            
+
             assert exc_info.value.code == 2
             error_output = stderr.getvalue()
             assert "Timeout" in error_output
@@ -268,7 +268,7 @@ class TestHealthCheckCommand:
                 stdout=stdout,
                 stderr=stderr,
             )
-        
+
         assert exc_info.value.code == 2
         error_output = stderr.getvalue()
         assert "Could not resolve endpoint" in error_output
