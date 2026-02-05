@@ -1,5 +1,6 @@
 """Tests for health_check management command."""
 
+import os
 from io import StringIO
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
@@ -133,7 +134,6 @@ class TestHealthCheckCommand:
                     headers = call_args.args[1] if len(call_args.args) > 1 else {}
                 assert headers.get("X-Forwarded-Proto") == "https"
                 # Verify command completed successfully
-                assert mock_urlopen.called
                 output = stdout.getvalue()
                 assert "OK" in output
 
@@ -286,9 +286,6 @@ class TestHealthCheckCommand:
 
     def test_handle__default_addrport_from_env(self, live_server):
         """Default addrport uses HOST and PORT environment variables."""
-        import os
-        from unittest.mock import patch
-
         parsed = urlparse(live_server.url)
 
         # Set environment variables
