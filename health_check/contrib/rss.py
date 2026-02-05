@@ -67,6 +67,45 @@ class StatusFeedBase(HealthCheck):
 
         logger.debug("No recent incidents found in feed")
 
+    def _extract_entries(self, root):
+        """
+        Extract entries from feed.
+
+        Returns:
+            list: Entry elements from the feed.
+
+        """
+        raise NotImplementedError
+
+    def _is_recent_incident(self, entry):
+        """Check if entry is a recent incident."""
+        published_at = self._extract_date(entry)
+        if not published_at:
+            return True
+
+        cutoff = datetime.datetime.now(tz=datetime.timezone.utc) - self.max_age
+        return datetime.datetime.now(tz=datetime.timezone.utc) >= published_at > cutoff
+
+    def _extract_date(self, entry):
+        """
+        Extract publication date from entry.
+
+        Returns:
+            datetime or None: Publication date, or None if not found.
+
+        """
+        raise NotImplementedError
+
+    def _extract_title(self, entry):
+        """
+        Extract title from entry.
+
+        Returns:
+            str: Entry title, or 'Untitled incident' if not found.
+
+        """
+        raise NotImplementedError
+
 
 @dataclasses.dataclass
 class RSSFeed(StatusFeedBase):

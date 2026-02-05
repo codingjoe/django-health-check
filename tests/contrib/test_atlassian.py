@@ -163,6 +163,46 @@ class TestFlyIo:
         check = FlyIo()
         assert check.base_url == "https://status.flyio.net"
 
+    @pytest.mark.asyncio
+    async def test_check_status__timeout(self):
+        """Raise ServiceUnavailable on timeout."""
+        import httpx
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                side_effect=httpx.TimeoutException("Timed out")
+            )
+            mock_client.return_value = mock_context
+
+            check = FlyIo()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "timed out" in str(result.error).lower()
+
+    @pytest.mark.asyncio
+    async def test_check_status__request_error(self):
+        """Raise ServiceUnavailable on request error."""
+        import httpx
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                side_effect=httpx.RequestError("Connection refused")
+            )
+            mock_client.return_value = mock_context
+
+            check = FlyIo()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Failed to fetch API" in str(result.error)
+
 
 class TestCloudflare:
     """Test Cloudflare platform status health check via Atlassian API."""
