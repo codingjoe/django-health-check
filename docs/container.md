@@ -40,7 +40,7 @@ python manage.py health_check health_check-container localhost:8000 --forwarded-
 > [!IMPORTANT]
 > When using the `health_check` command, ensure that the host is included in your `ALLOWED_HOSTS` setting.
 > The command automatically uses the first entry from `ALLOWED_HOSTS` for the `X-Forwarded-Host` header if available.
-> For SSL-enabled applications, use the `--forwarded-proto https` flag.
+> The `X-Forwarded-Proto` header defaults to `https`; use `--forwarded-proto http` if your application doesn't use SSL.
 
 Your host name and port may vary depending on your container setup.
 
@@ -100,3 +100,6 @@ spec:
 > [!TIP]
 > Configure `X-Forwarded-Host` to match your domain from `ALLOWED_HOSTS` and set `X-Forwarded-Proto` to `https` if your application enforces SSL.
 > See Django's [USE_X_FORWARDED_HOST](https://docs.djangoproject.com/en/stable/ref/settings/#std-setting-USE_X_FORWARDED_HOST) and [SECURE_PROXY_SSL_HEADER](https://docs.djangoproject.com/en/stable/ref/settings/#secure-proxy-ssl-header) settings.
+
+> [!NOTE]
+> When using `httpGet` probes in Kubernetes, ensure your WSGI or ASGI server binds to `0.0.0.0` (not just `127.0.0.1`) to be accessible to the kubelet making the health check requests.

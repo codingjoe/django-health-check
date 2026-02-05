@@ -132,6 +132,10 @@ class TestHealthCheckCommand:
                 else:
                     headers = call_args.args[1] if len(call_args.args) > 1 else {}
                 assert headers.get("X-Forwarded-Proto") == "https"
+                # Verify command completed successfully
+                assert mock_urlopen.called
+                output = stdout.getvalue()
+                assert "OK" in output
 
     def test_handle__verbosity_level_0(self, live_server):
         """Verbosity level 0 shows minimal output."""
@@ -279,3 +283,30 @@ class TestHealthCheckCommand:
         error_output = stderr.getvalue()
         assert "Could not resolve endpoint" in error_output
         assert "nonexistent_endpoint" in error_output
+
+    def test_handle__default_addrport_from_env(self, live_server):
+        """Default addrport uses HOST and PORT environment variables."""
+        import os
+        from unittest.mock import patch
+
+        parsed = urlparse(live_server.url)
+
+        # Set environment variables
+        env_vars = {
+            "HOST": parsed.hostname,
+            "PORT": str(parsed.port),
+        }
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with patch.dict(os.environ, env_vars):
+            # Call command without addrport argument to use default
+            call_command(
+                "health_check",
+                "health_check_test",
+                stdout=stdout,
+                stderr=stderr,
+            )
+            output = stdout.getvalue()
+            assert "OK" in output or "working" in output
