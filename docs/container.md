@@ -34,8 +34,13 @@ urlpatterns = [
 … and then run the health check command:
 
 ```shell
-python manage.py health_check health_check-container localhost:8000
+python manage.py health_check health_check-container localhost:8000 --forwarded-host example.com
 ```
+
+> [!IMPORTANT]
+> When using the `health_check` command, ensure that the host is included in your `ALLOWED_HOSTS` setting.
+> The command automatically uses the first entry from `ALLOWED_HOSTS` for the `X-Forwarded-Host` header if available.
+> For SSL-enabled applications, use the `--forwarded-proto https` flag.
 
 Your host name and port may vary depending on your container setup.
 
@@ -80,13 +85,18 @@ spec:
         - name: web
           image: my-django-image:latest
           livenessProbe:
-            exec:
-              command:
-                - python
-                - manage.py
-                - health_check
-                - health_check-container
-                - web:8000
+            httpGet:
+              path: /container/health/
+              port: 8000
+              httpHeaders:
+                - name: X-Forwarded-Proto
+                  value: https
+                - name: X-Forwarded-Host
+                  value: example.com  # Use your actual domain from ALLOWED_HOSTS
             periodSeconds: 60
             timeoutSeconds: 10
 ```
+
+> [!TIP]
+> Configure `X-Forwarded-Host` to match your domain from `ALLOWED_HOSTS` and set `X-Forwarded-Proto` to `https` if your application enforces SSL.
+> See Django's [USE_X_FORWARDED_HOST](https://docs.djangoproject.com/en/stable/ref/settings/#std-setting-USE_X_FORWARDED_HOST) and [SECURE_PROXY_SSL_HEADER](https://docs.djangoproject.com/en/stable/ref/settings/#secure-proxy-ssl-header) settings.

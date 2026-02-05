@@ -64,3 +64,39 @@ class TestHealthCheckCommand:
         assert exc_info.value.code == 2
         error_output = stderr.getvalue()
         assert "not reachable" in error_output
+
+    def test_handle__forwarded_host(self, live_server):
+        """Set X-Forwarded-Host header when --forwarded-host is provided."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        call_command(
+            "health_check",
+            "health_check_test",
+            addrport,
+            forwarded_host="example.com",
+            stdout=stdout,
+            stderr=stderr,
+        )
+        output = stdout.getvalue()
+        assert "OK" in output or "working" in output
+
+    def test_handle__forwarded_proto(self, live_server):
+        """Set X-Forwarded-Proto header when --forwarded-proto is provided."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        call_command(
+            "health_check",
+            "health_check_test",
+            addrport,
+            forwarded_proto="https",
+            stdout=stdout,
+            stderr=stderr,
+        )
+        output = stdout.getvalue()
+        assert "OK" in output or "working" in output
