@@ -33,12 +33,9 @@ jobs:
           - "3.13"
           - "3.14"
         django-version:
-          - "4.2"
           - "5.2"
           - "6.0"
         exclude:
-          - python-version: "3.14"
-            django-version: "4.2"
           - python-version: "3.10"
             django-version: "6.0"
           - python-version: "3.11"
@@ -48,7 +45,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv run --with Django~=${{ matrix.django-version }}.0 pytest
+      - run: uv run --no-dev --group=test --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -101,16 +98,17 @@ jobs:
         django-version:
           - "5.2"
         extra:
-          - "redis"
           - "celery"
-          - "rabbitmq"
           - "kafka"
+          - "rabbitmq"
+          - "redis"
+          - "rss"
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv run --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
+      - run: uv run --no-dev --group=test --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

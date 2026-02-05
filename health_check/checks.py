@@ -9,8 +9,9 @@ import smtplib
 import socket
 import uuid
 
-import dns.resolver
+import dns.asyncresolver
 import psutil
+from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
 from django.core.files.base import ContentFile
@@ -60,12 +61,12 @@ class Cache(HealthCheck):
     alias: str = "default"
     cache_key: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
 
-    def check_status(self):
+    async def run(self):
         cache = caches[self.alias]
         ts = datetime.datetime.now().timestamp()
         try:
-            cache.set(self.cache_key, f"itworks-{ts}")
-            if not cache.get(self.cache_key) == f"itworks-{ts}":
+            await cache.aset(self.cache_key, f"itworks-{ts}")
+            if not await cache.aget(self.cache_key) == f"itworks-{ts}":
                 raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
         except CacheKeyWarning as e:
             raise ServiceReturnedUnexpectedResult("Cache key warning") from e
@@ -101,23 +102,25 @@ class Database(HealthCheck):
 
     alias: str = "default"
 
-    def check_status(self):
+    def run(self):
         connection = connections[self.alias]
+        result = None
         try:
-            result = None
             compiler = connection.ops.compiler("SQLCompiler")(
                 _SelectOne(), connection, None
             )
             with connection.cursor() as cursor:
                 cursor.execute(*compiler.compile(_SelectOne()))
                 result = cursor.fetchone()
-        except Exception as e:
-            raise ServiceUnavailable(f"Database health check failed: {e}")
+        except db.Error as e:
+            raise ServiceUnavailable(str(e).rsplit(":")[0]) from e
         else:
             if result != (1,):
                 raise ServiceUnavailable(
                     "Health Check query did not return the expected result."
                 )
+        finally:
+            connection.close_if_unusable_or_obsolete()
 
 
 @dataclasses.dataclass
@@ -140,17 +143,17 @@ class DNS(HealthCheck):
     )
     nameservers: list[str] | None = dataclasses.field(default=None, repr=False)
 
-    def check_status(self):
+    async def run(self):
         logger.debug("Attempting to resolve hostname: %s", self.hostname)
 
-        resolver = dns.resolver.Resolver()
+        resolver = dns.asyncresolver.Resolver()
         resolver.lifetime = self.timeout.total_seconds()
         if self.nameservers is not None:
             resolver.nameservers = self.nameservers
 
         try:
             # Perform DNS resolution (A record by default)
-            answers = resolver.resolve(self.hostname, "A")
+            answers = await resolver.resolve(self.hostname, "A")
         except dns.resolver.NXDOMAIN as e:
             raise ServiceUnavailable(
                 f"DNS resolution failed: hostname {self.hostname} does not exist"
@@ -169,8 +172,6 @@ class DNS(HealthCheck):
             ) from e
         except dns.exception.DNSException as e:
             raise ServiceUnavailable(f"DNS resolution failed: {e}") from e
-        except Exception as e:
-            raise ServiceUnavailable("Unknown DNS error") from e
         else:
             logger.debug(
                 "Successfully resolved %s to %s",
@@ -182,14 +183,10 @@ class DNS(HealthCheck):
 @dataclasses.dataclass()
 class Disk(HealthCheck):
     """
-    Check system disk usage.
+    Warn about disk usage for a given system path.
 
     It can be setup multiple times at different system paths,
     e.g. one at your application root and one at your media storage root.
-
-    Exceeding the thresholds will result warnings, not errors.
-
-    See also [HealthCheckView][health_check.views.HealthCheckView].warnings_as_errors.
 
     Args:
         path: Path to check disk usage for.
@@ -201,7 +198,7 @@ class Disk(HealthCheck):
     max_disk_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
-    def check_status(self):
+    def run(self):
         try:
             du = psutil.disk_usage(str(self.path))
             if (
@@ -229,7 +226,7 @@ class Mail(HealthCheck):
         default=datetime.timedelta(seconds=15), repr=False
     )
 
-    def check_status(self) -> None:
+    def run(self) -> None:
         connection: BaseEmailBackend = get_connection(self.backend, fail_silently=False)
         connection.timeout = self.timeout.total_seconds()
         logger.debug("Trying to open connection to mail backend.")
@@ -241,8 +238,6 @@ class Mail(HealthCheck):
             ) from e
         except ConnectionRefusedError as e:
             raise ServiceUnavailable("Connection refused error") from e
-        except Exception as e:
-            raise ServiceUnavailable(f"Unknown error {e.__class__}") from e
         finally:
             connection.close()
         logger.debug(
@@ -253,11 +248,7 @@ class Mail(HealthCheck):
 @dataclasses.dataclass()
 class Memory(HealthCheck):
     """
-    Check system memory usage.
-
-    Exceeding the thresholds will result warnings, not errors.
-
-    See also [HealthCheckView][health_check.views.HealthCheckView].warnings_as_errors.
+    Warn about system memory utilization.
 
     Args:
         min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
@@ -269,7 +260,7 @@ class Memory(HealthCheck):
     max_memory_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
-    def check_status(self):
+    def run(self):
         try:
             memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
@@ -330,14 +321,9 @@ class Storage(HealthCheck):
         if self.storage.exists(file_name):
             raise ServiceUnavailable("File was not deleted")
 
-    def check_status(self):
-        try:
-            # write the file to the storage backend
-            file_name = self.get_file_name()
-            file_content = self.get_file_content()
-            file_name = self.check_save(file_name, file_content)
-            self.check_delete(file_name)
-        except ServiceUnavailable:
-            raise
-        except Exception as e:
-            raise ServiceUnavailable("Unknown exception") from e
+    def run(self):
+        # write the file to the storage backend
+        file_name = self.get_file_name()
+        file_content = self.get_file_content()
+        file_name = self.check_save(file_name, file_content)
+        self.check_delete(file_name)

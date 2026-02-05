@@ -3,8 +3,7 @@
 import dataclasses
 import logging
 
-from amqp.exceptions import AccessRefused
-from kombu import Connection
+import aio_pika
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -24,25 +23,21 @@ class RabbitMQ(HealthCheck):
 
     amqp_url: str
 
-    def check_status(self):
+    async def run(self):
         logger.debug("Attempting to connect to %r...", self.amqp_url)
         try:
             # conn is used as a context to release opened resources later
-            with Connection(self.amqp_url) as conn:
-                conn.connect()  # exceptions may be raised upon calling connect
+            connection = await aio_pika.connect_robust(self.amqp_url)
+            await connection.close()
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(
                 "Unable to connect to RabbitMQ: Connection was refused."
             ) from e
-        except AccessRefused as e:
+        except aio_pika.exceptions.ProbableAuthenticationError as e:
             raise ServiceUnavailable(
                 "Unable to connect to RabbitMQ: Authentication error."
             ) from e
-
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
-
-        except BaseException as e:
-            raise ServiceUnavailable("Unknown error") from e
         else:
             logger.debug("Connection established. RabbitMQ is healthy.")
