@@ -126,7 +126,11 @@ class TestHealthCheckCommand:
                 )
                 # Verify that Request was called with X-Forwarded-Proto: https
                 call_args = mock_request.call_args
-                headers = call_args[1]["headers"] if len(call_args) > 1 else call_args.kwargs.get("headers", {})
+                # Extract headers from kwargs, falling back to positional args
+                if "headers" in call_args.kwargs:
+                    headers = call_args.kwargs["headers"]
+                else:
+                    headers = call_args.args[1] if len(call_args.args) > 1 else {}
                 assert headers.get("X-Forwarded-Proto") == "https"
 
     def test_handle__verbosity_level_0(self, live_server):
@@ -197,7 +201,9 @@ class TestHealthCheckCommand:
             assert exc_info.value.code == 2
             error_output = stderr.getvalue()
             assert "not reachable" in error_output
-            assert "ALLOWED_HOSTS" in error_output or "forwarded-host" in error_output
+            # Should suggest checking ALLOWED_HOSTS or using --forwarded-host
+            assert "ALLOWED_HOSTS" in error_output
+            assert "forwarded-host" in error_output
 
     def test_handle__unexpected_http_error(self, live_server):
         """Return exit code 2 and helpful message for unexpected HTTP errors."""
