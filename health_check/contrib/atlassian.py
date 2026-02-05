@@ -1,0 +1,188 @@
+import dataclasses
+import datetime
+import typing
+
+import httpx
+
+from health_check import HealthCheck
+from health_check.contrib.rss import logger
+from health_check.exceptions import ServiceUnavailable, ServiceWarning
+
+
+class AtlassianStatusPage(HealthCheck):
+    """
+    Base class for Atlassian status page health checks.
+
+    Monitor cloud provider service health via Atlassian Status Page API v2.
+
+    Each subclass should define the `base_url` for the specific status page, as well as
+    appropriate `timeout` and `max_age` values.
+
+    Examples:
+        >>> class FlyIo(AtlassianStatusPage):
+        ...     timeout = datetime.timedelta(seconds=10)
+        ...     max_age = datetime.timedelta(hours=8)
+        ...     base_url = "https://status.flyio.net"
+
+    """
+
+    base_url: typing.ClassVar[str] = NotImplemented
+    timeout: datetime.timedelta = NotImplemented
+    max_age: datetime.timedelta = NotImplemented
+
+    async def run(self):
+        if msg := "\n".join([i async for i in self._fetch_incidents()]):
+            raise ServiceWarning(msg)
+        logger.debug("No recent incidents found")
+
+    async def _fetch_incidents(self):
+        api_url = f"{self.base_url}/api/v2/incidents/unresolved.json"
+        logger.debug("Fetching incidents from %r", api_url)
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    api_url,
+                    headers={"User-Agent": "django-health-check"},
+                    timeout=self.timeout.total_seconds(),
+                    follow_redirects=True,
+                )
+            except httpx.TimeoutException as e:
+                raise ServiceUnavailable("API request timed out") from e
+            except httpx.RequestError as e:
+                raise ServiceUnavailable(f"Failed to fetch API: {e}") from e
+
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise ServiceUnavailable(
+                    f"HTTP error {e.response.status_code} fetching API"
+                ) from e
+
+            try:
+                data = response.json()
+            except ValueError as e:
+                raise ServiceUnavailable("Failed to parse JSON response") from e
+
+        for incident in data.get("incidents"):
+            yield f"{incident['name']}: {incident['shortlink']}"
+
+
+@dataclasses.dataclass
+class Cloudflare(AtlassianStatusPage):
+    """
+    Check Cloudflare platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://www.cloudflarestatus.com"
+
+
+@dataclasses.dataclass
+class FlyIo(AtlassianStatusPage):
+    """
+    Check Fly.io platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.flyio.net"
+
+
+@dataclasses.dataclass
+class PlatformSh(AtlassianStatusPage):
+    """
+    Check Platform.sh platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.platform.sh"
+
+
+@dataclasses.dataclass
+class DigitalOcean(AtlassianStatusPage):
+    """
+    Check DigitalOcean platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.digitalocean.com"
+
+
+@dataclasses.dataclass
+class Render(AtlassianStatusPage):
+    """
+    Check Render platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.render.com"
+
+
+@dataclasses.dataclass
+class Vercel(AtlassianStatusPage):
+    """
+    Check Vercel platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://www.vercel-status.com"

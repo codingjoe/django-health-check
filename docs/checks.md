@@ -44,31 +44,25 @@ To enable cloud provider health checks, install the `rss` extra:
 pip install django-health-check[rss]
 ```
 
-### RSS Feeds
-
 ::: health_check.contrib.rss.AWS
-
-::: health_check.contrib.rss.Heroku
 
 ::: health_check.contrib.rss.Azure
 
-### Atom Feeds
-
 ::: health_check.contrib.rss.GoogleCloud
 
-### Atlassian Status Pages
+::: health_check.contrib.atlassian.Cloudflare
 
-The following providers use Atlassian Status Page API v2:
+::: health_check.contrib.atlassian.DigitalOcean
 
-::: health_check.contrib.rss.FlyIO
+::: health_check.contrib.atlassian.FlyIo
 
-::: health_check.contrib.rss.PlatformSh
+::: health_check.contrib.rss.Heroku
 
-::: health_check.contrib.rss.DigitalOcean
+::: health_check.contrib.atlassian.PlatformSh
 
-::: health_check.contrib.rss.Render
+::: health_check.contrib.atlassian.Render
 
-::: health_check.contrib.rss.Vercel
+::: health_check.contrib.atlassian.Vercel
 
 ## Custom RSS/Atom Feeds
 
@@ -79,4 +73,4 @@ Subclasses need to implement the `feed_url`, `timeout` and `max_age` attributes.
 
 ::: health_check.contrib.rss.AtomFeed
 
-::: health_check.contrib.rss.AtlassianStatusPage
+::: health_check.contrib.atlassian.AtlassianStatusPage
