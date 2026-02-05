@@ -2,11 +2,10 @@
 
 import dataclasses
 import datetime
-import email.utils
 import logging
 import typing
-from xml.etree import ElementTree
 
+import feedparser
 import httpx
 
 from health_check import HealthCheck, __version__
@@ -51,13 +50,17 @@ class StatusFeedBase(HealthCheck):
 
             content = response.text
 
-        try:
-            root = ElementTree.fromstring(content)  # noqa: S314
-        except ElementTree.ParseError as e:
-            raise ServiceUnavailable("Failed to parse feed") from e
+        feed = feedparser.parse(content)
+        
+        if feed.bozo:
+            # feedparser sets bozo=1 for malformed feeds
+            logger.warning("Feed parsing encountered errors: %s", feed.bozo_exception)
+        
+        if not feed.entries:
+            logger.debug("No entries found in feed")
+            return
 
-        entries = self._extract_entries(root)
-        incidents = [entry for entry in entries if self._is_recent_incident(entry)]
+        incidents = [entry for entry in feed.entries if self._is_recent_incident(entry)]
 
         if incidents:
             incident_titles = [self._extract_title(entry) for entry in incidents]
@@ -66,16 +69,6 @@ class StatusFeedBase(HealthCheck):
             )
 
         logger.debug("No recent incidents found in feed")
-
-    def _extract_entries(self, root):
-        """
-        Extract entries from feed.
-
-        Returns:
-            list: Entry elements from the feed.
-
-        """
-        raise NotImplementedError
 
     def _is_recent_incident(self, entry):
         """Check if entry is a recent incident."""
@@ -94,7 +87,18 @@ class StatusFeedBase(HealthCheck):
             datetime or None: Publication date, or None if not found.
 
         """
-        raise NotImplementedError
+        # feedparser normalizes both RSS and Atom dates to struct_time
+        # Try published first, then updated
+        for date_field in ["published_parsed", "updated_parsed"]:
+            if hasattr(entry, date_field):
+                date_tuple = getattr(entry, date_field)
+                if date_tuple:
+                    try:
+                        # Convert struct_time to datetime
+                        return datetime.datetime(*date_tuple[:6], tzinfo=datetime.timezone.utc)
+                    except (ValueError, TypeError):
+                        pass
+        return None
 
     def _extract_title(self, entry):
         """
@@ -104,7 +108,7 @@ class StatusFeedBase(HealthCheck):
             str: Entry title, or 'Untitled incident' if not found.
 
         """
-        raise NotImplementedError
+        return getattr(entry, "title", "Untitled incident") or "Untitled incident"
 
 
 @dataclasses.dataclass
@@ -120,25 +124,6 @@ class RSSFeed(StatusFeedBase):
 
     """
 
-    def _extract_entries(self, root):
-        """Extract entries from RSS 2.0 feed."""
-        return root.findall(".//item")
-
-    def _extract_date(self, entry):
-        """Extract publication date from RSS entry."""
-        pub_date = entry.find("pubDate")
-        if pub_date is not None and (date_text := pub_date.text):
-            try:
-                return email.utils.parsedate_to_datetime(date_text)
-            except (ValueError, TypeError):
-                pass
-
-    def _extract_title(self, entry):
-        """Extract title from RSS entry."""
-        if (title := entry.find("title")) is not None:
-            return title.text or "Untitled incident"
-        return "Untitled incident"
-
 
 @dataclasses.dataclass
 class AtomFeed(StatusFeedBase):
@@ -152,45 +137,6 @@ class AtomFeed(StatusFeedBase):
         ...     max_age = datetime.timedelta(hours=8)
 
     """
-
-    def _extract_entries(self, root):
-        """Extract entries from Atom feed."""
-        namespace = {"atom": "http://www.w3.org/2005/Atom"}
-        entries = root.findall(".//atom:entry", namespace)
-        if not entries:
-            entries = root.findall(".//{http://www.w3.org/2005/Atom}entry")
-        return entries
-
-    def _extract_date(self, entry):
-        """Extract publication date from Atom entry."""
-        namespace = {"atom": "http://www.w3.org/2005/Atom"}
-
-        for date_field in ["published", "updated"]:
-            date_element = entry.find(f"atom:{date_field}", namespace)
-            if date_element is None:
-                date_element = entry.find(
-                    f"{{http://www.w3.org/2005/Atom}}{date_field}"
-                )
-
-            if date_element is not None and (date_text := date_element.text):
-                try:
-                    return datetime.datetime.fromisoformat(
-                        date_text.replace("Z", "+00:00")
-                    )
-                except (ValueError, TypeError):
-                    pass
-
-    def _extract_title(self, entry):
-        """Extract title from Atom entry."""
-        namespace = {"atom": "http://www.w3.org/2005/Atom"}
-
-        title = entry.find("atom:title", namespace)
-        if title is None:
-            title = entry.find("{http://www.w3.org/2005/Atom}title")
-
-        if title is not None:
-            return title.text or "Untitled incident"
-        return "Untitled incident"
 
 
 @dataclasses.dataclass
