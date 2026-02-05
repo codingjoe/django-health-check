@@ -666,3 +666,177 @@ class TestGoogleCloud:
         """Verify correct feed URL for Google Cloud."""
         check = GoogleCloud()
         assert check.feed_url == "https://status.cloud.google.com/en/feed.atom"
+
+    @pytest.mark.asyncio
+    async def test_check_status__atom_entry_without_namespace_prefix(self):
+        """Parse Atom feed where entries don't have namespace prefix."""
+        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry xmlns="http://www.w3.org/2005/Atom">
+    <title>Incident</title>
+    <published>2024-01-01T00:00:00Z</published>
+  </entry>
+</feed>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = atom_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+
+                check = GoogleCloud()
+                result = await check.get_result()
+                assert result.error is not None
+                assert isinstance(result.error, ServiceWarning)
+
+    @pytest.mark.asyncio
+    async def test_check_status__atom_invalid_date_format(self):
+        """Handle invalid date format in Atom feed."""
+        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>Incident with invalid date</title>
+    <published>not a valid date</published>
+  </entry>
+</feed>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = atom_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GoogleCloud()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "Incident with invalid date" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__atom_title_without_namespace_prefix(self):
+        """Parse Atom feed where title doesn't have namespace prefix."""
+        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry xmlns="http://www.w3.org/2005/Atom">
+    <title xmlns="http://www.w3.org/2005/Atom">Title without prefix</title>
+    <published>2024-01-01T00:00:00Z</published>
+  </entry>
+</feed>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = atom_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+
+                check = GoogleCloud()
+                result = await check.get_result()
+                assert result.error is not None
+                assert isinstance(result.error, ServiceWarning)
+                assert "Title without prefix" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__atom_entry_with_empty_title(self):
+        """Handle Atom entry with empty title element."""
+        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title></title>
+    <published>2024-01-01T00:00:00Z</published>
+  </entry>
+</feed>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = atom_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+
+                check = GoogleCloud()
+                result = await check.get_result()
+                assert result.error is not None
+                assert isinstance(result.error, ServiceWarning)
+                assert "Untitled incident" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__atom_entry_without_title(self):
+        """Handle Atom entry without title element."""
+        atom_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <published>2024-01-01T00:00:00Z</published>
+  </entry>
+</feed>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = atom_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+
+                check = GoogleCloud()
+                result = await check.get_result()
+                assert result.error is not None
+                assert isinstance(result.error, ServiceWarning)
+                assert "Untitled incident" in str(result.error)
