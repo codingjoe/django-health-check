@@ -805,6 +805,39 @@ class TestGoogleCloud:
                 assert isinstance(result.error, ServiceWarning)
                 assert "Untitled incident" in str(result.error)
 
+    def test_extract_entries__fallback_path_without_namespace_prefix(self):
+        """Test fallback extraction path for Atom entries without namespace prefix."""
+        from unittest.mock import MagicMock
+        from xml.etree import ElementTree
+
+        # Create a mock root that returns empty list from the first findall
+        # (namespace-prefixed), then returns entries from the second findall
+        mock_root = MagicMock(spec=ElementTree.Element)
+
+        # Create real entry element
+        atom_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>Fallback entry</title>
+    <published>2024-01-01T00:00:00Z</published>
+  </entry>
+</feed>"""
+        real_root = ElementTree.fromstring(atom_xml)  # noqa: S314
+        real_entry = real_root.findall(".//{http://www.w3.org/2005/Atom}entry")[0]
+
+        # Set up the mock to return empty on first call, then return entry on second call
+        mock_root.findall.side_effect = [
+            [],  # First call with namespace prefix returns empty
+            [real_entry],  # Second call with full namespace URI succeeds
+        ]
+
+        check = GoogleCloud()
+        entries = check._extract_entries(mock_root)
+
+        # Verify that entries were found and we called findall twice (triggering fallback)
+        assert len(entries) > 0
+        assert mock_root.findall.call_count == 2
+
     @pytest.mark.asyncio
     async def test_check_status__atom_entry_without_title(self):
         """Handle Atom entry without title element."""
