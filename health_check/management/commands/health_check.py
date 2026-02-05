@@ -67,6 +67,10 @@ class Command(BaseCommand):
             )
             sys.exit(2)
         addrport = options.get("addrport")
+        # Determine protocol for the health check URL:
+        # Use HTTPS only if SSL redirect is enabled AND forwarded headers are not used.
+        # In most containerized setups, the app listens on HTTP and relies on
+        # X-Forwarded-Proto header to indicate the original protocol.
         proto = (
             "https"
             if settings.SECURE_SSL_REDIRECT and not settings.USE_X_FORWARDED_HOST
