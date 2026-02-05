@@ -63,12 +63,11 @@ class Feed(HealthCheck):
         incidents = [entry for entry in feed.entries if self._is_recent_incident(entry)]
 
         if incidents:
-            incident_titles = [
-                getattr(entry, "title", "Untitled incident") or "Untitled incident"
-                for entry in incidents
-            ]
             raise ServiceWarning(
-                f"Found {len(incidents)} recent incident(s): {', '.join(incident_titles)}"
+                f"Found {len(incidents)} recent incident(s): {', '.join(
+                    getattr(entry, 'title', 'Untitled incident') or 'Untitled incident'
+                    for entry in incidents
+                )}"
             )
 
         logger.debug("No recent incidents found in feed")
@@ -86,11 +85,11 @@ class Feed(HealthCheck):
         # feedparser normalizes both RSS and Atom dates to struct_time
         # Try published first, then updated
         for date_field in ["published_parsed", "updated_parsed"]:
-            if hasattr(entry, date_field) and (date_tuple := getattr(entry, date_field)):
+            if date_tuple := getattr(entry, date_field, None):
                 try:
                     # Convert struct_time to datetime
                     return datetime.datetime(*date_tuple[:6], tzinfo=datetime.timezone.utc)
-                except (ValueError, TypeError):
+                except ValueError:
                     pass
         return None
 
