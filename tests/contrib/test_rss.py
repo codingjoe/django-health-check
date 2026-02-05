@@ -125,18 +125,9 @@ class TestAWS:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch(
-                "health_check.contrib.rss.datetime", wraps=datetime
-            ) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = AWS(region="us-east-1", service="ec2")
-                result = await check.get_result()
-                assert result.error is None
+            check = AWS(region="us-east-1", service="ec2")
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):
@@ -200,7 +191,7 @@ class TestAWS:
 
     @pytest.mark.asyncio
     async def test_check_status__parse_error(self):
-        """Raise ServiceUnavailable on XML parse error."""
+        """Feedparser handles malformed feeds gracefully with bozo flag."""
         invalid_xml = b"not valid xml"
 
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
@@ -216,9 +207,9 @@ class TestAWS:
 
             check = AWS(region="us-east-1", service="ec2")
             result = await check.get_result()
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Failed to parse feed" in str(result.error)
+            # feedparser handles malformed feeds gracefully - no error raised
+            # but it logs a warning
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_extract_date__entry_without_date(self):
@@ -376,18 +367,9 @@ class TestHeroku:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch(
-                "health_check.contrib.rss.datetime", wraps=datetime
-            ) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = Heroku()
-                result = await check.get_result()
-                assert result.error is None
+            check = Heroku()
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
@@ -461,18 +443,9 @@ class TestAzure:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch(
-                "health_check.contrib.rss.datetime", wraps=datetime
-            ) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = Azure()
-                result = await check.get_result()
-                assert result.error is None
+            check = Azure()
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
@@ -539,18 +512,9 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 3, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
-            with mock.patch(
-                "health_check.contrib.rss.datetime", wraps=datetime
-            ) as mock_datetime:
-                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
-                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-
-                check = GoogleCloud()
-                result = await check.get_result()
-                assert result.error is None
+            check = GoogleCloud()
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
@@ -804,39 +768,6 @@ class TestGoogleCloud:
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "Untitled incident" in str(result.error)
-
-    def test_extract_entries__fallback_path_without_namespace_prefix(self):
-        """Test fallback extraction path for Atom entries without namespace prefix."""
-        from unittest.mock import MagicMock
-        from xml.etree import ElementTree
-
-        # Create a mock root that returns empty list from the first findall
-        # (namespace-prefixed), then returns entries from the second findall
-        mock_root = MagicMock(spec=ElementTree.Element)
-
-        # Create real entry element
-        atom_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <entry>
-    <title>Fallback entry</title>
-    <published>2024-01-01T00:00:00Z</published>
-  </entry>
-</feed>"""
-        real_root = ElementTree.fromstring(atom_xml)  # noqa: S314
-        real_entry = real_root.findall(".//{http://www.w3.org/2005/Atom}entry")[0]
-
-        # Set up the mock to return empty on first call, then return entry on second call
-        mock_root.findall.side_effect = [
-            [],  # First call with namespace prefix returns empty
-            [real_entry],  # Second call with full namespace URI succeeds
-        ]
-
-        check = GoogleCloud()
-        entries = check._extract_entries(mock_root)
-
-        # Verify that entries were found and we called findall twice (triggering fallback)
-        assert len(entries) > 0
-        assert mock_root.findall.call_count == 2
 
     @pytest.mark.asyncio
     async def test_check_status__atom_entry_without_title(self):
