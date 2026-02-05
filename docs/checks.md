@@ -66,11 +66,9 @@ pip install django-health-check[rss]
 
 ## Custom RSS/Atom Feeds
 
-These classes can be used to write custom RSS/Atom proxy checks.
+This class can be used to write custom RSS/Atom proxy checks.
 Subclasses need to implement the `feed_url`, `timeout` and `max_age` attributes.
 
-::: health_check.contrib.rss.RSSFeed
-
-::: health_check.contrib.rss.AtomFeed
+::: health_check.contrib.rss.Feed
 
 ::: health_check.contrib.atlassian.AtlassianStatusPage

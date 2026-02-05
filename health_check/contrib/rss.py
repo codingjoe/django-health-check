@@ -14,7 +14,7 @@ from health_check.exceptions import ServiceUnavailable, ServiceWarning
 logger = logging.getLogger(__name__)
 
 
-class StatusFeedBase(HealthCheck):
+class Feed(HealthCheck):
     """
     Base class for cloud provider status feed health checks.
 
@@ -63,7 +63,10 @@ class StatusFeedBase(HealthCheck):
         incidents = [entry for entry in feed.entries if self._is_recent_incident(entry)]
 
         if incidents:
-            incident_titles = [self._extract_title(entry) for entry in incidents]
+            incident_titles = [
+                getattr(entry, "title", "Untitled incident") or "Untitled incident"
+                for entry in incidents
+            ]
             raise ServiceWarning(
                 f"Found {len(incidents)} recent incident(s): {', '.join(incident_titles)}"
             )
@@ -80,67 +83,20 @@ class StatusFeedBase(HealthCheck):
         return datetime.datetime.now(tz=datetime.timezone.utc) >= published_at > cutoff
 
     def _extract_date(self, entry):
-        """
-        Extract publication date from entry.
-
-        Returns:
-            datetime or None: Publication date, or None if not found.
-
-        """
         # feedparser normalizes both RSS and Atom dates to struct_time
         # Try published first, then updated
         for date_field in ["published_parsed", "updated_parsed"]:
-            if hasattr(entry, date_field):
-                date_tuple = getattr(entry, date_field)
-                if date_tuple:
-                    try:
-                        # Convert struct_time to datetime
-                        return datetime.datetime(*date_tuple[:6], tzinfo=datetime.timezone.utc)
-                    except (ValueError, TypeError):
-                        pass
+            if hasattr(entry, date_field) and (date_tuple := getattr(entry, date_field)):
+                try:
+                    # Convert struct_time to datetime
+                    return datetime.datetime(*date_tuple[:6], tzinfo=datetime.timezone.utc)
+                except (ValueError, TypeError):
+                    pass
         return None
 
-    def _extract_title(self, entry):
-        """
-        Extract title from entry.
-
-        Returns:
-            str: Entry title, or 'Untitled incident' if not found.
-
-        """
-        return getattr(entry, "title", "Untitled incident") or "Untitled incident"
-
 
 @dataclasses.dataclass
-class RSSFeed(StatusFeedBase):
-    """
-    Base class for RSS 2.0 feed health checks.
-
-    Examples:
-        >>> class MyService(RSSFeed):
-        ...     feed_url = "https://example.com/status/rss"
-        ...     timeout = datetime.timedelta(seconds=10)
-        ...     max_age = datetime.timedelta(hours=8)
-
-    """
-
-
-@dataclasses.dataclass
-class AtomFeed(StatusFeedBase):
-    """
-    Base class for Atom feed health checks.
-
-    Examples:
-        >>> class MyService(AtomFeed):
-        ...     feed_url = "https://example.com/status/atom"
-        ...     timeout = datetime.timedelta(seconds=10)
-        ...     max_age = datetime.timedelta(hours=8)
-
-    """
-
-
-@dataclasses.dataclass
-class AWS(RSSFeed):
+class AWS(Feed):
     """
     Check AWS service status via their public RSS status feeds.
 
@@ -168,7 +124,7 @@ class AWS(RSSFeed):
 
 
 @dataclasses.dataclass
-class Heroku(RSSFeed):
+class Heroku(Feed):
     """
     Check Heroku platform status via their public RSS status feed.
 
@@ -188,7 +144,7 @@ class Heroku(RSSFeed):
 
 
 @dataclasses.dataclass
-class Azure(RSSFeed):
+class Azure(Feed):
     """
     Check Azure platform status via their public RSS status feed.
 
@@ -210,7 +166,7 @@ class Azure(RSSFeed):
 
 
 @dataclasses.dataclass
-class GoogleCloud(AtomFeed):
+class GoogleCloud(Feed):
     """
     Check Google Cloud platform status via their public Atom status feed.
 
