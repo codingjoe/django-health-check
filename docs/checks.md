@@ -36,12 +36,30 @@ pip install django-health-check[redis,rabbitmq,celery,kafka]
 
 ## Cloud Provider Status
 
-Monitor AWS service health using their public RSS status feeds.
+Monitor cloud provider service health using their public RSS/Atom status feeds.
 
-To enable AWS health checks, install the `rss` extra:
+To enable cloud provider health checks, install the `rss` extra:
 
 ```shell
 pip install django-health-check[rss]
 ```
 
 ::: health_check.contrib.rss.AWS
+
+::: health_check.contrib.rss.Heroku
+
+::: health_check.contrib.rss.Azure
+
+::: health_check.contrib.rss.GoogleCloud
+
+::: health_check.contrib.rss.FlyIO
+
+::: health_check.contrib.rss.PlatformSh
+
+::: health_check.contrib.rss.DigitalOcean
+
+::: health_check.contrib.rss.Render
+
+::: health_check.contrib.rss.Vercel
+
+::: health_check.contrib.rss.Railway
