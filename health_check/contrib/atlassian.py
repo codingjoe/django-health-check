@@ -4,7 +4,7 @@ import typing
 
 import httpx
 
-from health_check import HealthCheck
+from health_check import HealthCheck, __version__
 from health_check.contrib.rss import logger
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
 
@@ -43,7 +43,7 @@ class AtlassianStatusPage(HealthCheck):
             try:
                 response = await client.get(
                     api_url,
-                    headers={"User-Agent": "django-health-check"},
+                    headers={"User-Agent": f"django-health-check@{__version__}"},
                     timeout=self.timeout.total_seconds(),
                     follow_redirects=True,
                 )
