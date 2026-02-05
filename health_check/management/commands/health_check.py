@@ -34,7 +34,7 @@ class Command(BaseCommand):
             nargs="?",
             type=str,
             default=self.default_addrport,
-            help=f"Optional port number, or ipaddr:port (default: :{self.default_addrport})",
+            help=f"Optional port number, or ipaddr:port (default: {self.default_addrport})",
         )
         parser.add_argument(
             "--forwarded-host",
@@ -99,7 +99,7 @@ class Command(BaseCommand):
                     sys.exit(1)
                 case 400:
                     self.stderr.write(
-                        f'"{url}" is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting or use the --forwarded-host option.'
+                        f"{url!r} is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting or use the --forwarded-host option."
                     )
                     sys.exit(2)
                 case _:
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                     sys.exit(2)
         except urllib.error.URLError as e:
             self.stderr.write(
-                f'"{url}" is not reachable: {e.reason}\nPlease check your server is running and reachable.'
+                f"{url!r} is not reachable: {e.reason}\nPlease check your server is running and reachable."
             )
             sys.exit(2)
         except TimeoutError as e:
