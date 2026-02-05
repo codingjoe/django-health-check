@@ -282,3 +282,176 @@ class GoogleCloud(AtomFeed):
     )
 
     feed_url: typing.ClassVar[str] = "https://status.cloud.google.com/en/feed.atom"
+
+
+class AtlassianStatusPage(HealthCheck):
+    """
+    Base class for Atlassian status page health checks.
+
+    Monitor cloud provider service health via Atlassian Status Page API v2.
+    """
+
+    base_url: str = NotImplemented
+    timeout: datetime.timedelta = NotImplemented
+    max_age: datetime.timedelta = NotImplemented
+
+    async def run(self):
+        """Check for unresolved incidents via Atlassian API v2."""
+        api_url = f"{self.base_url}/api/v2/incidents/unresolved.json"
+        logger.debug("Fetching incidents from %s", api_url)
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    api_url,
+                    headers={"User-Agent": "django-health-check"},
+                    timeout=self.timeout.total_seconds(),
+                    follow_redirects=True,
+                )
+            except httpx.TimeoutException as e:
+                raise ServiceUnavailable("API request timed out") from e
+            except httpx.RequestError as e:
+                raise ServiceUnavailable(f"Failed to fetch API: {e}") from e
+
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise ServiceUnavailable(
+                    f"HTTP error {e.response.status_code} fetching API"
+                ) from e
+
+            try:
+                data = response.json()
+            except ValueError as e:
+                raise ServiceUnavailable("Failed to parse JSON response") from e
+
+        incidents = data.get("incidents", [])
+        recent_incidents = [
+            incident
+            for incident in incidents
+            if self._is_recent_incident(incident)
+        ]
+
+        if recent_incidents:
+            incident_names = [incident.get("name", "Untitled incident") for incident in recent_incidents]
+            raise ServiceWarning(
+                f"Found {len(recent_incidents)} recent incident(s): {', '.join(incident_names)}"
+            )
+
+        logger.debug("No recent incidents found")
+
+    def _is_recent_incident(self, incident: dict) -> bool:
+        """Check if incident is recent based on creation time."""
+        created_at_str = incident.get("created_at")
+        if not created_at_str:
+            return True
+
+        try:
+            created_at = datetime.datetime.fromisoformat(
+                created_at_str.replace("Z", "+00:00")
+            )
+        except (ValueError, TypeError):
+            return True
+
+        cutoff = datetime.datetime.now(tz=datetime.timezone.utc) - self.max_age
+        return datetime.datetime.now(tz=datetime.timezone.utc) >= created_at > cutoff
+
+
+@dataclasses.dataclass
+class FlyIO(AtlassianStatusPage):
+    """
+    Check Fly.io platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.flyio.net"
+
+
+@dataclasses.dataclass
+class PlatformSh(AtlassianStatusPage):
+    """
+    Check Platform.sh platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.platform.sh"
+
+
+@dataclasses.dataclass
+class DigitalOcean(AtlassianStatusPage):
+    """
+    Check DigitalOcean platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.digitalocean.com"
+
+
+@dataclasses.dataclass
+class Render(AtlassianStatusPage):
+    """
+    Check Render platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.render.com"
+
+
+@dataclasses.dataclass
+class Vercel(AtlassianStatusPage):
+    """
+    Check Vercel platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://www.vercel-status.com"
