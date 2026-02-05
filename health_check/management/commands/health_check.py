@@ -67,11 +67,8 @@ class Command(BaseCommand):
             )
             sys.exit(2)
         addrport = options.get("addrport")
-        # Determine the protocol to use when connecting to the local server:
-        # - Connect via HTTPS only if SSL redirect is enabled AND forwarded headers are not used
-        #   (meaning the app truly requires HTTPS connections)
-        # - Otherwise, connect via HTTP (typical for containerized apps where the app listens
-        #   on HTTP and X-Forwarded-Proto header indicates the original protocol to Django)
+        # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
+        # Otherwise use HTTP (typical for containers with X-Forwarded-Proto header support).
         proto = (
             "https"
             if settings.SECURE_SSL_REDIRECT and not settings.USE_X_FORWARDED_HOST
