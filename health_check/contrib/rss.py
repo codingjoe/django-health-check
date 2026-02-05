@@ -4,6 +4,7 @@ import dataclasses
 import datetime
 import email.utils
 import logging
+import typing
 from xml.etree import ElementTree
 
 import httpx
@@ -21,8 +22,11 @@ class StatusFeedBase(HealthCheck):
     Monitor cloud provider service health via their public RSS or Atom status feeds.
     """
 
+    feed_url: str = NotImplemented
+    timeout: datetime.timedelta = NotImplemented
+    max_age: datetime.timedelta = NotImplemented
+
     async def run(self):
-        """Check the feed for incidents."""
         logger.debug("Fetching feed from %s", self.feed_url)
 
         async with httpx.AsyncClient() as client:
@@ -80,7 +84,7 @@ class StatusFeedBase(HealthCheck):
             return True
 
         cutoff = datetime.datetime.now(tz=datetime.timezone.utc) - self.max_age
-        return published_at > cutoff
+        return datetime.datetime.now(tz=datetime.timezone.utc) >= published_at > cutoff
 
     def _extract_date(self, entry):
         """
@@ -103,8 +107,18 @@ class StatusFeedBase(HealthCheck):
         raise NotImplementedError
 
 
+@dataclasses.dataclass
 class RSSFeed(StatusFeedBase):
-    """Base class for RSS 2.0 feed health checks."""
+    """
+    Base class for RSS 2.0 feed health checks.
+
+    Examples:
+        >>> class MyService(RSSFeed):
+        ...     feed_url = "https://example.com/status/rss"
+        ...     timeout = datetime.timedelta(seconds=10)
+        ...     max_age = datetime.timedelta(hours=8)
+
+    """
 
     def _extract_entries(self, root):
         """Extract entries from RSS 2.0 feed."""
@@ -126,8 +140,18 @@ class RSSFeed(StatusFeedBase):
         return "Untitled incident"
 
 
+@dataclasses.dataclass
 class AtomFeed(StatusFeedBase):
-    """Base class for Atom feed health checks."""
+    """
+    Base class for Atom feed health checks.
+
+    Examples:
+        >>> class MyService(AtomFeed):
+        ...     feed_url = "https://example.com/status/atom"
+        ...     timeout = datetime.timedelta(seconds=10)
+        ...     max_age = datetime.timedelta(hours=8)
+
+    """
 
     def _extract_entries(self, root):
         """Extract entries from Atom feed."""
@@ -144,7 +168,9 @@ class AtomFeed(StatusFeedBase):
         for date_field in ["published", "updated"]:
             date_element = entry.find(f"atom:{date_field}", namespace)
             if date_element is None:
-                date_element = entry.find(f"{{http://www.w3.org/2005/Atom}}{date_field}")
+                date_element = entry.find(
+                    f"{{http://www.w3.org/2005/Atom}}{date_field}"
+                )
 
             if date_element is not None and (date_text := date_element.text):
                 try:
@@ -186,7 +212,7 @@ class AWS(RSSFeed):
         default=datetime.timedelta(seconds=10), repr=False
     )
     max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
+        default=datetime.timedelta(hours=8), repr=False
     )
 
     def __post_init__(self):
@@ -210,11 +236,9 @@ class Heroku(RSSFeed):
         default=datetime.timedelta(seconds=10), repr=False
     )
     max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
+        default=datetime.timedelta(hours=8), repr=False
     )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.heroku.com/feed"
+    feed_url: typing.ClassVar[str] = "https://status.heroku.com/feed"
 
 
 @dataclasses.dataclass
@@ -232,13 +256,11 @@ class Azure(RSSFeed):
         default=datetime.timedelta(seconds=10), repr=False
     )
     max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
+        default=datetime.timedelta(hours=8), repr=False
     )
-
-    def __post_init__(self):
-        self.feed_url: str = (
-            "https://rssfeed.azure.status.microsoft.com/en-us/status/feed/"
-        )
+    feed_url: typing.ClassVar[str] = (
+        "https://rssfeed.azure.status.microsoft/en-us/status/feed/"
+    )
 
 
 @dataclasses.dataclass
@@ -256,140 +278,7 @@ class GoogleCloud(AtomFeed):
         default=datetime.timedelta(seconds=10), repr=False
     )
     max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
+        default=datetime.timedelta(hours=8), repr=False
     )
 
-    def __post_init__(self):
-        self.feed_url: str = "https://status.cloud.google.com/en/feed.atom"
-
-
-@dataclasses.dataclass
-class FlyIO(AtomFeed):
-    """
-    Check Fly.io platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.flyio.net/history.atom"
-
-
-@dataclasses.dataclass
-class PlatformSh(AtomFeed):
-    """
-    Check Platform.sh platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.platform.sh/history.atom"
-
-
-@dataclasses.dataclass
-class DigitalOcean(AtomFeed):
-    """
-    Check DigitalOcean platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.digitalocean.com/history.atom"
-
-
-@dataclasses.dataclass
-class Render(AtomFeed):
-    """
-    Check Render platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.render.com/history.atom"
-
-
-@dataclasses.dataclass
-class Vercel(AtomFeed):
-    """
-    Check Vercel platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.vercel-status.com/history.atom"
-
-
-@dataclasses.dataclass
-class Railway(AtomFeed):
-    """
-    Check Railway platform status via their public Atom status feed.
-
-    Args:
-        timeout: Request timeout duration.
-        max_age: Maximum age for an incident to be considered active.
-
-    """
-
-    timeout: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(seconds=10), repr=False
-    )
-    max_age: datetime.timedelta = dataclasses.field(
-        default=datetime.timedelta(days=1), repr=False
-    )
-
-    def __post_init__(self):
-        self.feed_url: str = "https://status.railway.com/history.atom"
+    feed_url: typing.ClassVar[str] = "https://status.cloud.google.com/en/feed.atom"
