@@ -308,6 +308,7 @@ class TestHealthCheckCommand:
             output = stdout.getvalue()
             assert "OK" in output or "working" in output
 
+    @pytest.mark.django_db
     def test_handle__no_html_success(self):
         """Run checks directly without HTTP server when --no-html is provided."""
         stdout = StringIO()
@@ -324,6 +325,7 @@ class TestHealthCheckCommand:
         assert "Database" in output or "Cache" in output
         assert "OK" in output or "working" in output
 
+    @pytest.mark.django_db
     def test_handle__no_html_failure(self):
         """Return exit code 1 when checks fail with --no-html."""
         stdout = StringIO()
