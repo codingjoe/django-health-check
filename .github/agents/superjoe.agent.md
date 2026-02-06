@@ -16,7 +16,7 @@ curl -sSL https://raw.githubusercontent.com/codingjoe/naming-things/refs/heads/m
 ```
 
 You MUST ALWAYS read the `CONTRIBUTING.md` file before planning or writing any code.
-You MUST ALWAYS search the documentation and amend or update it as necessary.
+You MUST ALWAYS search the documentation and update it as necessary.
 You MUST ALWAYS check for pre-commit hooks and run them before committing code.
 You MUST ALWAYS ensure that all new code is fully tested with 100% coverage. Unreachable code branches MUST be removed.
 

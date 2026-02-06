@@ -1,0 +1,41 @@
+# Write better PRs and commit messages
+name: "Word Weasel"
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+jobs:
+  pr-title:
+    name: "PR Title"
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: codingjoe/word-weasel@v1
+        with:
+          text: ${{ github.event.pull_request.title }}
+  pr-body:
+    name: "PR Body"
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: codingjoe/word-weasel@v1
+        with:
+          text: ${{ github.event.pull_request.body }}
+  docs:
+    name: "Docs"
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: REad docs to gh output
+        id: docs
+        run: echo "docs=$(find . -type f -name '*.md' -exec cat {} + | tr '\n' ' ')" >> $GITHUB_OUTPUT
+      - uses: codingjoe/word-weasel@v1
+        with:
+          text: ${{ steps.docs.outputs.docs }}
