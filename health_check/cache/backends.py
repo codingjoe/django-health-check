@@ -45,10 +45,9 @@ class CacheBackend(HealthCheck):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        else:
-            self.cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
 
     def check_status(self):
+        self.cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
         cache = caches[self.alias]
         try:
             cache.set(

@@ -61,13 +61,31 @@ class TestHealthCheckCache:
         assert cache_backend.errors
         assert "does not match" in cache_backend.pretty_status()
 
+    def test_check_status_uses_runtime_unique_cache_key(self):
+        mock_cache = MockCache()
+        with patch("health_check.cache.backends.caches", dict(default=mock_cache)):
+            cache_backend = CacheBackend(cache_key=None, key_prefix="djangohealthcheck_test")
+            cache_backend.run_check()
+            assert cache_backend.errors
+            assert mock_cache.key.startswith("djangohealthcheck_test:")
+            assert mock_cache.set_kwargs == {}
+
+    def test_check_status_generates_distinct_key_per_run(self):
+        mock_cache = MockCache()
+        with patch("health_check.cache.backends.caches", dict(default=mock_cache)):
+            cache_backend = CacheBackend(cache_key=None, key_prefix="djangohealthcheck_test")
+            cache_backend.run_check()
+            cache_backend.run_check()
+            assert cache_backend.errors
+            assert len(mock_cache.set_keys) == 2
+            assert mock_cache.set_keys[0] != mock_cache.set_keys[1]
+
     @patch("health_check.cache.backends.caches", dict(default=MockCache()))
     def test_cache_key_argument_is_deprecated_and_supported(self):
         with pytest.warns(DeprecationWarning, match="CacheBackend.cache_key.*deprecated"):
             cache_backend = CacheBackend(cache_key="legacy_prefix")
         cache_backend.run_check()
         assert cache_backend.errors
-        assert cache_backend.cache_key == "legacy_prefix"
 
     @patch(
         "health_check.cache.backends.caches",
