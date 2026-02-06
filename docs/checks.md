@@ -20,7 +20,7 @@
 
 To use the checks, you will need to install and set up their corresponding dependencies.
 
-To enable AWS health checks, install the correct extra:
+To enable AWS health checks, install the extra for the `contrib` checks:
 
 ```shell
 pip install django-health-check[redis,rabbitmq,celery,kafka]
