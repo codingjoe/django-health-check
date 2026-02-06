@@ -51,6 +51,8 @@ class TestAWS:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
+                mock_datetime.timezone = datetime.timezone
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
                 assert result.error is not None
@@ -94,6 +96,7 @@ class TestAWS:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
@@ -301,6 +304,7 @@ class TestAWS:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
@@ -403,6 +407,7 @@ class TestHeroku:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = Heroku()
                 result = await check.get_result()
@@ -479,6 +484,7 @@ class TestAzure:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = Azure()
                 result = await check.get_result()
@@ -546,6 +552,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -583,6 +590,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -620,6 +628,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -661,6 +670,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -725,6 +735,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -762,6 +773,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -798,6 +810,7 @@ class TestGoogleCloud:
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
 
                 check = GoogleCloud()
                 result = await check.get_result()
