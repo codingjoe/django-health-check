@@ -8,6 +8,7 @@ import pathlib
 import smtplib
 import socket
 import uuid
+import warnings
 
 import dns.asyncresolver
 import psutil
@@ -54,21 +55,48 @@ class Cache(HealthCheck):
 
     Args:
         alias: The cache alias to test against.
-        cache_key: Prefix for the cache key to use for the test.
+        key_prefix: Prefix for the cache key to use for the test.
+        timeout: Time until probe keys expire in the cache backend.
+        cache_key: Deprecated alias for key_prefix.
 
     """
 
     alias: str = "default"
-    cache_key: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
+    key_prefix: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=5), repr=False
+    )
+    cache_key: str | None = dataclasses.field(default=None, repr=False)
+
+    def __post_init__(self):
+        """Support the deprecated `cache_key` argument."""
+        if self.cache_key is None:
+            return
+        warnings.warn(
+            "`Cache.cache_key` is deprecated and will be removed in a future release. "
+            "Use `Cache.key_prefix` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if (
+            self.key_prefix != "djangohealthcheck_test"
+            and self.key_prefix != self.cache_key
+        ):
+            raise ValueError("Provide either `key_prefix` or `cache_key`, not both.")
+        self.key_prefix = self.cache_key
 
     async def run(self):
         cache = caches[self.alias]
         ts = datetime.datetime.now().timestamp()
         # Use an isolated key per probe run to avoid cross-process write races.
-        cache_key = f"{self.cache_key}:{uuid.uuid4().hex}"
+        cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
         cache_value = f"itworks-{ts}"
         try:
-            await cache.aset(cache_key, cache_value, timeout=30)
+            await cache.aset(
+                cache_key,
+                cache_value,
+                timeout=self.timeout.total_seconds(),
+            )
             if not await cache.aget(cache_key) == cache_value:
                 raise ServiceUnavailable(f"Cache key {cache_key} does not match")
         except CacheKeyWarning as e:
