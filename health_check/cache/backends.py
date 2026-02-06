@@ -1,5 +1,4 @@
 import dataclasses
-import datetime
 import uuid
 import warnings
 
@@ -37,6 +36,7 @@ class CacheBackend(HealthCheck):
     cache_key: str | None = dataclasses.field(
         default=getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test"), repr=False
     )
+
     def __post_init__(self):
         if self.cache_key:
             warnings.warn(
