@@ -153,8 +153,14 @@ class Command(BaseCommand):
 
         # Resolve URL pattern to get the view configuration
         match = resolve(path)
-        view_class = match.func.view_class if hasattr(match.func, "view_class") else HealthCheckView
-        view_kwargs = match.func.view_initkwargs if hasattr(match.func, "view_initkwargs") else {}
+        view_class = (
+            match.func.view_class
+            if hasattr(match.func, "view_class")
+            else HealthCheckView
+        )
+        view_kwargs = (
+            match.func.view_initkwargs if hasattr(match.func, "view_initkwargs") else {}
+        )
 
         # Create a mock request
         factory = RequestFactory()
