@@ -1,6 +1,7 @@
 """Tests for cloud provider status feed health checks."""
 
 import datetime
+import logging
 from unittest import mock
 
 import pytest
@@ -272,6 +273,22 @@ class TestAWS:
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
             assert "Incident with bad date" in str(result.error)
+
+    def test_extract_date__invalid_date_tuple_values(self, caplog):
+        """Entry with invalid date tuple values is treated as recent incident."""
+        check = AWS(region="us-east-1", service="ec2")
+
+        # Create a mock entry with an invalid date_tuple (day=32)
+        mock_entry = mock.MagicMock()
+        mock_entry.published_parsed = (2024, 1, 32, 0, 0, 0, 0, 0, 0)
+
+        with caplog.at_level(logging.WARNING):
+            result = check._extract_date(mock_entry)
+        assert result is None
+        assert (
+            "Failed to parse date from entry (2024, 1, 32, 0, 0, 0, 0, 0, 0) for 'htt"
+            in caplog.text
+        )
 
     @pytest.mark.asyncio
     async def test_extract_title__entry_without_title(self):

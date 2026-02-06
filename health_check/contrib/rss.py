@@ -125,8 +125,13 @@ class Feed(HealthCheck):
                     return datetime.datetime(
                         *date_tuple[:6], tzinfo=datetime.timezone.utc
                     )
-                except ValueError:
-                    pass
+                except (ValueError, TypeError):
+                    logger.warning(
+                        "Failed to parse date from entry %r for %r",
+                        date_tuple,
+                        self.feed_url,
+                        exc_info=True,
+                    )
         return None
 
 
