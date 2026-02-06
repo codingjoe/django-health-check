@@ -27,6 +27,28 @@ class TestCache:
         result = await check.get_result()
         assert result.error is None
 
+    @pytest.mark.asyncio
+    async def test_run_check__cache_uses_unique_runtime_key(self):
+        """Cache check uses an isolated cache key per run to avoid race conditions."""
+        with mock.patch("health_check.checks.caches") as mock_caches:
+            mock_cache = mock.MagicMock()
+            mock_caches.__getitem__.return_value = mock_cache
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+
+            async def _aget(_key):
+                return mock_cache.aset.await_args.args[1]
+
+            mock_cache.aget = mock.AsyncMock(side_effect=_aget)
+
+            check = Cache()
+            result = await check.get_result()
+            assert result.error is None
+
+            cache_key = mock_cache.aset.await_args.args[0]
+            assert cache_key.startswith("djangohealthcheck_test:")
+            assert cache_key != "djangohealthcheck_test"
+            assert mock_cache.aset.await_args.kwargs["timeout"] == 30
+
 
 class TestDatabase:
     """Test the Database health check."""

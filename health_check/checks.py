@@ -54,7 +54,7 @@ class Cache(HealthCheck):
 
     Args:
         alias: The cache alias to test against.
-        cache_key: The cache key to use for the test.
+        cache_key: Prefix for the cache key to use for the test.
 
     """
 
@@ -64,10 +64,13 @@ class Cache(HealthCheck):
     async def run(self):
         cache = caches[self.alias]
         ts = datetime.datetime.now().timestamp()
+        # Use an isolated key per probe run to avoid cross-process write races.
+        cache_key = f"{self.cache_key}:{uuid.uuid4().hex}"
+        cache_value = f"itworks-{ts}"
         try:
-            await cache.aset(self.cache_key, f"itworks-{ts}")
-            if not await cache.aget(self.cache_key) == f"itworks-{ts}":
-                raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
+            await cache.aset(cache_key, cache_value, timeout=30)
+            if not await cache.aget(cache_key) == cache_value:
+                raise ServiceUnavailable(f"Cache key {cache_key} does not match")
         except CacheKeyWarning as e:
             raise ServiceReturnedUnexpectedResult("Cache key warning") from e
         except ValueError as e:
