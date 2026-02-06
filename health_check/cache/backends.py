@@ -1,5 +1,6 @@
 import dataclasses
-import datetime
+import uuid
+import warnings
 
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
@@ -31,17 +32,30 @@ class CacheBackend(HealthCheck):
     """
 
     alias: str = dataclasses.field(default="default")
-    cache_key: str = dataclasses.field(
+    key_prefix: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
+    cache_key: str | None = dataclasses.field(
         default=getattr(settings, "HEALTHCHECK_CACHE_KEY", "djangohealthcheck_test"), repr=False
     )
 
+    def __post_init__(self):
+        if self.cache_key:
+            warnings.warn(
+                "`CacheBackend.cache_key` is deprecated and will be removed in next major release. "
+                "Use `CacheBackend.key_prefix` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
     def check_status(self):
+        self.cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
         cache = caches[self.alias]
-        ts = datetime.datetime.now().timestamp()
         try:
-            cache.set(self.cache_key, f"itworks-{ts}")
-            if not cache.get(self.cache_key) == f"itworks-{ts}":
-                raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
+            cache.set(
+                self.cache_key,
+                "itworks",
+            )
+            if cache.get(self.cache_key):
+                raise ServiceUnavailable(f"Cache key {self.cache_key!r} does not match")
         except CacheKeyWarning as e:
             self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"), e)
         except ValueError as e:
