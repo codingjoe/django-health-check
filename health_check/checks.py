@@ -8,7 +8,6 @@ import pathlib
 import smtplib
 import socket
 import uuid
-import warnings
 
 import dns.asyncresolver
 import psutil
@@ -57,7 +56,6 @@ class Cache(HealthCheck):
         alias: The cache alias to test against.
         key_prefix: Prefix for the cache key to use for the test.
         timeout: Time until probe keys expire in the cache backend.
-        cache_key: Deprecated alias for key_prefix.
 
     """
 
@@ -66,24 +64,6 @@ class Cache(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=5), repr=False
     )
-    cache_key: str | None = dataclasses.field(default=None, repr=False)
-
-    def __post_init__(self):
-        """Support the deprecated `cache_key` argument."""
-        if self.cache_key is None:
-            return
-        warnings.warn(
-            "`Cache.cache_key` is deprecated and will be removed in a future release. "
-            "Use `Cache.key_prefix` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if (
-            self.key_prefix != "djangohealthcheck_test"
-            and self.key_prefix != self.cache_key
-        ):
-            raise ValueError("Provide either `key_prefix` or `cache_key`, not both.")
-        self.key_prefix = self.cache_key
 
     async def run(self):
         cache = caches[self.alias]

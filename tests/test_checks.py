@@ -68,8 +68,8 @@ class TestCache:
             assert mock_cache.aset.await_args.kwargs["timeout"] == 2.0
 
     @pytest.mark.asyncio
-    async def test_run_check__cache_supports_deprecated_cache_key_argument(self):
-        """Cache check supports deprecated `cache_key` argument."""
+    async def test_run_check__cache_supports_key_prefix_argument(self):
+        """Cache check supports custom key prefix argument."""
         with mock.patch("health_check.checks.caches") as mock_caches:
             mock_cache = mock.MagicMock()
             mock_caches.__getitem__.return_value = mock_cache
@@ -80,16 +80,11 @@ class TestCache:
 
             mock_cache.aget = mock.AsyncMock(side_effect=_aget)
 
-            with pytest.warns(
-                DeprecationWarning,
-                match="Cache.cache_key.*deprecated",
-            ):
-                check = Cache(cache_key="legacy_prefix")
-
+            check = Cache(key_prefix="healthcheck")
             result = await check.get_result()
             assert result.error is None
             cache_key = mock_cache.aset.await_args.args[0]
-            assert cache_key.startswith("legacy_prefix:")
+            assert cache_key.startswith("healthcheck:")
 
 
 class TestDatabase:
