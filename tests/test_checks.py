@@ -27,6 +27,88 @@ class TestCache:
         result = await check.get_result()
         assert result.error is None
 
+    @pytest.mark.asyncio
+    async def test_run_check__cache_uses_unique_runtime_key(self):
+        """Cache check uses an isolated cache key per run to avoid race conditions."""
+        with mock.patch("health_check.checks.caches") as mock_caches:
+            mock_cache = mock.MagicMock()
+            mock_caches.__getitem__.return_value = mock_cache
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+
+            async def _aget(_key):
+                return mock_cache.aset.await_args.args[1]
+
+            mock_cache.aget = mock.AsyncMock(side_effect=_aget)
+
+            check = Cache()
+            result = await check.get_result()
+            assert result.error is None
+
+            cache_key = mock_cache.aset.await_args.args[0]
+            assert cache_key.startswith("djangohealthcheck_test:")
+            assert cache_key != "djangohealthcheck_test"
+            assert mock_cache.aset.await_args.kwargs["timeout"] == 5.0
+
+    @pytest.mark.asyncio
+    async def test_run_check__cache_timeout_is_configurable(self):
+        """Cache check passes timeout to backend as seconds."""
+        with mock.patch("health_check.checks.caches") as mock_caches:
+            mock_cache = mock.MagicMock()
+            mock_caches.__getitem__.return_value = mock_cache
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+
+            async def _aget(_key):
+                return mock_cache.aset.await_args.args[1]
+
+            mock_cache.aget = mock.AsyncMock(side_effect=_aget)
+
+            check = Cache(timeout=datetime.timedelta(seconds=2))
+            result = await check.get_result()
+            assert result.error is None
+            assert mock_cache.aset.await_args.kwargs["timeout"] == 2.0
+
+    @pytest.mark.asyncio
+    async def test_run_check__cache_supports_key_prefix_argument(self):
+        """Cache check supports custom key prefix argument."""
+        with mock.patch("health_check.checks.caches") as mock_caches:
+            mock_cache = mock.MagicMock()
+            mock_caches.__getitem__.return_value = mock_cache
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+
+            async def _aget(_key):
+                return mock_cache.aset.await_args.args[1]
+
+            mock_cache.aget = mock.AsyncMock(side_effect=_aget)
+
+            check = Cache(key_prefix="healthcheck")
+            result = await check.get_result()
+            assert result.error is None
+            cache_key = mock_cache.aset.await_args.args[0]
+            assert cache_key.startswith("healthcheck:")
+
+    @pytest.mark.asyncio
+    async def test_run_check__cache_generates_distinct_key_per_run(self):
+        """Cache check generates a new key on each probe run."""
+        with mock.patch("health_check.checks.caches") as mock_caches:
+            mock_cache = mock.MagicMock()
+            mock_caches.__getitem__.return_value = mock_cache
+            mock_cache.aset = mock.AsyncMock(return_value=None)
+
+            async def _aget(_key):
+                return mock_cache.aset.await_args.args[1]
+
+            mock_cache.aget = mock.AsyncMock(side_effect=_aget)
+
+            check = Cache()
+            first_result = await check.get_result()
+            second_result = await check.get_result()
+
+            assert first_result.error is None
+            assert second_result.error is None
+            first_key = mock_cache.aset.await_args_list[0].args[0]
+            second_key = mock_cache.aset.await_args_list[1].args[0]
+            assert first_key != second_key
+
 
 class TestDatabase:
     """Test the Database health check."""
