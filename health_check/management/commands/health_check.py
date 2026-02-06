@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import urllib.error
@@ -83,8 +84,6 @@ class Command(BaseCommand):
 
         # Run checks directly without HTTP server
         if not options.get("use_html"):
-            import asyncio
-
             asyncio.run(self._run_checks_directly(path))
             return
 
@@ -148,47 +147,16 @@ class Command(BaseCommand):
 
     async def _run_checks_directly(self, path):
         """Run health checks directly without HTTP server."""
-        import asyncio
-
-        from django.test import RequestFactory
-
-        from health_check.views import HealthCheckView
-
-        # Resolve URL pattern to get the view configuration
-        match = resolve(path)
-        view_class = (
-            match.func.view_class
-            if hasattr(match.func, "view_class")
-            else HealthCheckView
-        )
-        view_kwargs = (
-            match.func.view_initkwargs if hasattr(match.func, "view_initkwargs") else {}
-        )
-
-        # Create a mock request
-        factory = RequestFactory()
-        request = factory.get(path, HTTP_ACCEPT="text/plain")
-
-        # Create view instance with configuration
-        view = view_class(**view_kwargs)
-        view.request = request
-
-        # Run checks and gather results
+        view = resolve(path).func.view_class(**resolve(path).func.view_initkwargs)
         results = await asyncio.gather(
             *(check.get_result() for check in view.get_checks())
         )
-
-        # Generate output similar to text/plain format
-        lines = [
-            f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
-            for result in results
-        ]
-
-        # Display results
-        for line in lines:
-            self.stdout.write(line)
-
-        # Exit with appropriate code
-        has_errors = any(result.error for result in results)
-        if has_errors:
+        self.stdout.write(
+            "\n".join(
+                f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
+                for result in results
+            )
+            + "\n"
+        )
+        if any(result.error for result in results):
             sys.exit(1)

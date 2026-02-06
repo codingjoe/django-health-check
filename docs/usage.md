@@ -136,21 +136,3 @@ CustomHealthCheck        ... Unavailable: Something went wrong!
 
 Similar to the http version, a critical error will cause the command to
 quit with the exit code `1`.
-
-### Running checks without HTTP server
-
-In rare cases where no HTTP server is running (e.g., when using Django without HTTP),
-you can skip the HTTP stack and run checks directly using the `--no-html` flag:
-
-```shell
-django-admin health_check health_check_test --no-html
-```
-
-This will run the health checks directly without making HTTP requests to the server.
-The output format and exit codes remain the same as the HTTP version.
-
-> [!WARNING]
-> The `--no-html` option should only be used as a last resort.
-> Checking the HTTP stack is the most crucial part of an application health check,
-> and it should be running in most cases. Use this option only when you are certain
-> that no HTTP server is needed for your application.
