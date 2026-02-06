@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 import urllib.error
@@ -84,7 +83,9 @@ class Command(BaseCommand):
 
         # Run checks directly without HTTP server
         if not options.get("use_html"):
-            asyncio.run(self._run_checks_directly(endpoint, path, options))
+            import asyncio
+
+            asyncio.run(self._run_checks_directly(path))
             return
 
         # Run checks via HTTP server (default behavior)
@@ -145,8 +146,10 @@ class Command(BaseCommand):
         else:
             self.stdout.write(response.read().decode("utf-8"))
 
-    async def _run_checks_directly(self, endpoint, path, options):
+    async def _run_checks_directly(self, path):
         """Run health checks directly without HTTP server."""
+        import asyncio
+
         from django.test import RequestFactory
 
         from health_check.views import HealthCheckView
