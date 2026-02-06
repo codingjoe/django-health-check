@@ -50,15 +50,13 @@ class CacheBackend(HealthCheck):
 
     def check_status(self):
         cache = caches[self.alias]
-        runtime_cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
-        runtime_cache_value = "itworks"
         try:
             cache.set(
-                runtime_cache_key,
-                runtime_cache_value,
+                self.cache_key,
+                "itworks",
             )
-            if cache.get(runtime_cache_key):
-                raise ServiceUnavailable(f"Cache key {runtime_cache_key} does not match")
+            if cache.get(self.cache_key):
+                raise ServiceUnavailable(f"Cache key {self.cache_key!r} does not match")
         except CacheKeyWarning as e:
             self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"), e)
         except ValueError as e:
