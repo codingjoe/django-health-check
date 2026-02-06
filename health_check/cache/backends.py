@@ -54,7 +54,7 @@ class CacheBackend(HealthCheck):
                 self.cache_key,
                 "itworks",
             )
-            if cache.get(self.cache_key):
+            if not cache.get(self.cache_key) == "itworks":
                 raise ServiceUnavailable(f"Cache key {self.cache_key!r} does not match")
         except CacheKeyWarning as e:
             self.add_error(ServiceReturnedUnexpectedResult("Cache key warning"), e)
