@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import urllib.error
@@ -5,7 +6,7 @@ import urllib.request
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch, resolve, reverse
 
 
 class Command(BaseCommand):
@@ -55,6 +56,20 @@ class Command(BaseCommand):
             default=5,
             help="Timeout in seconds for the health check request (default: 5 seconds)",
         )
+        html_group = parser.add_mutually_exclusive_group()
+        html_group.add_argument(
+            "--html",
+            action="store_true",
+            dest="use_html",
+            default=True,
+            help="Run checks via HTTP server (default)",
+        )
+        html_group.add_argument(
+            "--no-html",
+            action="store_false",
+            dest="use_html",
+            help="Run checks directly without HTTP server",
+        )
 
     def handle(self, *args, **options):
         endpoint = options.get("endpoint")
@@ -66,6 +81,13 @@ class Command(BaseCommand):
                 "Please provide a valid URL pattern name for the health check endpoint."
             )
             sys.exit(2)
+
+        # Run checks directly without HTTP server
+        if not options.get("use_html"):
+            asyncio.run(self._run_checks_directly(endpoint, path, options))
+            return
+
+        # Run checks via HTTP server (default behavior)
         addrport = options.get("addrport")
         # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
         # Otherwise use HTTP (typical for containers with X-Forwarded-Proto header support).
@@ -122,3 +144,42 @@ class Command(BaseCommand):
             sys.exit(2)
         else:
             self.stdout.write(response.read().decode("utf-8"))
+
+    async def _run_checks_directly(self, endpoint, path, options):
+        """Run health checks directly without HTTP server."""
+        from django.test import RequestFactory
+
+        from health_check.views import HealthCheckView
+
+        # Resolve URL pattern to get the view configuration
+        match = resolve(path)
+        view_class = match.func.view_class if hasattr(match.func, "view_class") else HealthCheckView
+        view_kwargs = match.func.view_initkwargs if hasattr(match.func, "view_initkwargs") else {}
+
+        # Create a mock request
+        factory = RequestFactory()
+        request = factory.get(path, HTTP_ACCEPT="text/plain")
+
+        # Create view instance with configuration
+        view = view_class(**view_kwargs)
+        view.request = request
+
+        # Run checks and gather results
+        results = await asyncio.gather(
+            *(check.get_result() for check in view.get_checks())
+        )
+
+        # Generate output similar to text/plain format
+        lines = [
+            f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
+            for result in results
+        ]
+
+        # Display results
+        for line in lines:
+            self.stdout.write(line)
+
+        # Exit with appropriate code
+        has_errors = any(result.error for result in results)
+        if has_errors:
+            sys.exit(1)

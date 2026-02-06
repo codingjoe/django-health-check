@@ -37,6 +37,15 @@ urlpatterns = [
 python manage.py health_check health_check-container localhost:8000 --forwarded-host example.com
 ```
 
+For edge cases where no HTTP server is running, you can use the `--no-html` flag to run checks directly:
+
+```shell
+python manage.py health_check health_check-container --no-html
+```
+
+> [!WARNING]
+> The `--no-html` option skips checking the HTTP stack entirely. Use it only when you're certain no HTTP server is needed.
+
 > [!IMPORTANT]
 > When using the `health_check` command, ensure that the host is included in your `ALLOWED_HOSTS` setting.
 > The command automatically uses the first entry from `ALLOWED_HOSTS` for the `X-Forwarded-Host` header if available.
@@ -55,6 +64,10 @@ Your host name and port may vary depending on your container setup.
 # Containerfile / Dockerfile
 HEALTHCHECK --interval=30s --timeout=10s \
   CMD python manage.py health_check health_check-container web:8000 || exit 1
+
+# For containers without HTTP server (rare edge case):
+# HEALTHCHECK --interval=30s --timeout=10s \
+#   CMD python manage.py health_check health_check-container --no-html || exit 1
 ```
 
 ### Compose
@@ -68,6 +81,12 @@ services:
       test: ["CMD", "python", "manage.py", "health_check", "health_check-container", "web:8000"]
       interval: 60s
       timeout: 10s
+
+# For services without HTTP server (rare edge case):
+#   healthcheck:
+#     test: ["CMD", "python", "manage.py", "health_check", "health_check-container", "--no-html"]
+#     interval: 60s
+#     timeout: 10s
 ```
 
 ### Kubernetes

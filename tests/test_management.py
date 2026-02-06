@@ -307,3 +307,54 @@ class TestHealthCheckCommand:
             )
             output = stdout.getvalue()
             assert "OK" in output or "working" in output
+
+    def test_handle__no_html_success(self):
+        """Run checks directly without HTTP server when --no-html is provided."""
+        stdout = StringIO()
+        stderr = StringIO()
+        call_command(
+            "health_check",
+            "health_check_test",
+            use_html=False,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        output = stdout.getvalue()
+        # Check that output contains health check results
+        assert "Database" in output or "Cache" in output
+        assert "OK" in output or "working" in output
+
+    def test_handle__no_html_failure(self):
+        """Return exit code 1 when checks fail with --no-html."""
+        stdout = StringIO()
+        stderr = StringIO()
+        with pytest.raises(SystemExit) as exc_info:
+            call_command(
+                "health_check",
+                "health_check_fail",
+                use_html=False,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 1
+        output = stdout.getvalue()
+        # Should display the error message from the failing check
+        assert "Test failure" in output or "AlwaysFailingCheck" in output
+
+    def test_handle__html_flag_uses_http_server(self, live_server):
+        """Run checks via HTTP server when --html is explicitly provided."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        call_command(
+            "health_check",
+            "health_check_test",
+            addrport,
+            use_html=True,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        output = stdout.getvalue()
+        assert "OK" in output or "working" in output
