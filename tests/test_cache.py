@@ -58,15 +58,14 @@ class TestHealthCheckCache:
     def test_check_status_working(self):
         cache_backend = CacheBackend()
         cache_backend.run_check()
-        assert cache_backend.errors
-        assert "does not match" in cache_backend.pretty_status()
+        assert not cache_backend.errors
 
     def test_check_status_uses_runtime_unique_cache_key(self):
         mock_cache = MockCache()
         with patch("health_check.cache.backends.caches", dict(default=mock_cache)):
             cache_backend = CacheBackend(cache_key=None, key_prefix="djangohealthcheck_test")
             cache_backend.run_check()
-            assert cache_backend.errors
+            assert not cache_backend.errors
             assert mock_cache.key.startswith("djangohealthcheck_test:")
             assert mock_cache.set_kwargs == {}
 
@@ -76,7 +75,7 @@ class TestHealthCheckCache:
             cache_backend = CacheBackend(cache_key=None, key_prefix="djangohealthcheck_test")
             cache_backend.run_check()
             cache_backend.run_check()
-            assert cache_backend.errors
+            assert not cache_backend.errors
             assert len(mock_cache.set_keys) == 2
             assert mock_cache.set_keys[0] != mock_cache.set_keys[1]
 
@@ -85,7 +84,7 @@ class TestHealthCheckCache:
         with pytest.warns(DeprecationWarning, match="CacheBackend.cache_key.*deprecated"):
             cache_backend = CacheBackend(cache_key="legacy_prefix")
         cache_backend.run_check()
-        assert cache_backend.errors
+        assert not cache_backend.errors
 
     @patch(
         "health_check.cache.backends.caches",
@@ -95,7 +94,7 @@ class TestHealthCheckCache:
         # default backend works while other is broken
         cache_backend = CacheBackend("default")
         cache_backend.run_check()
-        assert cache_backend.errors
+        assert not cache_backend.errors
 
     @patch(
         "health_check.cache.backends.caches",
@@ -104,14 +103,16 @@ class TestHealthCheckCache:
     def test_multiple_backends_check_broken(self):
         cache_backend = CacheBackend("broken")
         cache_backend.run_check()
-        assert not cache_backend.errors
+        assert cache_backend.errors
+        assert "does not match" in cache_backend.pretty_status()
 
     # check_status should raise ServiceUnavailable when values at cache key do not match
     @patch("health_check.cache.backends.caches", dict(default=MockCache(set_works=False)))
     def test_set_fails(self):
         cache_backend = CacheBackend()
         cache_backend.run_check()
-        assert not cache_backend.errors
+        assert cache_backend.errors
+        assert "does not match" in cache_backend.pretty_status()
 
     # check_status should catch generic exceptions raised by set and convert to ServiceUnavailable
     @patch(
