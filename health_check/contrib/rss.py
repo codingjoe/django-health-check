@@ -32,26 +32,22 @@ class Feed(HealthCheck):
     considered relevant. The `feed_url` is used to fetch the status feed.
 
     Examples:
-        Creating a custom feed health check::
-
-            import dataclasses
-            import datetime
-            import typing
-            from health_check.contrib.rss import Feed
-
-            @dataclasses.dataclass
-            class MyProviderStatus(Feed):
-                \"\"\"Check MyProvider status via its public RSS feed.\"\"\"
-
-                timeout: datetime.timedelta = dataclasses.field(
-                    default=datetime.timedelta(seconds=10),
-                    repr=False,
-                )
-                max_age: datetime.timedelta = dataclasses.field(
-                    default=datetime.timedelta(hours=4),
-                    repr=False,
-                )
-                feed_url: typing.ClassVar[str] = "https://status.myprovider.com/feed"
+        >>> import dataclasses
+        >>> import datetime
+        >>> import typing
+        >>> from health_check.contrib.rss import Feed
+        >>> @dataclasses.dataclass
+        ... class MyProviderStatus(Feed):
+        ...     \"\"\"Check MyProvider status via its public RSS feed.\"\"\"
+        ...     timeout: datetime.timedelta = dataclasses.field(
+        ...         default=datetime.timedelta(seconds=10),
+        ...         repr=False,
+        ...     )
+        ...     max_age: datetime.timedelta = dataclasses.field(
+        ...         default=datetime.timedelta(hours=4),
+        ...         repr=False,
+        ...     )
+        ...     feed_url: typing.ClassVar[str] = "https://status.myprovider.com/feed"
 
     """
 

@@ -38,10 +38,18 @@ pip install django-health-check[redis,rabbitmq,celery,kafka]
 
 Monitor cloud provider service health using their public RSS/Atom status feeds or APIs.
 
-To enable cloud provider health checks, install the `rss` extra:
+Cloud provider health checks require different extras depending on the provider:
+
+- For RSS/Atom feed-based providers (AWS, Heroku, Azure, Google Cloud):
 
 ```shell
 pip install django-health-check[rss]
+```
+
+- For Atlassian Status Page API providers (Cloudflare, DigitalOcean, Fly.io, Platform.sh, Render, Vercel):
+
+```shell
+pip install django-health-check[atlassian]
 ```
 
 ::: health_check.contrib.rss.AWS
@@ -64,10 +72,10 @@ pip install django-health-check[rss]
 
 ::: health_check.contrib.atlassian.Vercel
 
-## Custom RSS/Atom Feeds
+## Custom Status Page Feeds
 
-This class can be used to write custom RSS/Atom proxy checks.
-Subclasses need to implement the `feed_url`, `timeout` and `max_age` attributes.
+These classes can be used to write custom status page proxy checks.
+Subclasses need to implement the required attributes as documented.
 
 ::: health_check.contrib.rss.Feed
 

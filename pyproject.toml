@@ -49,6 +49,7 @@ kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
 redis = ["redis>=4.2.0"]
 rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
+atlassian = ["httpx>=0.27.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
