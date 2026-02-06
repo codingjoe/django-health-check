@@ -54,7 +54,7 @@ class Cache(HealthCheck):
 
     Args:
         alias: The cache alias to test against.
-        key_prefix: Prefix for the cache key to use for the test.
+        key_prefix: Prefix for the node specific cache key.
         timeout: Time until probe keys expire in the cache backend.
 
     """
@@ -67,10 +67,9 @@ class Cache(HealthCheck):
 
     async def run(self):
         cache = caches[self.alias]
-        ts = datetime.datetime.now().timestamp()
         # Use an isolated key per probe run to avoid cross-process write races.
         cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
-        cache_value = f"itworks-{ts}"
+        cache_value = f"itworks-{datetime.datetime.now().timestamp()}"
         try:
             await cache.aset(
                 cache_key,
