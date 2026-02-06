@@ -30,6 +30,7 @@ The following health checks are bundled with this project:
 - [storages][health_check.Storage]
 - [Celery][health_check.contrib.celery.Ping], [Kafka][health_check.contrib.kafka.Kafka],
   [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] & [Redis][health_check.contrib.redis.Redis]
+- [Cloud provider status](checks.md#cloud-provider-status) for numerous cloud and PaaS providers.
 
 Writing your own custom health checks is also quick and easy.
 
