@@ -146,7 +146,9 @@ class Command(BaseCommand):
         """Run health checks directly without HTTP server."""
         resolver_match = resolve(path)
         view = resolver_match.func.view_class(**resolver_match.func.view_initkwargs)
-        results = await asyncio.gather(*(check.get_result() for check in view.get_checks()))
+        results = await asyncio.gather(
+            *(check.get_result() for check in view.get_checks())
+        )
         error = False
         for result in results:
             self.stdout.write(
