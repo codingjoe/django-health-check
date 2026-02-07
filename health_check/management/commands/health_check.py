@@ -144,7 +144,8 @@ class Command(BaseCommand):
 
     async def _run_checks_directly(self, path):
         """Run health checks directly without HTTP server."""
-        view = resolve(path).func.view_class(**resolve(path).func.view_initkwargs)
+        resolver_match = resolve(path)
+        view = resolver_match.func.view_class(**resolver_match.func.view_initkwargs)
         error = False
         for check in view.get_checks():
             result = await check.get_result()
