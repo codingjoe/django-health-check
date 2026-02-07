@@ -310,7 +310,7 @@ class TestHealthCheckCommand:
 
     @pytest.mark.django_db
     def test_handle__no_html_success(self):
-        """Run checks directly without HTTP server when --no-html is provided."""
+        """Run checks directly without HTTP server when --no-http is provided."""
         stdout = StringIO()
         stderr = StringIO()
         with pytest.raises(SystemExit) as exc_info:
@@ -328,7 +328,7 @@ class TestHealthCheckCommand:
         assert "OK" in output or "working" in output
 
     def test_handle__no_html_failure(self):
-        """Return exit code 1 when checks fail with --no-html."""
+        """Return exit code 1 when checks fail with --no-http."""
         stdout = StringIO()
         stderr = StringIO()
         with pytest.raises(SystemExit) as exc_info:
@@ -345,7 +345,7 @@ class TestHealthCheckCommand:
         assert "Test failure" in output or "AlwaysFailingCheck" in output
 
     def test_handle__html_flag_uses_http_server(self, live_server):
-        """Run checks via HTTP server when --html is explicitly provided."""
+        """Run checks via HTTP server when --http is explicitly provided."""
         parsed = urlparse(live_server.url)
         addrport = f"{parsed.hostname}:{parsed.port}"
 
