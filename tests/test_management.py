@@ -307,3 +307,67 @@ class TestHealthCheckCommand:
             )
             output = stdout.getvalue()
             assert "OK" in output or "working" in output
+
+    @pytest.mark.django_db
+    def test_handle__no_html_success(self):
+        """Run checks directly without HTTP server when --no-http is provided."""
+        stdout = StringIO()
+        stderr = StringIO()
+        with pytest.raises(SystemExit) as exc_info:
+            call_command(
+                "health_check",
+                "health_check_test",
+                use_http=False,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 0
+        output = stdout.getvalue()
+        # Check that output contains health check results
+        assert "Database" in output or "Cache" in output
+        assert "OK" in output or "working" in output
+
+    def test_handle__no_html_failure(self):
+        """Return exit code 1 when checks fail with --no-http."""
+        stdout = StringIO()
+        stderr = StringIO()
+        with pytest.raises(SystemExit) as exc_info:
+            call_command(
+                "health_check",
+                "health_check_fail",
+                use_http=False,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 1
+        output = stdout.getvalue()
+        # Should display the error message from the failing check
+        assert "Test failure" in output or "AlwaysFailingCheck" in output
+
+    def test_handle__html_flag_uses_http_server(self, live_server):
+        """Run checks via HTTP server when --http is explicitly provided."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = Mock()
+            mock_response.read.return_value = (
+                b"Database(alias='default'): OK\nCache(alias='default'): OK\n"
+            )
+            mock_urlopen.return_value = mock_response
+
+            call_command(
+                "health_check",
+                "health_check_test",
+                addrport,
+                use_http=True,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+            mock_urlopen.assert_called_once()
+            output = stdout.getvalue()
+            assert "OK" in output or "working" in output

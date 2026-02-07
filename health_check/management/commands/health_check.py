@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import urllib.error
@@ -5,7 +6,7 @@ import urllib.request
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch, resolve, reverse
 
 
 class Command(BaseCommand):
@@ -55,6 +56,20 @@ class Command(BaseCommand):
             default=5,
             help="Timeout in seconds for the health check request (default: 5 seconds)",
         )
+        http_group = parser.add_mutually_exclusive_group()
+        http_group.add_argument(
+            "--http",
+            action="store_true",
+            dest="use_http",
+            default=True,
+            help="Run checks via HTTP server (default)",
+        )
+        http_group.add_argument(
+            "--no-http",
+            action="store_false",
+            dest="use_http",
+            help="Run checks directly without HTTP server",
+        )
 
     def handle(self, *args, **options):
         endpoint = options.get("endpoint")
@@ -66,9 +81,13 @@ class Command(BaseCommand):
                 "Please provide a valid URL pattern name for the health check endpoint."
             )
             sys.exit(2)
+
+        if not options.get("use_http"):
+            asyncio.run(self._run_checks_directly(path))
+
         addrport = options.get("addrport")
         # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
-        # Otherwise use HTTP (typical for containers with X-Forwarded-Proto header support).
+        # Otherwise, use HTTP (typical for containers with X-Forwarded-Proto header support).
         proto = (
             "https"
             if settings.SECURE_SSL_REDIRECT and not settings.USE_X_FORWARDED_HOST
@@ -122,3 +141,18 @@ class Command(BaseCommand):
             sys.exit(2)
         else:
             self.stdout.write(response.read().decode("utf-8"))
+
+    async def _run_checks_directly(self, path):
+        """Run health checks directly without HTTP server."""
+        resolver_match = resolve(path)
+        view = resolver_match.func.view_class(**resolver_match.func.view_initkwargs)
+        results = await asyncio.gather(
+            *(check.get_result() for check in view.get_checks())
+        )
+        error = False
+        for result in results:
+            self.stdout.write(
+                f"{result.check!r}: {'OK' if not result.error else result.error!s}"
+            )
+            error |= bool(result.error)
+        sys.exit(int(error))
