@@ -325,7 +325,6 @@ class TestHealthCheckCommand:
         assert "Database" in output or "Cache" in output
         assert "OK" in output or "working" in output
 
-    @pytest.mark.django_db
     def test_handle__no_html_failure(self):
         """Return exit code 1 when checks fail with --no-html."""
         stdout = StringIO()
@@ -350,13 +349,23 @@ class TestHealthCheckCommand:
 
         stdout = StringIO()
         stderr = StringIO()
-        call_command(
-            "health_check",
-            "health_check_test",
-            addrport,
-            use_html=True,
-            stdout=stdout,
-            stderr=stderr,
-        )
-        output = stdout.getvalue()
-        assert "OK" in output or "working" in output
+
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = Mock()
+            mock_response.read.return_value = (
+                b"Database(alias='default'): OK\nCache(alias='default'): OK\n"
+            )
+            mock_urlopen.return_value = mock_response
+
+            call_command(
+                "health_check",
+                "health_check_test",
+                addrport,
+                use_html=True,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+            mock_urlopen.assert_called_once()
+            output = stdout.getvalue()
+            assert "OK" in output or "working" in output

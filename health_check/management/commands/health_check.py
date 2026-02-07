@@ -82,12 +82,10 @@ class Command(BaseCommand):
             )
             sys.exit(2)
 
-        # Run checks directly without HTTP server
         if not options.get("use_html"):
             asyncio.run(self._run_checks_directly(path))
             return
 
-        # Run checks via HTTP server (default behavior)
         addrport = options.get("addrport")
         # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
         # Otherwise use HTTP (typical for containers with X-Forwarded-Proto header support).
