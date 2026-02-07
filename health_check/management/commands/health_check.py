@@ -56,18 +56,18 @@ class Command(BaseCommand):
             default=5,
             help="Timeout in seconds for the health check request (default: 5 seconds)",
         )
-        html_group = parser.add_mutually_exclusive_group()
-        html_group.add_argument(
-            "--html",
+        http_group = parser.add_mutually_exclusive_group()
+        http_group.add_argument(
+            "--http",
             action="store_true",
-            dest="use_html",
+            dest="use_http",
             default=True,
             help="Run checks via HTTP server (default)",
         )
-        html_group.add_argument(
-            "--no-html",
+        http_group.add_argument(
+            "--no-http",
             action="store_false",
-            dest="use_html",
+            dest="use_http",
             help="Run checks directly without HTTP server",
         )
 
@@ -82,13 +82,12 @@ class Command(BaseCommand):
             )
             sys.exit(2)
 
-        if not options.get("use_html"):
+        if not options.get("use_http"):
             asyncio.run(self._run_checks_directly(path))
-            return
 
         addrport = options.get("addrport")
         # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
-        # Otherwise use HTTP (typical for containers with X-Forwarded-Proto header support).
+        # Otherwise, use HTTP (typical for containers with X-Forwarded-Proto header support).
         proto = (
             "https"
             if settings.SECURE_SSL_REDIRECT and not settings.USE_X_FORWARDED_HOST
@@ -146,15 +145,11 @@ class Command(BaseCommand):
     async def _run_checks_directly(self, path):
         """Run health checks directly without HTTP server."""
         view = resolve(path).func.view_class(**resolve(path).func.view_initkwargs)
-        results = await asyncio.gather(
-            *(check.get_result() for check in view.get_checks())
-        )
-        self.stdout.write(
-            "\n".join(
-                f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
-                for result in results
+        error = False
+        for check in view.get_checks():
+            result = await check.get_result()
+            self.stdout.write(
+                f"{result.check!r}: {'OK' if not result.error else result.error!s}"
             )
-            + "\n"
-        )
-        if any(result.error for result in results):
-            sys.exit(1)
+            error |= bool(result.error)
+        sys.exit(int(error))

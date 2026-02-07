@@ -313,13 +313,15 @@ class TestHealthCheckCommand:
         """Run checks directly without HTTP server when --no-html is provided."""
         stdout = StringIO()
         stderr = StringIO()
-        call_command(
-            "health_check",
-            "health_check_test",
-            use_html=False,
-            stdout=stdout,
-            stderr=stderr,
-        )
+        with pytest.raises(SystemExit) as exc_info:
+            call_command(
+                "health_check",
+                "health_check_test",
+                use_http=False,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 0
         output = stdout.getvalue()
         # Check that output contains health check results
         assert "Database" in output or "Cache" in output
@@ -333,7 +335,7 @@ class TestHealthCheckCommand:
             call_command(
                 "health_check",
                 "health_check_fail",
-                use_html=False,
+                use_http=False,
                 stdout=stdout,
                 stderr=stderr,
             )
@@ -361,7 +363,7 @@ class TestHealthCheckCommand:
                 "health_check",
                 "health_check_test",
                 addrport,
-                use_html=True,
+                use_http=True,
                 stdout=stdout,
                 stderr=stderr,
             )
