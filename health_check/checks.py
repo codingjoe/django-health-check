@@ -40,6 +40,7 @@ except ModuleNotFoundError:
     class RedisError(Exception):
         pass
 
+
 try:
     import psutil
 except ModuleNotFoundError:
