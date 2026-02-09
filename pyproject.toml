@@ -40,11 +40,11 @@ dynamic = [
 dependencies = [
   "Django>=5.2",
   "dnspython>=2.0.0",
-  "psutil",
 ]
 
 [project.optional-dependencies]
 celery = ["celery>=5.0.0"]
+psutil = ["psutil"]
 kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
 redis = ["redis>=4.2.0"]
@@ -72,6 +72,7 @@ test = [
   "pytest-django",
   "django-storages",
   "boto3",
+  "psutil",
 ]
 docs = [
   "mkdocs",

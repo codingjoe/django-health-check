@@ -10,7 +10,6 @@ import socket
 import uuid
 
 import dns.asyncresolver
-import psutil
 from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
@@ -40,6 +39,11 @@ except ModuleNotFoundError:
     # In case Redis is not installed and another cache backend is used.
     class RedisError(Exception):
         pass
+
+try:
+    import psutil
+except ModuleNotFoundError:
+    psutil = None
 
 
 logger = logging.getLogger(__name__)
@@ -209,6 +213,10 @@ class Disk(HealthCheck):
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
+        if psutil is None:
+            raise ServiceUnavailable(
+                "psutil is not installed. Install it with: pip install django-health-check[psutil]"
+            )
         try:
             du = psutil.disk_usage(str(self.path))
             if (
@@ -271,6 +279,10 @@ class Memory(HealthCheck):
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
+        if psutil is None:
+            raise ServiceUnavailable(
+                "psutil is not installed. Install it with: pip install django-health-check[psutil]"
+            )
         try:
             memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)

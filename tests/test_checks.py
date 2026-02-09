@@ -414,6 +414,16 @@ class TestDiskExceptionHandling:
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
+    @pytest.mark.asyncio
+    async def test_check_status__psutil_not_installed(self):
+        """Raise ServiceUnavailable when psutil is not installed."""
+        with mock.patch("health_check.checks.psutil", None):
+            check = Disk()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "psutil is not installed" in str(result.error)
+
 
 class TestMailExceptionHandling:
     """Test Mail exception handling for uncovered code paths."""
@@ -539,6 +549,16 @@ class TestMemoryExceptionHandling:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+
+    @pytest.mark.asyncio
+    async def test_check_status__psutil_not_installed(self):
+        """Raise ServiceUnavailable when psutil is not installed."""
+        with mock.patch("health_check.checks.psutil", None):
+            check = Memory()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "psutil is not installed" in str(result.error)
 
 
 class TestStorageExceptionHandling:
