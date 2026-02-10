@@ -8,8 +8,10 @@ from health_check.contrib.atlassian import (
     Cloudflare,
     DigitalOcean,
     FlyIo,
+    GitHub,
     PlatformSh,
     Render,
+    Sentry,
     Vercel,
 )
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -204,6 +206,37 @@ class TestFlyIo:
             assert "Failed to fetch API" in str(result.error)
 
 
+class TestGitHub:
+    """Test GitHub platform status health check via Atlassian API."""
+
+    @pytest.mark.asyncio
+    async def test_check_status__ok(self):
+        """Pass when no unresolved incidents are found."""
+        api_response = {"page": {"id": "test"}, "incidents": []}
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub()
+            result = await check.get_result()
+            assert result.error is None
+
+    def test_base_url_format(self):
+        """Verify correct base URL for GitHub."""
+        assert GitHub().base_url == "https://www.githubstatus.com"
+        assert GitHub(GitHub.Region.eu).base_url == "https://eu.githubstatus.com"
+
+
 class TestCloudflare:
     """Test Cloudflare platform status health check via Atlassian API."""
 
@@ -326,6 +359,36 @@ class TestRender:
         """Verify correct base URL for Render."""
         check = Render()
         assert check.base_url == "https://status.render.com"
+
+
+class TestSentry:
+    """Test Sentry platform status health check via Atlassian API."""
+
+    @pytest.mark.asyncio
+    async def test_check_status__ok(self):
+        """Pass when no unresolved incidents are found."""
+        api_response = {"page": {"id": "test"}, "incidents": []}
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = Sentry()
+            result = await check.get_result()
+            assert result.error is None
+
+    def test_base_url_format(self):
+        """Verify correct base URL for Sentry."""
+        assert Sentry().base_url == "https://status.sentry.io"
 
 
 class TestVercel:

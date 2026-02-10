@@ -2,6 +2,7 @@
 
 import dataclasses
 import datetime
+import enum
 import logging
 import typing
 
@@ -104,6 +105,40 @@ class FlyIo(AtlassianStatusPage):
 
 
 @dataclasses.dataclass
+class GitHub(AtlassianStatusPage):
+    """
+    Check GitHub platform status via Atlassian Status Page API v2.
+
+    Args:
+        region: GitHub status page region to check.
+        timeout: Request timeout duration.
+
+    """
+
+    class Region(enum.StrEnum):
+        """GitHub status page regions."""
+
+        australia = "au"
+        """Australia."""
+        eu = "eu"
+        """Europe."""
+        japan = "jp"
+        """Japan."""
+        us = "us"
+        """United States."""
+        www = "www"
+        """Global."""
+
+    region: Region = Region.www
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+
+    def __post_init__(self):
+        self.base_url = f"https://{self.region}.githubstatus.com"
+
+
+@dataclasses.dataclass
 class PlatformSh(AtlassianStatusPage):
     """
     Check Platform.sh platform status via Atlassian Status Page API v2.
@@ -149,6 +184,22 @@ class Render(AtlassianStatusPage):
         default=datetime.timedelta(seconds=10), repr=False
     )
     base_url: typing.ClassVar[str] = "https://status.render.com"
+
+
+@dataclasses.dataclass
+class Sentry(AtlassianStatusPage):
+    """
+    Check Sentry platform status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    base_url: typing.ClassVar[str] = "https://status.sentry.io"
 
 
 @dataclasses.dataclass
