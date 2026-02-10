@@ -110,13 +110,13 @@ class GitHub(AtlassianStatusPage):
     Check GitHub platform status via Atlassian Status Page API v2.
 
     Args:
-        region: GitHub status page region to check.
+        enterprise_region: GitHub Enterprise status page region (if applicable).
         timeout: Request timeout duration.
 
     """
 
-    class Region(enum.StrEnum):
-        """GitHub status page regions."""
+    class EnterpriseRegion(enum.StrEnum):
+        """GitHub Enterprise status page regions."""
 
         australia = "au"
         """Australia."""
@@ -126,16 +126,14 @@ class GitHub(AtlassianStatusPage):
         """Japan."""
         us = "us"
         """United States."""
-        www = "www"
-        """Global."""
 
-    region: Region = Region.www
+    enterprise_region: EnterpriseRegion | None = None
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
 
     def __post_init__(self):
-        self.base_url = f"https://{self.region}.githubstatus.com"
+        self.base_url = f"https://{self.enterprise_region if self.enterprise_region else 'www'}.githubstatus.com"
 
 
 @dataclasses.dataclass
