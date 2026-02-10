@@ -34,10 +34,9 @@ class Ping(HealthCheck):
 
     def run(self):
         try:
-            ping_kwargs = {"timeout": self.timeout.total_seconds()}
-            if self.limit is not None:
-                ping_kwargs["limit"] = self.limit
-            ping_result = self.app.control.ping(**ping_kwargs)
+            ping_result = self.app.control.ping(
+                timeout=self.timeout.total_seconds(), limit=self.limit
+            )
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         except NotImplementedError as e:
