@@ -1,6 +1,6 @@
 # Container (Docker/Podman)
 
-Django HealthCheck can be integrated into various container orchestration systems by defining health checks that utilize the `manage.py health_check` command.
+Django HealthCheck can be integrated into container orchestration systems by defining health checks that utilize the `manage.py health_check` command.
 Below are examples for Containerfile/Dockerfile, Docker Compose, and Kubernetes.
 
 > [!TIP]

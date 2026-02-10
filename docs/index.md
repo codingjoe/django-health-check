@@ -18,8 +18,7 @@
 [![djversion](https://img.shields.io/pypi/djversions/django-health-check.svg)](https://pypi.python.org/pypi/django-health-check/)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://pypi.python.org/pypi/django-health-check/)
 
-This project checks for various conditions and provides reports when
-anomalous behavior is detected.
+This project checks for conditions and provides reports when anomalous behavior is detected.
 
 [Documentation](https://codingjoe.dev/django-health-check/) | [Issues](https://github.com/codingjoe/django-health-check/issues/new/choose) | [Changelog](https://github.com/codingjoe/django-health-check/releases) | [Funding](https://github.com/sponsors/codingjoe) 💚
 
@@ -31,8 +30,9 @@ The following health checks are bundled with this project:
 - [storages][health_check.Storage]
 - [Celery][health_check.contrib.celery.Ping], [Kafka][health_check.contrib.kafka.Kafka],
   [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] & [Redis][health_check.contrib.redis.Redis]
+- [Cloud provider status](checks.md#cloud-provider-status) for numerous cloud and PaaS providers.
 
-Writing your own custom health checks is also very quick and easy.
+Writing your own custom health checks is also quick and easy.
 
 We also like contributions, so don’t be afraid to make a pull request.
 

@@ -54,20 +54,30 @@ class Cache(HealthCheck):
 
     Args:
         alias: The cache alias to test against.
-        cache_key: The cache key to use for the test.
+        key_prefix: Prefix for the node specific cache key.
+        timeout: Time until probe keys expire in the cache backend.
 
     """
 
     alias: str = "default"
-    cache_key: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
+    key_prefix: str = dataclasses.field(default="djangohealthcheck_test", repr=False)
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=5), repr=False
+    )
 
     async def run(self):
         cache = caches[self.alias]
-        ts = datetime.datetime.now().timestamp()
+        # Use an isolated key per probe run to avoid cross-process write races.
+        cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
+        cache_value = f"itworks-{datetime.datetime.now().timestamp()}"
         try:
-            await cache.aset(self.cache_key, f"itworks-{ts}")
-            if not await cache.aget(self.cache_key) == f"itworks-{ts}":
-                raise ServiceUnavailable(f"Cache key {self.cache_key} does not match")
+            await cache.aset(
+                cache_key,
+                cache_value,
+                timeout=self.timeout.total_seconds(),
+            )
+            if not await cache.aget(cache_key) == cache_value:
+                raise ServiceUnavailable(f"Cache key {cache_key} does not match")
         except CacheKeyWarning as e:
             raise ServiceReturnedUnexpectedResult("Cache key warning") from e
         except ValueError as e:
