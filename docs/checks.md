@@ -40,16 +40,8 @@ Monitor cloud provider service health using their public RSS/Atom status feeds o
 
 Cloud provider health checks require different extras depending on the provider:
 
-- For RSS/Atom feed-based providers (AWS, Heroku, Azure, Google Cloud):
-
 ```shell
-pip install django-health-check[rss]
-```
-
-- For Atlassian Status Page API providers (Cloudflare, DigitalOcean, Fly.io, Platform.sh, Render, Vercel):
-
-```shell
-pip install django-health-check[atlassian]
+pip install django-health-check[rss,atlassian]
 ```
 
 ::: health_check.contrib.rss.AWS
