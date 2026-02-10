@@ -19,6 +19,9 @@ class Ping(HealthCheck):
     Args:
         app: Celery application instance to use for the health check, defaults to the [default Celery app][celery.app.default_app].
         timeout: Timeout duration for the ping command.
+        limit: Maximum number of workers to wait for before returning. If not
+            specified, waits for the full timeout duration. When set, returns
+            immediately after receiving responses from this many workers.
 
     """
 
@@ -27,10 +30,13 @@ class Ping(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
+    limit: int | None = dataclasses.field(default=None, repr=False)
 
     def run(self):
         try:
-            ping_result = self.app.control.ping(timeout=self.timeout.total_seconds())
+            ping_result = self.app.control.ping(
+                timeout=self.timeout.total_seconds(), limit=self.limit
+            )
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         except NotImplementedError as e:
