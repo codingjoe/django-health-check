@@ -56,19 +56,23 @@ pip install django-health-check[atlassian]
 
 ::: health_check.contrib.rss.Azure
 
-::: health_check.contrib.rss.GoogleCloud
-
 ::: health_check.contrib.atlassian.Cloudflare
 
 ::: health_check.contrib.atlassian.DigitalOcean
 
 ::: health_check.contrib.atlassian.FlyIo
 
+::: health_check.contrib.atlassian.GitHub
+
+::: health_check.contrib.rss.GoogleCloud
+
 ::: health_check.contrib.rss.Heroku
 
 ::: health_check.contrib.atlassian.PlatformSh
 
 ::: health_check.contrib.atlassian.Render
+
+::: health_check.contrib.atlassian.Sentry
 
 ::: health_check.contrib.atlassian.Vercel
 
