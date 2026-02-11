@@ -7,6 +7,9 @@ import pytest
 pytest.importorskip("psutil")
 
 import psutil
+
+# Use psutil's named tuples from _ntuples to minimize mocking risks.
+# This private import is intentional to monitor breaking changes in future psutil updates.
 from psutil._ntuples import sbattery, sdiskusage, shwtemp, svmem
 
 from health_check.contrib.psutil import Battery, CPU, Disk, Memory, Temperature
