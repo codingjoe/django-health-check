@@ -5,7 +5,6 @@ import pathlib
 import socket
 
 import psutil
-from psutil._ntuples import shwtemp
 
 from health_check import HealthCheck
 from health_check.exceptions import (
@@ -171,7 +170,7 @@ class Temperature(HealthCheck):
         else:
             if self.device:
                 try:
-                    sensors: shwtemp = temperatures[self.device]
+                    sensors = temperatures[self.device]
                 except KeyError:
                     raise ServiceUnavailable(
                         f"Sensor {self.device!r} not found"
