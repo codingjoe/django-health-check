@@ -25,7 +25,7 @@ This project checks for conditions and provides reports when anomalous behavior 
 The following health checks are bundled with this project:
 
 - [caches][health_check.Cache] & [databases][health_check.Database]
-- [disk][health_check.Disk] & [memory][health_check.Memory] utilization
+- [disk][health_check.contrib.psutil.Disk] & [memory][health_check.contrib.psutil.Memory] utilization
 - [DNS][health_check.DNS] & [email][health_check.Mail]
 - [storages][health_check.Storage]
 - [Celery][health_check.contrib.celery.Ping], [Kafka][health_check.contrib.kafka.Kafka],

@@ -453,12 +453,12 @@ class TestHealthCheckView:
         factory = AsyncRequestFactory()
         request = factory.get("/")
         view = HealthCheckView.as_view(
-            checks=["health_check.Disk"],
+            checks=["health_check.Storage"],
         )
         response = await view(request)
         response.render()
         plugins = view.view_initkwargs["checks"]
-        assert plugins == ["health_check.Disk"]
+        assert plugins == ["health_check.Storage"]
 
     @pytest.mark.asyncio
     async def test_get_plugins__with_tuple_options(self):

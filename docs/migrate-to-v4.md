@@ -34,11 +34,11 @@
            checks=[
                "health_check.Cache",
                "health_check.Database",
-               "health_check.Disk",
                "health_check.Mail",
-               "health_check.Memory",
                "health_check.Storage",
                # 3rd party checks
+               "health_check.contrib.psutil.Disk",
+               "health_check.contrib.psutil.Memory",
                "health_check.contrib.celery.Ping",
                "health_check.contrib.rabbitmq.RabbitMQ",
                "health_check.contrib.redis.Redis",
