@@ -44,7 +44,7 @@ class Battery(HealthCheck):
                 raise ServiceWarning(f"Battery {battery.percent:.1f}\u202f%")
             if self.power_plugged and not battery.power_plugged:
                 raise ServiceWarning(
-                    f"Power unplugged at with battery at {battery.percent:.1f}\u202f%"
+                    f"Power unplugged with battery at {battery.percent:.1f}\u202f%"
                 )
 
 
