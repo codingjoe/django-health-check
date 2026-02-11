@@ -3,14 +3,11 @@
 import dataclasses
 import datetime
 import logging
-import os
-import pathlib
 import smtplib
 import socket
 import uuid
 
 import dns.asyncresolver
-import psutil
 from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
@@ -26,7 +23,6 @@ from health_check.base import HealthCheck
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
-    ServiceWarning,
 )
 
 try:
@@ -190,36 +186,6 @@ class DNS(HealthCheck):
             )
 
 
-@dataclasses.dataclass()
-class Disk(HealthCheck):
-    """
-    Warn about disk usage for a given system path.
-
-    It can be setup multiple times at different system paths,
-    e.g. one at your application root and one at your media storage root.
-
-    Args:
-        path: Path to check disk usage for.
-        max_disk_usage_percent: Maximum disk usage in percent or None to disable the check.
-
-    """
-
-    path: pathlib.Path | str = dataclasses.field(default_factory=os.getcwd)
-    max_disk_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
-
-    def run(self):
-        try:
-            du = psutil.disk_usage(str(self.path))
-            if (
-                self.max_disk_usage_percent
-                and du.percent >= self.max_disk_usage_percent
-            ):
-                raise ServiceWarning(f"{du.percent}\u202f% disk usage")
-        except ValueError as e:
-            raise ServiceReturnedUnexpectedResult("ValueError") from e
-
-
 @dataclasses.dataclass
 class Mail(HealthCheck):
     """
@@ -253,41 +219,6 @@ class Mail(HealthCheck):
         logger.debug(
             "Connection established. Mail backend %r is healthy.", self.backend
         )
-
-
-@dataclasses.dataclass()
-class Memory(HealthCheck):
-    """
-    Warn about system memory utilization.
-
-    Args:
-        min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
-        max_memory_usage_percent: Maximum memory usage in percent or None to disable the check.
-
-    """
-
-    min_gibibytes_available: float | None = dataclasses.field(default=None, repr=False)
-    max_memory_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
-
-    def run(self):
-        try:
-            memory = psutil.virtual_memory()
-            available_gibi = memory.available / (1024**3)
-            total_gibi = memory.total / (1024**3)
-            msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent}\u202f%)"
-            if (
-                self.min_gibibytes_available
-                and available_gibi < self.min_gibibytes_available
-            ):
-                raise ServiceWarning(msg)
-            if (
-                self.max_memory_usage_percent
-                and memory.percent >= self.max_memory_usage_percent
-            ):
-                raise ServiceWarning(msg)
-        except ValueError as e:
-            raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
 @dataclasses.dataclass

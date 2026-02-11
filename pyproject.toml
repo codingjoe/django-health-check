@@ -44,6 +44,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+psutil = ["psutil>=5.0.0"]
 celery = ["celery>=5.0.0"]
 kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]

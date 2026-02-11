@@ -2,7 +2,8 @@
 
 from . import _version  # noqa
 from .base import HealthCheck
-from .checks import Cache, DNS, Database, Disk, Mail, Memory, Storage
+from .checks import Cache, DNS, Database, Mail, Storage
+from .contrib.psutil import Memory, Disk
 
 __version__ = _version.__version__
 VERSION = _version.__version_tuple__

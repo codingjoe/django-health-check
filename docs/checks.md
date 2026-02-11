@@ -16,6 +16,24 @@
 
 ::: health_check.Storage
 
+## System Services
+
+To use the psutil-based checks, you will need to install `psutil` extra:
+
+```shell
+pip install django-health-check[psutil]
+```
+
+::: health_check.contrib.psutil.Battery
+
+::: health_check.contrib.psutil.CPU
+
+::: health_check.contrib.psutil.Memory
+
+::: health_check.contrib.psutil.Disk
+
+::: health_check.contrib.psutil.Temperature
+
 ## 3rd Party Services
 
 To use the checks, you will need to install and set up their corresponding dependencies.
