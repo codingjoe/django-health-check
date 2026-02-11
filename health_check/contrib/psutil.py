@@ -186,9 +186,8 @@ class Temperature(HealthCheck):
             else:
                 for device, sensors in temperatures.items():
                     for sensor in sensors:
-                        if (
-                            self.max_temperature_celsius
-                            and sensor.current >= self.max_temperature_celsius
+                        if sensor.current >= (
+                            self.max_temperature_celsius or sensor.high
                         ):
                             raise ServiceWarning(
                                 f"{device} {sensor.label} {sensor.current:.1f}\u202f°C"
