@@ -6,13 +6,12 @@ import pytest
 
 pytest.importorskip("psutil")
 
-import psutil
 
 # Use psutil's named tuples from _ntuples to minimize mocking risks.
 # This private import is intentional to monitor breaking changes in future psutil updates.
 from psutil._ntuples import sbattery, sdiskusage, shwtemp, svmem
 
-from health_check.contrib.psutil import Battery, CPU, Disk, Memory, Temperature
+from health_check.contrib.psutil import CPU, Battery, Disk, Memory, Temperature
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -263,7 +262,9 @@ class TestCPU:
     async def test_run_check__cpu_with_interval(self):
         """CPU check succeeds with explicit interval measurement."""
         with mock.patch("psutil.cpu_percent", return_value=50.0):
-            check = CPU(max_usage_percent=95.0, interval=datetime.timedelta(seconds=0.1))
+            check = CPU(
+                max_usage_percent=95.0, interval=datetime.timedelta(seconds=0.1)
+            )
             result = await check.get_result()
             assert result.error is None
 
