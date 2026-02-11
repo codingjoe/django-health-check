@@ -40,11 +40,10 @@ dynamic = [
 dependencies = [
   "Django>=5.2",
   "dnspython>=2.0.0",
-  "psutil",
 ]
 
 [project.optional-dependencies]
-psutil = ["psutil>=5.0.0"]
+psutil = ["psutil>=7.2.0"]
 celery = ["celery>=5.0.0"]
 kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
