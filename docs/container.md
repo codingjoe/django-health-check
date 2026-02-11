@@ -24,7 +24,10 @@ urlpatterns = [
     path(
         "container/health/",
         HealthCheckView.as_view(
-            checks=["health_check.Disk", "health_check.Memory"],
+            checks=[
+                "health_check.contrib.psutil.Disk",
+                "health_check.contrib.psutil.Memory",
+            ],
         ),
         name="health_check-container",
     ),
