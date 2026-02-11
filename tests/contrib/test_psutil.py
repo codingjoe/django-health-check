@@ -254,17 +254,18 @@ class TestCPU:
     @pytest.mark.asyncio
     async def test_run_check__cpu_usage_ok(self):
         """CPU check succeeds when usage is below threshold."""
-        check = CPU(max_usage_percent=95.0)
-        result = await check.get_result()
-        # Real CPU usage should be well below 95% in test environment
-        assert result.error is None
+        with mock.patch("psutil.cpu_percent", return_value=50.0):
+            check = CPU(max_usage_percent=95.0)
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_run_check__cpu_with_interval(self):
         """CPU check succeeds with explicit interval measurement."""
-        check = CPU(max_usage_percent=95.0, interval=datetime.timedelta(seconds=0.1))
-        result = await check.get_result()
-        assert result.error is None
+        with mock.patch("psutil.cpu_percent", return_value=50.0):
+            check = CPU(max_usage_percent=95.0, interval=datetime.timedelta(seconds=0.1))
+            result = await check.get_result()
+            assert result.error is None
 
     @pytest.mark.asyncio
     async def test_check_status__cpu_exceeds_threshold(self):
