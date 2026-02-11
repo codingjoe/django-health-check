@@ -150,7 +150,7 @@ class Temperature(HealthCheck):
     """
     Warn about system temperature.
 
-    If not maximum temperature is specified, the sensor's high threshold will be used.
+    If no maximum temperature is specified, the sensor's high threshold will be used.
 
     Args:
         device: The device to check temperature for, e.g. 'coretemp' for CPU temperature on many systems. If None, check all available sensors.
