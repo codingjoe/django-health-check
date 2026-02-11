@@ -191,5 +191,5 @@ class Temperature(HealthCheck):
                             and sensor.current >= self.max_temperature_celsius
                         ):
                             raise ServiceWarning(
-                                f"{self.device} {sensor.label} {sensor.current:.1f}\u202f°C"
+                                f"{device} {sensor.label} {sensor.current:.1f}\u202f°C"
                             )
