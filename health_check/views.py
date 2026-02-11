@@ -98,10 +98,8 @@ class HealthCheckView(TemplateView):
     ] = (
         "health_check.checks.Cache",
         "health_check.checks.Database",
-        "health_check.checks.Disk",
         "health_check.checks.DNS",
         "health_check.checks.Mail",
-        "health_check.checks.Memory",
         "health_check.checks.Storage",
     )
 
