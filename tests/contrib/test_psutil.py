@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("psutil")
 
 import psutil
+from psutil._ntuples import sbattery, sdiskusage, shwtemp, svmem
 
 from health_check.contrib.psutil import Battery, CPU, Disk, Memory, Temperature
 from health_check.exceptions import (
@@ -38,9 +39,9 @@ class TestDisk:
     async def test_check_status__disk_usage_exceeds_threshold(self):
         """Raise ServiceWarning when disk usage exceeds threshold."""
         with mock.patch("psutil.disk_usage") as mock_disk_usage:
-            mock_disk_usage_result = mock.MagicMock()
-            mock_disk_usage_result.percent = 95.5
-            mock_disk_usage.return_value = mock_disk_usage_result
+            mock_disk_usage.return_value = sdiskusage(
+                total=100000000000, used=95500000000, free=4500000000, percent=95.5
+            )
 
             check = Disk(max_disk_usage_percent=90.0)
             result = await check.get_result()
@@ -52,9 +53,9 @@ class TestDisk:
     async def test_check_status__disk_check_disabled(self):
         """No warning when disk usage check is disabled."""
         with mock.patch("psutil.disk_usage") as mock_disk_usage:
-            mock_disk_usage_result = mock.MagicMock()
-            mock_disk_usage_result.percent = 99.0
-            mock_disk_usage.return_value = mock_disk_usage_result
+            mock_disk_usage.return_value = sdiskusage(
+                total=100000000000, used=99000000000, free=1000000000, percent=99.0
+            )
 
             check = Disk(max_disk_usage_percent=None)
             result = await check.get_result()
@@ -86,11 +87,19 @@ class TestMemory:
     async def test_check_status__min_memory_available_exceeded(self):
         """Raise ServiceWarning when available memory is below threshold."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_memory = mock.MagicMock()
-            mock_memory.available = 0.5 * (1024**3)
-            mock_memory.total = 8 * (1024**3)
-            mock_memory.percent = 95.0
-            mock_virtual_memory.return_value = mock_memory
+            mock_virtual_memory.return_value = svmem(
+                total=8 * (1024**3),
+                available=0.5 * (1024**3),
+                percent=95.0,
+                used=7.5 * (1024**3),
+                free=0.5 * (1024**3),
+                active=0,
+                inactive=0,
+                buffers=0,
+                cached=0,
+                shared=0,
+                slab=0,
+            )
 
             check = Memory(min_gibibytes_available=1.0)
             result = await check.get_result()
@@ -102,11 +111,19 @@ class TestMemory:
     async def test_check_status__max_memory_usage_exceeded(self):
         """Raise ServiceWarning when memory usage exceeds threshold."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_memory = mock.MagicMock()
-            mock_memory.available = 1 * (1024**3)
-            mock_memory.total = 8 * (1024**3)
-            mock_memory.percent = 95.0
-            mock_virtual_memory.return_value = mock_memory
+            mock_virtual_memory.return_value = svmem(
+                total=8 * (1024**3),
+                available=1 * (1024**3),
+                percent=95.0,
+                used=7 * (1024**3),
+                free=1 * (1024**3),
+                active=0,
+                inactive=0,
+                buffers=0,
+                cached=0,
+                shared=0,
+                slab=0,
+            )
 
             check = Memory(max_memory_usage_percent=90.0)
             result = await check.get_result()
@@ -118,11 +135,19 @@ class TestMemory:
     async def test_check_status__memory_checks_disabled(self):
         """No warning when memory checks are disabled."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_memory = mock.MagicMock()
-            mock_memory.available = 0.1 * (1024**3)
-            mock_memory.total = 8 * (1024**3)
-            mock_memory.percent = 99.0
-            mock_virtual_memory.return_value = mock_memory
+            mock_virtual_memory.return_value = svmem(
+                total=8 * (1024**3),
+                available=0.1 * (1024**3),
+                percent=99.0,
+                used=7.9 * (1024**3),
+                free=0.1 * (1024**3),
+                active=0,
+                inactive=0,
+                buffers=0,
+                cached=0,
+                shared=0,
+                slab=0,
+            )
 
             check = Memory(min_gibibytes_available=None, max_memory_usage_percent=None)
             result = await check.get_result()
@@ -146,9 +171,7 @@ class TestBattery:
     @pytest.mark.asyncio
     async def test_run_check__battery_ok_when_available(self):
         """Battery check succeeds when battery is above threshold and plugged in."""
-        battery_info = mock.MagicMock()
-        battery_info.percent = 85.0
-        battery_info.power_plugged = True
+        battery_info = sbattery(percent=85.0, secsleft=3600, power_plugged=True)
 
         with mock.patch("psutil.sensors_battery", return_value=battery_info):
             check = Battery(min_percent_available=20.0, power_plugged=False)
@@ -158,9 +181,7 @@ class TestBattery:
     @pytest.mark.asyncio
     async def test_check_status__battery_below_threshold(self):
         """Raise ServiceWarning when battery is below minimum threshold."""
-        battery_info = mock.MagicMock()
-        battery_info.percent = 15.0
-        battery_info.power_plugged = False
+        battery_info = sbattery(percent=15.0, secsleft=600, power_plugged=False)
 
         with mock.patch("psutil.sensors_battery", return_value=battery_info):
             check = Battery(min_percent_available=20.0, power_plugged=False)
@@ -172,9 +193,7 @@ class TestBattery:
     @pytest.mark.asyncio
     async def test_check_status__power_unplugged_when_required(self):
         """Raise ServiceWarning when power is unplugged and power_plugged is True."""
-        battery_info = mock.MagicMock()
-        battery_info.percent = 85.0
-        battery_info.power_plugged = False
+        battery_info = sbattery(percent=85.0, secsleft=3600, power_plugged=False)
 
         with mock.patch("psutil.sensors_battery", return_value=battery_info):
             check = Battery(min_percent_available=None, power_plugged=True)
@@ -187,9 +206,7 @@ class TestBattery:
     @pytest.mark.asyncio
     async def test_check_status__both_conditions_fail(self):
         """Raise ServiceWarning when both battery low and power unplugged."""
-        battery_info = mock.MagicMock()
-        battery_info.percent = 15.0
-        battery_info.power_plugged = False
+        battery_info = sbattery(percent=15.0, secsleft=600, power_plugged=False)
 
         with mock.patch("psutil.sensors_battery", return_value=battery_info):
             check = Battery(min_percent_available=20.0, power_plugged=True)
@@ -220,9 +237,7 @@ class TestBattery:
     @pytest.mark.asyncio
     async def test_check_status__battery_checks_disabled(self):
         """No warning when all battery checks are disabled."""
-        battery_info = mock.MagicMock()
-        battery_info.percent = 5.0
-        battery_info.power_plugged = False
+        battery_info = sbattery(percent=5.0, secsleft=300, power_plugged=False)
 
         with mock.patch("psutil.sensors_battery", return_value=battery_info):
             check = Battery(min_percent_available=None, power_plugged=False)
@@ -294,11 +309,7 @@ class TestTemperature:
     @pytest.mark.asyncio
     async def test_run_check__temperature_ok_with_device(self):
         """Temperature check succeeds when temps are below threshold."""
-        sensor = mock.MagicMock()
-        sensor.label = "Core 0"
-        sensor.current = 45.0
-        sensor.high = 80.0
-
+        sensor = shwtemp(label="Core 0", current=45.0, high=80.0, critical=90.0)
         temperatures = {"coretemp": [sensor]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
@@ -309,11 +320,7 @@ class TestTemperature:
     @pytest.mark.asyncio
     async def test_check_status__temperature_exceeds_max(self):
         """Raise ServiceWarning when temperature exceeds max threshold."""
-        sensor = mock.MagicMock()
-        sensor.label = "Core 0"
-        sensor.current = 85.0
-        sensor.high = 90.0
-
+        sensor = shwtemp(label="Core 0", current=85.0, high=90.0, critical=95.0)
         temperatures = {"coretemp": [sensor]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
@@ -327,11 +334,7 @@ class TestTemperature:
     @pytest.mark.asyncio
     async def test_check_status__temperature_exceeds_sensor_high(self):
         """Raise ServiceWarning when temperature exceeds sensor's high threshold."""
-        sensor = mock.MagicMock()
-        sensor.label = "Core 0"
-        sensor.current = 85.0
-        sensor.high = 80.0
-
+        sensor = shwtemp(label="Core 0", current=85.0, high=80.0, critical=90.0)
         temperatures = {"coretemp": [sensor]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
@@ -345,16 +348,8 @@ class TestTemperature:
     @pytest.mark.asyncio
     async def test_check_status__temperature_all_devices(self):
         """Check all devices when device is None."""
-        sensor1 = mock.MagicMock()
-        sensor1.label = "Core 0"
-        sensor1.current = 45.0
-        sensor1.high = 80.0
-
-        sensor2 = mock.MagicMock()
-        sensor2.label = "GPU"
-        sensor2.current = 95.0
-        sensor2.high = 90.0
-
+        sensor1 = shwtemp(label="Core 0", current=45.0, high=80.0, critical=90.0)
+        sensor2 = shwtemp(label="GPU", current=95.0, high=90.0, critical=100.0)
         temperatures = {"coretemp": [sensor1], "gpu": [sensor2]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
@@ -391,16 +386,8 @@ class TestTemperature:
     @pytest.mark.asyncio
     async def test_check_status__temperature_multiple_sensors_in_device(self):
         """Check all sensors in a device."""
-        sensor1 = mock.MagicMock()
-        sensor1.label = "Core 0"
-        sensor1.current = 45.0
-        sensor1.high = 80.0
-
-        sensor2 = mock.MagicMock()
-        sensor2.label = "Core 1"
-        sensor2.current = 85.0
-        sensor2.high = 80.0
-
+        sensor1 = shwtemp(label="Core 0", current=45.0, high=80.0, critical=90.0)
+        sensor2 = shwtemp(label="Core 1", current=85.0, high=80.0, critical=90.0)
         temperatures = {"coretemp": [sensor1, sensor2]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
