@@ -25,9 +25,14 @@ class AtlassianStatusPage(HealthCheck):
     since the API endpoint only returns currently unresolved incidents.
 
     Examples:
+        >>> import dataclasses
+        >>> import datetime
+        >>> import typing
+        >>> from health_check.contrib.atlassian import AtlassianStatusPage
+        >>> @dataclasses.dataclass
         >>> class FlyIo(AtlassianStatusPage):
-        ...     timeout = datetime.timedelta(seconds=10)
-        ...     base_url = "https://status.flyio.net"
+        ...     timeout: datetime.timedelta = datetime.timedelta(seconds=10)
+        ...     base_url: typing.ClassVar[str] = "https://status.flyio.net"
 
     """
 
