@@ -1,4 +1,5 @@
 import re
+import typing
 import warnings
 from functools import cached_property
 
@@ -145,7 +146,7 @@ class MainView(_MainView):
 class HealthCheckView(_MainView):
     """Perform health checks and return results in various formats."""
 
-    checks: list[str | tuple[str, dict]] | None = (
+    checks: typing.Sequence[str | tuple[str, dict]] = (
         "health_check.Cache",
         "health_check.Database",
         "health_check.Disk",
