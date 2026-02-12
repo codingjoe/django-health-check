@@ -31,7 +31,7 @@ class AtlassianStatusPage(HealthCheck):
         >>> @dataclasses.dataclass
         >>> class FlyIo(AtlassianStatusPage):
         ...     timeout: datetime.timedelta = datetime.timedelta(seconds=10)
-        ...     base_url: str = dataclasses.field("https://status.flyio.net", init=False, repr=False)
+        ...     base_url: str = dataclasses.field(default="https://status.flyio.net", init=False, repr=False)
 
     """
 
