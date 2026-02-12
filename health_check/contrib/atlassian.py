@@ -31,7 +31,7 @@ class AtlassianStatusPage(HealthCheck):
 
     """
 
-    base_url: typing.ClassVar[str] = NotImplemented
+    base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
 
     async def run(self):

@@ -51,7 +51,7 @@ class Feed(HealthCheck):
 
     """
 
-    feed_url: typing.ClassVar[str] = NotImplemented
+    feed_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
     max_age: datetime.timedelta = NotImplemented
 
