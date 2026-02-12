@@ -3,7 +3,6 @@
 import dataclasses
 import datetime
 import logging
-import typing
 
 import feedparser
 import httpx
@@ -180,7 +179,9 @@ class Heroku(Feed):
     max_age: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(hours=8), repr=False
     )
-    feed_url: typing.ClassVar[str] = "https://status.heroku.com/feed"
+    feed_url: str = dataclasses.field(
+        default="https://status.heroku.com/feed", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -200,8 +201,10 @@ class Azure(Feed):
     max_age: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(hours=8), repr=False
     )
-    feed_url: typing.ClassVar[str] = (
-        "https://rssfeed.azure.status.microsoft/en-us/status/feed/"
+    feed_url: str = dataclasses.field(
+        default="https://rssfeed.azure.status.microsoft/en-us/status/feed/",
+        init=False,
+        repr=False,
     )
 
 
@@ -223,4 +226,6 @@ class GoogleCloud(Feed):
         default=datetime.timedelta(hours=8), repr=False
     )
 
-    feed_url: typing.ClassVar[str] = "https://status.cloud.google.com/en/feed.atom"
+    feed_url: str = dataclasses.field(
+        default="https://status.cloud.google.com/en/feed.atom", init=False, repr=False
+    )
