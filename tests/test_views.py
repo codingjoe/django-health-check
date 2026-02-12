@@ -331,7 +331,7 @@ class TestMainView:
 class TestHealthCheckView:
     def test_checks__default(self):
         """
-        Default checks should be the registered plugins.
+        Default checks should be non-empty when no checks are explicitly provided.
 
         Regression test for https://github.com/codingjoe/django-health-check/issues/625
         """
