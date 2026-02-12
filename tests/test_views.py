@@ -329,6 +329,24 @@ class TestMainView:
 
 
 class TestHealthCheckView:
+    def test_checks__default(self):
+        """
+        Default checks should be the registered plugins.
+
+        Regression test for https://github.com/codingjoe/django-health-check/issues/625
+        """
+        view = HealthCheckView()
+        assert next(view.get_plugins())
+
+    def test_checks__empty(self):
+        """
+        Checks can be overridden with an empty list.
+
+        Regression test for https://github.com/codingjoe/django-health-check/issues/625
+        """
+        view = HealthCheckView(checks=[])
+        assert not list(view.get_plugins())
+
     def test_as_view__return_callable(self):
         """Return a callable view function."""
         view = HealthCheckView.as_view()
