@@ -34,17 +34,17 @@ urlpatterns = [
             checks=[  # optional, default is all but 3rd party checks
                 "health_check.Cache",
                 "health_check.Database",
-                "health_check.Disk",
                 "health_check.Mail",
+                "health_check.Storage",
+                # 3rd party checks
+                "health_check.contrib.psutil.Disk",
                 (
-                    "health_check.Memory",
+                    "health_check.contrib.psutil.Memory",
                     {  # tuple with options
                         "min_gibibytes_available": 0.1,  # 0.1 GiB (~100 MiB)
                         "max_memory_usage_percent": 80.0,
                     },
                 ),
-                "health_check.Storage",
-                # 3rd party checks
                 "health_check.contrib.celery.Ping",
                 (  # tuple with options
                     "health_check.contrib.rabbitmq.RabbitMQ",

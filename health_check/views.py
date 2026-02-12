@@ -149,9 +149,7 @@ class HealthCheckView(_MainView):
     checks: typing.Sequence[str | tuple[str, dict]] = (
         "health_check.Cache",
         "health_check.Database",
-        "health_check.Disk",
         "health_check.Mail",
-        "health_check.Memory",
         "health_check.Storage",
     )
 

@@ -6,13 +6,13 @@
 
 ::: health_check.Database
 
-::: health_check.Disk
-
 ::: health_check.Mail
 
-::: health_check.Memory
-
 ::: health_check.Storage
+
+::: health_check.contrib.psutil.Disk
+
+::: health_check.contrib.psutil.Memory
 
 ## 3rd Party Services
 
