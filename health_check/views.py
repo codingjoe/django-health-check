@@ -93,7 +93,7 @@ class HealthCheckView(TemplateView):
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
-    checks: typing.Iterable[
+    checks: typing.Sequence[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
     ] = (
         "health_check.checks.Cache",
