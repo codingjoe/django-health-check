@@ -41,7 +41,7 @@ class Redis(HealthCheck):
 
     """
 
-    client: RedisClient | RedisCluster = dataclasses.field(default=None, repr=False)
+    client: RedisClient | RedisCluster = dataclasses.field(repr=False)
 
     async def run(self):
         logger.debug("Pinging Redis client...")
