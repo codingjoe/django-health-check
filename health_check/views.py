@@ -1,4 +1,5 @@
 import re
+import typing
 import warnings
 from functools import cached_property
 
@@ -145,7 +146,14 @@ class MainView(_MainView):
 class HealthCheckView(_MainView):
     """Perform health checks and return results in various formats."""
 
-    checks: list[str | tuple[str, dict]] | None = None
+    checks: typing.Sequence[str | tuple[str, dict]] = (
+        "health_check.Cache",
+        "health_check.Database",
+        "health_check.Disk",
+        "health_check.Mail",
+        "health_check.Memory",
+        "health_check.Storage",
+    )
 
     @classmethod
     def as_view(cls, **initkwargs):
@@ -164,14 +172,7 @@ class HealthCheckView(_MainView):
         return super().as_view(**initkwargs)
 
     def get_plugins(self):
-        for check in self.checks or [
-            "health_check.Cache",
-            "health_check.Database",
-            "health_check.Disk",
-            "health_check.Mail",
-            "health_check.Memory",
-            "health_check.Storage",
-        ]:
+        for check in self.checks:
             try:
                 check, options = check
             except ValueError:
