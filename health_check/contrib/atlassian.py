@@ -4,7 +4,6 @@ import dataclasses
 import datetime
 import enum
 import logging
-import typing
 
 import httpx
 
@@ -25,13 +24,18 @@ class AtlassianStatusPage(HealthCheck):
     since the API endpoint only returns currently unresolved incidents.
 
     Examples:
+        >>> import dataclasses
+        >>> import datetime
+        >>> import typing
+        >>> from health_check.contrib.atlassian import AtlassianStatusPage
+        >>> @dataclasses.dataclass
         >>> class FlyIo(AtlassianStatusPage):
-        ...     timeout = datetime.timedelta(seconds=10)
-        ...     base_url = "https://status.flyio.net"
+        ...     timeout: datetime.timedelta = datetime.timedelta(seconds=10)
+        ...     base_url: str = dataclasses.field(default="https://status.flyio.net", init=False, repr=False)
 
     """
 
-    base_url: typing.ClassVar[str] = NotImplemented
+    base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
 
     async def run(self):
@@ -85,7 +89,9 @@ class Cloudflare(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://www.cloudflarestatus.com"
+    base_url: str = dataclasses.field(
+        default="https://www.cloudflarestatus.com", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -101,7 +107,9 @@ class FlyIo(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://status.flyio.net"
+    base_url: str = dataclasses.field(
+        default="https://status.flyio.net", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -149,7 +157,9 @@ class PlatformSh(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://status.platform.sh"
+    base_url: str = dataclasses.field(
+        default="https://status.platform.sh", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -165,7 +175,9 @@ class DigitalOcean(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://status.digitalocean.com"
+    base_url: str = dataclasses.field(
+        default="https://status.digitalocean.com", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -181,7 +193,9 @@ class Render(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://status.render.com"
+    base_url: str = dataclasses.field(
+        default="https://status.render.com", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -197,7 +211,9 @@ class Sentry(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://status.sentry.io"
+    base_url: str = dataclasses.field(
+        default="https://status.sentry.io", init=False, repr=False
+    )
 
 
 @dataclasses.dataclass
@@ -213,4 +229,6 @@ class Vercel(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    base_url: typing.ClassVar[str] = "https://www.vercel-status.com"
+    base_url: str = dataclasses.field(
+        default="https://www.vercel-status.com", init=False, repr=False
+    )
