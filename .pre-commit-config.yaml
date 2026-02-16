@@ -31,7 +31,7 @@ repos:
           - mdformat-gfm-alerts
         exclude: '.github/agents/'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
+    rev: v0.15.1
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
