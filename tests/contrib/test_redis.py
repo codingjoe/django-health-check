@@ -29,6 +29,16 @@ class TestRedis:
         mock_client.ping.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_redis__client_not_closed(self):
+        """Verify client is not closed after health check runs."""
+        mock_client = mock.AsyncMock()
+        mock_client.ping.return_value = True
+
+        check = RedisHealthCheck(client=mock_client)
+        await check.get_result()
+        mock_client.aclose.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_redis__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
         mock_client = mock.AsyncMock()
