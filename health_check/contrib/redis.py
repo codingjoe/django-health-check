@@ -22,6 +22,8 @@ class Redis(HealthCheck):
 
     Args:
         redis_url: Redis connection URL, e.g., 'redis://localhost:6379/0'.
+                   Standard redis:// URLs work for standalone Redis servers.
+                   For Redis Cluster, use the redis:// scheme with any node URL.
 
     Examples:
         Using a Redis URL:
@@ -30,8 +32,12 @@ class Redis(HealthCheck):
         With authentication:
         >>> Redis(redis_url='redis://:password@localhost:6379/0')
 
-        Using Redis Cluster:
-        >>> Redis(redis_url='redis://localhost:7000')
+        Using SSL:
+        >>> Redis(redis_url='rediss://localhost:6380/0')
+
+    Note:
+        Redis Sentinel is not supported with URL-based configuration.
+        Use the redis:// scheme for both standalone and cluster connections.
 
     """
 
