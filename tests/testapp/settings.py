@@ -52,14 +52,12 @@ SECRET_KEY = uuid.uuid4().hex
 
 USE_TZ = True
 
-CELERY_QUEUES = []
-
 try:
     from kombu import Queue
 except ImportError:
     pass
 else:
-    CELERY_QUEUES += [
+    CELERY_QUEUES = [
         Queue("default"),
         Queue("queue2"),
     ]
