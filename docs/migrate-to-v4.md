@@ -53,3 +53,54 @@
 - `CeleryHealthCheck` has been replaced with [Ping][health_check.contrib.celery.Ping].
 - `MigrationsHealthCheck` has been removed; its functionality is covered by [Django's check framework](https://docs.djangoproject.com/en/stable/topics/checks/).
 - `DatabaseHealthCheck` has been replaced with [Database][health_check.Database] which doesn't require a table and supports multiple database aliases.
+
+## Redis Health Check Migration
+
+The `redis_url` parameter has been removed in version 4.0.0. You must now pass a Redis client instance directly.
+
+### Before (v3.x)
+
+In version 3.x, you could pass a `redis_url` parameter:
+
+```python
+# urls.py (v3.x - NO LONGER WORKS)
+from health_check.views import HealthCheckView
+
+path(
+    "health/",
+    HealthCheckView.as_view(
+        checks=[
+            (
+                "health_check.contrib.redis.Redis",
+                {"redis_url": "redis://localhost:6379"},
+            )
+        ]
+    ),
+)
+```
+
+### After (v4.x)
+
+In version 4.0.0 and later, you must create and pass a client instance:
+
+```python
+# urls.py (v4.x)
+from health_check.views import HealthCheckView
+from redis.asyncio import Redis as RedisClient
+
+path(
+    "health/",
+    HealthCheckView.as_view(
+        checks=[
+            (
+                "health_check.contrib.redis.Redis",
+                {"client": RedisClient.from_url("redis://localhost:6379")},
+            )
+        ]
+    ),
+)
+```
+
+This change allows you to use any Redis client type (standard, Sentinel, or Cluster) with full control over client configuration. Note that the client must be an async client from `redis.asyncio`.
+
+For more details, see [Redis][health_check.contrib.redis.Redis].

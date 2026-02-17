@@ -24,7 +24,7 @@ Add a health check view to your URL configuration. For example:
 # urls.py
 from django.urls import include, path
 from health_check.views import HealthCheckView
-from redis import Redis
+from redis.asyncio import Redis as RedisClient
 
 urlpatterns = [
     # …
@@ -51,7 +51,7 @@ urlpatterns = [
                 ),
                 (
                     "health_check.contrib.redis.Redis",
-                    {"client": Redis.from_url("redis://localhost:6379")},
+                    {"client": RedisClient.from_url("redis://localhost:6379")},
                 ),
                 # AWS service status check
                 (

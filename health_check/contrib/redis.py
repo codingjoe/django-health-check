@@ -23,12 +23,16 @@ class Redis(HealthCheck):
 
     Args:
         client: A Redis client instance (Redis, Sentinel master, or Cluster).
-                If provided, this takes precedence over redis_url.
+                Must be an async client from redis.asyncio.
 
     Examples:
         Using a standard Redis client:
         >>> from redis.asyncio import Redis as RedisClient
         >>> Redis(client=RedisClient(host='localhost', port=6379))
+
+        Using from_url to create a client:
+        >>> from redis.asyncio import Redis as RedisClient
+        >>> Redis(client=RedisClient.from_url('redis://localhost:6379'))
 
         Using a Cluster client:
         >>> from redis.asyncio import RedisCluster
