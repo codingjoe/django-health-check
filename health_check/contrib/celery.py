@@ -3,6 +3,7 @@
 import dataclasses
 import datetime
 import typing
+from types import MappingProxyType
 
 import celery
 from celery.app import app_or_default
@@ -25,7 +26,9 @@ class Ping(HealthCheck):
 
     """
 
-    CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
+    CORRECT_PING_RESPONSE: typing.Final[dict[str, str]] = MappingProxyType(
+        {"ok": "pong"}
+    )
     app: celery.Celery = dataclasses.field(default_factory=app_or_default)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
@@ -59,11 +62,11 @@ class Ping(HealthCheck):
             yield worker
 
     def check_active_queues(self, *active_workers):
-        defined_queues = {
-            queue.name
-            for queue in getattr(self.app.conf, "task_queues", None)
-            or getattr(self.app.conf, "CELERY_QUEUES", None)
-        }
+        try:
+            defined_queues = {queue.name for queue in self.app.conf.task_queues}
+        except TypeError:
+            # conf.task_queues may be None
+            defined_queues = {self.app.conf.task_default_queue}
         active_queues = {
             queue.get("name")
             for queues in self.app.control.inspect(active_workers)
