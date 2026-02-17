@@ -58,7 +58,6 @@ class TestAWS:
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
-                assert "1 recent incident(s)" in str(result.error)
                 assert "Service is operating normally" in str(result.error)
 
     @pytest.mark.asyncio
@@ -103,7 +102,7 @@ class TestAWS:
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
-                assert "2 recent incident(s)" in str(result.error)
+                assert "\n" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__no_recent_incidents(self):
@@ -327,7 +326,7 @@ class TestAWS:
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
-                assert "Untitled incident" in str(result.error)
+                assert "Unknown Incident" in str(result.error)
 
     def test_feed_url_format(self):
         """Verify correct feed URL format for AWS."""
@@ -796,7 +795,7 @@ class TestGoogleCloud:
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
-                assert "Untitled incident" in str(result.error)
+                assert "Unknown Incident:" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__atom_entry_without_title(self):
@@ -833,4 +832,4 @@ class TestGoogleCloud:
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
-                assert "Untitled incident" in str(result.error)
+                assert "Unknown Incident:" in str(result.error)

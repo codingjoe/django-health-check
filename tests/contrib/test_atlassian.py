@@ -234,9 +234,7 @@ class TestGitHub:
     def test_base_url_format(self):
         """Verify correct base URL for GitHub."""
         assert GitHub().base_url == "https://www.githubstatus.com"
-        assert (
-            GitHub(GitHub.EnterpriseRegion.eu).base_url == "https://eu.githubstatus.com"
-        )
+        assert GitHub("eu").base_url == "https://eu.githubstatus.com"
 
 
 class TestCloudflare:

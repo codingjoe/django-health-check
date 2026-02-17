@@ -3,7 +3,6 @@
 import dataclasses
 import datetime
 import typing
-from types import MappingProxyType
 
 import celery
 from celery.app import app_or_default
@@ -26,9 +25,7 @@ class Ping(HealthCheck):
 
     """
 
-    CORRECT_PING_RESPONSE: typing.Final[dict[str, str]] = MappingProxyType(
-        {"ok": "pong"}
-    )
+    CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
     app: celery.Celery = dataclasses.field(default_factory=app_or_default)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
