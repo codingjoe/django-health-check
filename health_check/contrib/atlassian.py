@@ -123,19 +123,24 @@ class GitHub(AtlassianStatusPage):
 
     """
 
-    class EnterpriseRegion(enum.StrEnum):
-        """GitHub Enterprise status page regions."""
+    try:
 
-        australia = "au"
-        """Australia."""
-        eu = "eu"
-        """Europe."""
-        japan = "jp"
-        """Japan."""
-        us = "us"
-        """United States."""
+        class EnterpriseRegion(enum.StrEnum):
+            """GitHub Enterprise status page regions."""
 
-    enterprise_region: EnterpriseRegion | None = None
+            australia = "au"
+            """Australia."""
+            eu = "eu"
+            """Europe."""
+            japan = "jp"
+            """Japan."""
+            us = "us"
+            """United States."""
+
+        enterprise_region: EnterpriseRegion | None = None
+    except AttributeError:
+        # Python <3.11 doesn't have StrEnum, so fall back to a simple string field with validation
+        enterprise_region: str | None = None
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
