@@ -92,9 +92,11 @@ jobs:
       KAFKA_BOOTSTRAP_SERVERS: localhost:9092
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version:
-          - "3.13"
+          - "3.10"
+          - "3.14"
         django-version:
           - "5.2"
         extra:
