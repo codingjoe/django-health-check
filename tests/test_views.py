@@ -446,6 +446,127 @@ class TestHealthCheckView:
         assert b"error" in response.content or b"unhealthy" in response.content
 
     @pytest.mark.asyncio
+    async def test_get__atom_feed_healthy_uses_epoch(self, health_check_view):
+        """Use epoch 0 for healthy checks in Atom feed."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="atom")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert entry.published_parsed[:3] == (1970, 1, 1), (
+            "Healthy check should use epoch (1970-01-01) as published date"
+        )
+        assert entry.updated_parsed[:3] == (1970, 1, 1), (
+            "Healthy check should use epoch (1970-01-01) as updated date"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__atom_feed_error_uses_current_time(self, health_check_view):
+        """Use current timestamp for failed checks in Atom feed."""
+        import datetime
+
+        feedparser = pytest.importorskip("feedparser")
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Check failed")
+
+        response = await health_check_view([FailingBackend], format_param="atom")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        published_at = datetime.datetime(
+            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+        )
+        assert (now - published_at).total_seconds() < 60, (
+            "Failed check should use current timestamp (within last 60 seconds)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__rss_feed_healthy_uses_epoch(self, health_check_view):
+        """Use epoch 0 for healthy checks in RSS feed."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert entry.published_parsed[:3] == (1970, 1, 1), (
+            "Healthy check should use epoch (1970-01-01) as published date"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__rss_feed_error_uses_current_time(self, health_check_view):
+        """Use current timestamp for failed checks in RSS feed."""
+        import datetime
+
+        feedparser = pytest.importorskip("feedparser")
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Check failed")
+
+        response = await health_check_view([FailingBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        published_at = datetime.datetime(
+            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+        )
+        assert (now - published_at).total_seconds() < 60, (
+            "Failed check should use current timestamp (within last 60 seconds)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__atom_feed_mixed_checks_uses_correct_dates(
+        self, health_check_view
+    ):
+        """Use epoch for healthy and current time for failed checks in the same feed."""
+        import datetime
+
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Check failed")
+
+        response = await health_check_view(
+            [SuccessBackend, FailingBackend], format_param="atom"
+        )
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 2
+
+        healthy_entry = next(e for e in feed.entries if "SuccessBackend" in e.title)
+        failed_entry = next(e for e in feed.entries if "FailingBackend" in e.title)
+
+        assert healthy_entry.published_parsed[:3] == (1970, 1, 1), (
+            "Healthy check should use epoch (1970-01-01) in mixed feed"
+        )
+
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        published_at = datetime.datetime(
+            *failed_entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+        )
+        assert (now - published_at).total_seconds() < 60, (
+            "Failed check should use current timestamp in mixed feed"
+        )
+
+    @pytest.mark.asyncio
     async def test_get_plugins__with_string_import(self):
         """Import check from string path."""
         from django.test import AsyncRequestFactory

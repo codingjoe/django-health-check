@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import re
 import typing
 
@@ -254,12 +255,17 @@ class HealthCheckView(TemplateView):
         )
 
         for result in self.results:
+            published_at = (
+                timezone.now()
+                if result.error
+                else datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+            )
             feed.add_item(
                 title=repr(result.check),
                 link=self.request.build_absolute_uri(),
                 description=f"{result.check!r}\nResponse time: {result.time_taken:.3f}s",
-                pubdate=timezone.now(),
-                updateddate=timezone.now(),
+                pubdate=published_at,
+                updateddate=published_at,
                 author_name=self.feed_author,
                 categories=["error", "unhealthy"] if result.error else ["healthy"],
             )
