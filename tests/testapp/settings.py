@@ -1,3 +1,4 @@
+import contextlib
 import os.path
 import uuid
 
@@ -52,18 +53,16 @@ SECRET_KEY = uuid.uuid4().hex
 
 USE_TZ = True
 
-CELERY_QUEUES = []
+CELERY_TASK_QUEUES = []
+CELERY_TASK_DEFAULT_QUEUE = "default"
 
-try:
-    from kombu import Queue
-except ImportError:
-    pass
-else:
-    CELERY_QUEUES += [
-        Queue("default"),
-        Queue("queue2"),
+with contextlib.suppress(ImportError):
+    import kombu
+
+    CELERY_TASK_QUEUES += [
+        kombu.Queue("default"),
+        kombu.Queue("queue2"),
     ]
-
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost/1")
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")

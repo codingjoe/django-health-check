@@ -121,6 +121,7 @@ select = [
     "SIM", # flake8-simplify
     "UP", # pyupgrade
     "W", # pycodestyle warnings
+    "T20" # flake8-print
 ]
 ignore = ["D1", "D203", "D212", "E501"]
 

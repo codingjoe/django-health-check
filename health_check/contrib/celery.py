@@ -59,11 +59,15 @@ class Ping(HealthCheck):
             yield worker
 
     def check_active_queues(self, *active_workers):
-        defined_queues = {
-            queue.name
-            for queue in getattr(self.app.conf, "task_queues", None)
-            or getattr(self.app.conf, "CELERY_QUEUES", None)
-        }
+        queues = (
+            getattr(self.app.conf, "task_queues", None)
+            or getattr(self.app.conf, "CELERY_TASK_QUEUES", None)
+        ) or ()
+        defined_queues = {queue.name for queue in queues}
+        if task_default_queue := getattr(
+            self.app.conf, "task_default_queue", None
+        ) or getattr(self.app.conf, "CELERY_TASK_DEFAULT_QUEUE", None):
+            defined_queues.add(task_default_queue)
         active_queues = {
             queue.get("name")
             for queues in self.app.control.inspect(active_workers)

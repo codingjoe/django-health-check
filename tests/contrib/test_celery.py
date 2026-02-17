@@ -14,15 +14,71 @@ class TestCelery:
     """Test Celery ping health check."""
 
     @pytest.mark.asyncio
-    async def test_check_status__success(self):
+    async def test_check_status__success(self, settings):
         """Report healthy when workers respond correctly."""
         app = mock.MagicMock()
         app.ping.return_value = [{"celery@worker1": {"ok": "pong"}}]
+        app.conf.task_queues = settings.CELERY_TASK_QUEUES
+        app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE
+        app.control.inspect.return_value.active_queues.return_value = {
+            "celery@worker1": [
+                {"name": "default"},
+                {"name": "queue2"},
+            ],
+        }
         check = CeleryPingHealthCheck()
         check.app = app
 
         result = await check.get_result()
         assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__success__django_settings(self, settings):
+        """
+        Report healthy when workers respond correctly.
+
+        Check DJANGO settings case.
+
+        """
+        app = mock.MagicMock()
+        app.ping.return_value = [{"celery@worker1": {"ok": "pong"}}]
+        app.conf.task_queues = None
+        app.conf.task_default_queue = None
+        app.conf.CELERY_TASK_QUEUES = settings.CELERY_TASK_QUEUES
+        app.conf.CELERY_TASK_DEFAULT_QUEUE = settings.CELERY_TASK_DEFAULT_QUEUE
+        app.control.inspect.return_value.active_queues.return_value = {
+            "celery@worker1": [
+                {"name": "default"},
+                {"name": "queue2"},
+            ],
+        }
+        check = CeleryPingHealthCheck()
+        check.app = app
+
+        result = await check.get_result()
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__one_missing(self, settings):
+        """Report when worker is missing for one queue."""
+        app = mock.MagicMock()
+        app.ping.return_value = [{"celery@worker1": {"ok": "pong"}}]
+        app.conf.task_queues = None
+        app.conf.task_default_queue = None
+        app.conf.task_queues = settings.CELERY_TASK_QUEUES
+        app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE
+        app.control.inspect.return_value.active_queues.return_value = {
+            "celery@worker1": [
+                {"name": "default"},
+            ],
+        }
+        check = CeleryPingHealthCheck()
+        check.app = app
+
+        result = await check.get_result()
+        assert result.error is not None
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "no worker for celery task queue queue2" in str(result.error).lower()
 
     @pytest.mark.asyncio
     async def test_check_status__no_workers(self):
@@ -96,6 +152,7 @@ class TestCelery:
         mock_queue = mock.MagicMock()
         mock_queue.name = "missing_queue"
         mock_app.conf.task_queues = [mock_queue]
+        mock_app.conf.task_default_queue = "missing_queue"
         mock_inspect = mock.MagicMock()
         mock_inspect.active_queues.return_value = {
             "celery@worker1": [{"name": "celery"}]
@@ -108,3 +165,27 @@ class TestCelery:
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
         assert "missing_queue" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__default_queue__success(self, settings):
+        """
+        Report healthy when workers respond correctly.
+
+        Check case when instead of CELERY_TASK_QUEUES,
+        only CELERY_TASK_DEFAULT_QUEUE is set.
+
+        """
+        app = mock.MagicMock()
+        app.ping.return_value = [{"celery@worker1": {"ok": "pong"}}]
+        app.conf.task_queues = None
+        app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE
+        app.control.inspect.return_value.active_queues.return_value = {
+            "celery@worker1": [
+                {"name": "default"},
+            ],
+        }
+        check = CeleryPingHealthCheck()
+        check.app = app
+
+        result = await check.get_result()
+        assert result.error is None
