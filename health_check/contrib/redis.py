@@ -64,13 +64,13 @@ class Redis(HealthCheck):
 
     async def run(self):
         logger.debug("Pinging Redis client...")
-        
+
         # Create a fresh client if using factory, otherwise use the provided client
         if self.client_factory:
             client = self.client_factory()
         else:
             client = self.client
-        
+
         try:
             await client.ping()
         except ConnectionRefusedError as e:
