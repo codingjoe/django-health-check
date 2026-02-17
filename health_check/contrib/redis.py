@@ -5,7 +5,6 @@ import logging
 
 from redis import exceptions
 from redis.asyncio import Redis as RedisClient
-from redis.asyncio import RedisCluster
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable
@@ -16,41 +15,33 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class Redis(HealthCheck):
     """
-    Check Redis service by pinging a Redis client.
+    Check Redis service by pinging a Redis server.
 
-    This check works with any Redis client that implements the ping() method,
-    including standard Redis, Sentinel, and Cluster clients.
+    Creates a new Redis client connection for each health check to avoid
+    event loop binding issues across multiple requests.
 
     Args:
-        client: A Redis client instance (Redis, Sentinel master, or Cluster).
-                Must be an async client from redis.asyncio.
+        redis_url: Redis connection URL, e.g., 'redis://localhost:6379/0'.
 
     Examples:
-        Using a standard Redis client:
-        >>> from redis.asyncio import Redis as RedisClient
-        >>> Redis(client=RedisClient(host='localhost', port=6379))
+        Using a Redis URL:
+        >>> Redis(redis_url='redis://localhost:6379/0')
 
-        Using from_url to create a client:
-        >>> from redis.asyncio import Redis as RedisClient
-        >>> Redis(client=RedisClient.from_url('redis://localhost:6379'))
+        With authentication:
+        >>> Redis(redis_url='redis://:password@localhost:6379/0')
 
-        Using a Cluster client:
-        >>> from redis.asyncio import RedisCluster
-        >>> Redis(client=RedisCluster(host='localhost', port=7000))
-
-        Using a Sentinel client:
-        >>> from redis.asyncio import Sentinel
-        >>> sentinel = Sentinel([('localhost', 26379)])
-        >>> Redis(client=sentinel.master_for('mymaster'))
+        Using Redis Cluster:
+        >>> Redis(redis_url='redis://localhost:7000')
 
     """
 
-    client: RedisClient | RedisCluster = dataclasses.field(repr=False)
+    redis_url: str
 
     async def run(self):
-        logger.debug("Pinging Redis client...")
+        logger.debug("Connecting to Redis at %r...", self.redis_url)
+        client = RedisClient.from_url(self.redis_url)
         try:
-            await self.client.ping()
+            await client.ping()
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(
                 "Unable to connect to Redis: Connection was refused."
@@ -63,3 +54,5 @@ class Redis(HealthCheck):
             ) from e
         else:
             logger.debug("Connection established. Redis is healthy.")
+        finally:
+            await client.aclose()
