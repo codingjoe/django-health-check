@@ -26,8 +26,8 @@ class Ping(HealthCheck):
 
     """
 
-    CORRECT_PING_RESPONSE: typing.Final[dict[str, str]] = MappingProxyType(
-        {"ok": "pong"}
+    CORRECT_PING_RESPONSE: typing.Final[dict[str, str]] = dataclasses.field(
+        default_factory=lambda: MappingProxyType({"ok": "pong"})
     )
     app: celery.Celery = dataclasses.field(default_factory=app_or_default)
     timeout: datetime.timedelta = dataclasses.field(
