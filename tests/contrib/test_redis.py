@@ -98,7 +98,7 @@ class TestRedis:
         # First request
         result1 = await check.get_result()
         assert result1.error is None
-        assert call_count == 1, "Factory should be called once for first request"
+        assert call_count == 1, "Factory should be called exactly once for the first request"
         assert len(clients) == 1
         clients[0].ping.assert_called_once()
         clients[0].aclose.assert_called_once()
@@ -106,7 +106,7 @@ class TestRedis:
         # Second request
         result2 = await check.get_result()
         assert result2.error is None
-        assert call_count == 2, "Factory should be called again for second request"
+        assert call_count == 2, "Factory should be called exactly twice after two requests"
         assert len(clients) == 2
         assert clients[0] is not clients[1], "Each request should get a new client"
         clients[1].ping.assert_called_once()
