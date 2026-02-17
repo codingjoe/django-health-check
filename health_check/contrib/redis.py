@@ -2,6 +2,8 @@
 
 import dataclasses
 import logging
+import typing
+import warnings
 
 from redis import exceptions
 from redis.asyncio import Redis as RedisClient
@@ -22,30 +24,43 @@ class Redis(HealthCheck):
     including standard Redis, Sentinel, and Cluster clients.
 
     Args:
-        client: A Redis client instance (Redis, Sentinel master, or Cluster).
-                Must be an async client from redis.asyncio.
+        client_factory: A callable that returns an instance of a Redis client.
+        client: Deprecated, use `client_factory` instead.
 
     Examples:
         Using a standard Redis client:
         >>> from redis.asyncio import Redis as RedisClient
-        >>> Redis(client=RedisClient(host='localhost', port=6379))
+        >>> Redis(client_factory=lambda: RedisClient(host='localhost', port=6379))
 
         Using from_url to create a client:
         >>> from redis.asyncio import Redis as RedisClient
-        >>> Redis(client=RedisClient.from_url('redis://localhost:6379'))
+        >>> Redis(client_factory=lambda: RedisClient.from_url('redis://localhost:6379'))
 
         Using a Cluster client:
         >>> from redis.asyncio import RedisCluster
-        >>> Redis(client=RedisCluster(host='localhost', port=7000))
+        >>> Redis(client_factory=lambda: RedisCluster(host='localhost', port=7000))
 
         Using a Sentinel client:
         >>> from redis.asyncio import Sentinel
-        >>> sentinel = Sentinel([('localhost', 26379)])
-        >>> Redis(client=sentinel.master_for('mymaster'))
+        >>> Redis(client_factory=lambda: Sentinel([('localhost', 26379)]).master_for('mymaster'))
 
     """
 
-    client: RedisClient | RedisCluster = dataclasses.field(repr=False)
+    client: RedisClient | RedisCluster | None = dataclasses.field(repr=False)
+    client_factory: typing.Callable[[], RedisClient | RedisCluster] | None = (
+        dataclasses.field(repr=False, default=None)
+    )
+
+    def __post_init__(self):
+        if self.client_factory:
+            self.client = self.client_factory()
+        else:
+            warnings.warn(
+                "The `client` argument is deprecated and will be removed in a future version. "
+                "Please use `client_factory` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     async def run(self):
         logger.debug("Pinging Redis client...")
