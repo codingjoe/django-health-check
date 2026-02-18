@@ -89,17 +89,15 @@ class Feed(HealthCheck):
             logger.debug("No entries found in feed")
             return
 
-        incidents = [entry for entry in feed.entries if self._is_recent_incident(entry)]
-
-        if incidents:
+        if incidents := [
+            entry for entry in feed.entries if self._is_recent_incident(entry)
+        ]:
             raise ServiceWarning(
-                f"Found {len(incidents)} recent incident(s): {
-                    ', '.join(
-                        getattr(entry, 'title', 'Untitled incident')
-                        or 'Untitled incident'
-                        for entry in incidents
-                    )
-                }"
+                "\n".join(
+                    f"{getattr(entry, 'title', 'Unknown Incident') or 'Unknown Incident'}:"
+                    f" {getattr(entry, 'link', self.feed_url) or self.feed_url}"
+                    for entry in incidents
+                )
             )
 
         logger.debug("No recent incidents found in feed")
