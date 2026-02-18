@@ -79,37 +79,47 @@ class TestRedis:
         result = await check.get_result()
         assert result.error is None
         mock_client.ping.assert_called_once()
-        mock_client.aclose.assert_called_once()
+        # User-provided client should NOT be closed by the health check
+        mock_client.aclose.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_redis__factory_called_once_in_init(self):
-        """Verify client_factory is called once during initialization."""
+    async def test_redis__factory_called_for_each_result(self):
+        """Verify client_factory is called per result and each client is closed."""
         call_count = 0
+        created_clients = []
 
         def factory():
-            nonlocal call_count
+            nonlocal call_count, created_clients
             call_count += 1
             client = mock.AsyncMock()
             client.ping.return_value = True
+            created_clients.append(client)
             return client
 
         check = RedisHealthCheck(client_factory=factory)
-        assert call_count == 1, "Factory should be called once during initialization"
+        # Factory should not be called eagerly during initialization
+        assert call_count == 0, "Factory should not be called during initialization"
 
-        # Multiple requests reuse the same client
+        # Each request should use a newly created client
         result1 = await check.get_result()
         assert result1.error is None
-        assert call_count == 1, (
-            "Factory should not be called again for subsequent requests"
-        )
+        assert call_count == 1, "Factory should be called once for first request"
 
         result2 = await check.get_result()
         assert result2.error is None
-        assert call_count == 1, "Factory should still not be called again"
+        assert call_count == 2, "Factory should be called again for second request"
+
+        # Ensure a distinct client was created and closed for each result
+        assert len(created_clients) == 2
+        assert created_clients[0] is not created_clients[1], (
+            "Each request should create a distinct client"
+        )
+        created_clients[0].aclose.assert_called_once()
+        created_clients[1].aclose.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_redis__client_always_closed(self):
-        """Verify client is always closed after health check."""
+    async def test_redis__client_not_closed_when_user_provided(self):
+        """Verify user-provided client is NOT closed by health check."""
         mock_client = mock.AsyncMock()
         mock_client.ping.return_value = True
 
@@ -119,7 +129,25 @@ class TestRedis:
         result = await check.get_result()
         assert result.error is None
         mock_client.ping.assert_called_once()
-        mock_client.aclose.assert_called_once()
+        # User is responsible for closing their own client
+        mock_client.aclose.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_redis__validation_both_params(self):
+        """Verify error when both client and client_factory are provided."""
+        mock_client = mock.AsyncMock()
+        with pytest.raises(
+            ValueError, match="Provide exactly one of `client` or `client_factory`"
+        ):
+            RedisHealthCheck(client=mock_client, client_factory=lambda: mock_client)
+
+    @pytest.mark.asyncio
+    async def test_redis__validation_neither_param(self):
+        """Verify error when neither client nor client_factory is provided."""
+        with pytest.raises(
+            ValueError, match="You must provide either `client`.*or `client_factory`"
+        ):
+            RedisHealthCheck()
 
     @pytest.mark.integration
     @pytest.mark.asyncio
