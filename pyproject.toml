@@ -53,12 +53,13 @@ atlassian = ["httpx>=0.27.0"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
-Homepage = "https://codingjoe.dev/django-health-check/"
+Homepage = "https://github.com/codingjoe/django-health-check"
 Changelog = "https://github.com/codingjoe/django-health-check/releases"
 Source = "https://github.com/codingjoe/django-health-check"
 Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
 Documentation = "https://codingjoe.dev/django-health-check/"
 Issues = "https://github.com/codingjoe/django-health-check/issues"
+Funding = "https://github.com/sponsors/codingjoe"
 
 [dependency-groups]
 dev = [
