@@ -53,17 +53,37 @@ class Redis(HealthCheck):
         dataclasses.field(repr=False, default=None)
     )
 
-    async def run(self):
-        if self.client_factory:
-            client = self.client_factory()
-        else:
+    def __post_init__(self):
+        # Validate that exactly one of client or client_factory is provided
+        if self.client is not None and self.client_factory is not None:
+            raise ValueError(
+                "Provide exactly one of `client` or `client_factory`, not both."
+            )
+        if self.client is None and self.client_factory is None:
+            raise ValueError(
+                "You must provide either `client` (deprecated) or `client_factory` "
+                "when instantiating `Redis`."
+            )
+
+        # Emit deprecation warning if using the old client parameter
+        if self.client is not None:
             warnings.warn(
                 "The `client` argument is deprecated and will be removed in a future version. "
                 "Please use `client_factory` instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
+
+    async def run(self):
+        # Create a new client for this health check request
+        if self.client_factory is not None:
+            client = self.client_factory()
+            should_close = True
+        else:
+            # Use the deprecated client parameter (user manages lifecycle)
             client = self.client
+            should_close = False
+
         logger.debug("Pinging Redis client...")
         try:
             await client.ping()
@@ -80,4 +100,6 @@ class Redis(HealthCheck):
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
-            await client.aclose()
+            # Only close clients created by client_factory
+            if should_close:
+                await client.aclose()
