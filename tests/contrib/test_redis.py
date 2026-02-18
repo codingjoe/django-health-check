@@ -23,7 +23,7 @@ class TestRedis:
         mock_client = mock.AsyncMock()
         mock_client.ping.return_value = True
 
-        check = RedisHealthCheck(client=None, client_factory=lambda: mock_client)
+        check = RedisHealthCheck(client_factory=lambda: mock_client)
         result = await check.get_result()
         assert result.error is None
         mock_client.ping.assert_called_once()
@@ -35,7 +35,7 @@ class TestRedis:
         mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = ConnectionRefusedError("refused")
 
-        check = RedisHealthCheck(client=None, client_factory=lambda: mock_client)
+        check = RedisHealthCheck(client_factory=lambda: mock_client)
         result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
@@ -47,7 +47,7 @@ class TestRedis:
         mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = RedisTimeoutError("timeout")
 
-        check = RedisHealthCheck(client=None, client_factory=lambda: mock_client)
+        check = RedisHealthCheck(client_factory=lambda: mock_client)
         result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
@@ -59,7 +59,7 @@ class TestRedis:
         mock_client = mock.AsyncMock()
         mock_client.ping.side_effect = RedisConnectionError("connection error")
 
-        check = RedisHealthCheck(client=None, client_factory=lambda: mock_client)
+        check = RedisHealthCheck(client_factory=lambda: mock_client)
         result = await check.get_result()
         assert result.error is not None
         assert isinstance(result.error, ServiceUnavailable)
@@ -93,7 +93,7 @@ class TestRedis:
             client.ping.return_value = True
             return client
 
-        check = RedisHealthCheck(client=None, client_factory=factory)
+        check = RedisHealthCheck(client_factory=factory)
         assert call_count == 1, "Factory should be called once during initialization"
 
         # Multiple requests reuse the same client
@@ -131,9 +131,7 @@ class TestRedis:
 
         from redis.asyncio import Redis as RedisClient
 
-        check = RedisHealthCheck(
-            client=None, client_factory=lambda: RedisClient.from_url(redis_url)
-        )
+        check = RedisHealthCheck(client_factory=lambda: RedisClient.from_url(redis_url))
         result = await check.get_result()
         assert result.error is None
 
@@ -162,6 +160,6 @@ class TestRedis:
             sentinel = Sentinel(sentinels)
             return sentinel.master_for(service_name)
 
-        check = RedisHealthCheck(client=None, client_factory=factory)
+        check = RedisHealthCheck(client_factory=factory)
         result = await check.get_result()
         assert result.error is None

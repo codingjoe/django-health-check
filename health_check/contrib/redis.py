@@ -46,7 +46,9 @@ class Redis(HealthCheck):
 
     """
 
-    client: RedisClient | RedisCluster | None = dataclasses.field(repr=False)
+    client: RedisClient | RedisCluster | None = dataclasses.field(
+        repr=False, default=None
+    )
     client_factory: typing.Callable[[], RedisClient | RedisCluster] | None = (
         dataclasses.field(repr=False, default=None)
     )
