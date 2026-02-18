@@ -53,9 +53,9 @@ class Redis(HealthCheck):
         dataclasses.field(repr=False, default=None)
     )
 
-    def __post_init__(self):
+    async def run(self):
         if self.client_factory:
-            self.client = self.client_factory()
+            client = self.client_factory()
         else:
             warnings.warn(
                 "The `client` argument is deprecated and will be removed in a future version. "
@@ -63,11 +63,10 @@ class Redis(HealthCheck):
                 DeprecationWarning,
                 stacklevel=2,
             )
-
-    async def run(self):
+            client = self.client
         logger.debug("Pinging Redis client...")
         try:
-            await self.client.ping()
+            await client.ping()
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(
                 "Unable to connect to Redis: Connection was refused."
@@ -81,4 +80,4 @@ class Redis(HealthCheck):
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:
-            await self.client.aclose()
+            await client.aclose()
