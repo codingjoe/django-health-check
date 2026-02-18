@@ -51,7 +51,11 @@ urlpatterns = [
                 ),
                 (
                     "health_check.contrib.redis.Redis",
-                    {"client": RedisClient.from_url("redis://localhost:6379")},
+                    {
+                        "client_factory": lambda: RedisClient.from_url(
+                            "redis://localhost:6379"
+                        )
+                    },
                 ),
                 # AWS service status check
                 (
