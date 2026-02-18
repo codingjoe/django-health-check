@@ -71,7 +71,9 @@ class TestRedis:
         mock_client = mock.AsyncMock()
         mock_client.ping.return_value = True
 
-        with pytest.warns(DeprecationWarning, match="client.*deprecated.*client_factory"):
+        with pytest.warns(
+            DeprecationWarning, match="client.*deprecated.*client_factory"
+        ):
             check = RedisHealthCheck(client=mock_client)
 
         result = await check.get_result()
@@ -97,7 +99,9 @@ class TestRedis:
         # Multiple requests reuse the same client
         result1 = await check.get_result()
         assert result1.error is None
-        assert call_count == 1, "Factory should not be called again for subsequent requests"
+        assert call_count == 1, (
+            "Factory should not be called again for subsequent requests"
+        )
 
         result2 = await check.get_result()
         assert result2.error is None
