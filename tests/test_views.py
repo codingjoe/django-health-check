@@ -567,6 +567,91 @@ class TestHealthCheckView:
         )
 
     @pytest.mark.asyncio
+    async def test_get__rss_feed_description_includes_status(self, health_check_view):
+        """RSS feed item description includes status message."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Something went wrong")
+
+        response = await health_check_view([FailingBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert "Something went wrong" in entry.summary, (
+            "Feed description should include the actual error message"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__rss_feed_description_healthy_shows_ok(self, health_check_view):
+        """RSS feed item description shows OK for healthy checks."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert "OK" in entry.summary, (
+            "Feed description should show OK for healthy checks"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__rss_feed_link_excludes_format_param(self, health_check_view):
+        """RSS feed item link does not include the format query parameter."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert "format=rss" not in entry.link, (
+            "Feed item link should not include the format query parameter"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__atom_feed_description_includes_status(self, health_check_view):
+        """Atom feed item description includes status message."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Database unreachable")
+
+        response = await health_check_view([FailingBackend], format_param="atom")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert "Database unreachable" in entry.summary, (
+            "Feed description should include the actual error message"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__atom_feed_link_excludes_format_param(self, health_check_view):
+        """Atom feed item link does not include the format query parameter."""
+        feedparser = pytest.importorskip("feedparser")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="atom")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        assert "format=atom" not in entry.link, (
+            "Feed item link should not include the format query parameter"
+        )
+
+    @pytest.mark.asyncio
     async def test_get_plugins__with_string_import(self):
         """Import check from string path."""
         from django.test import AsyncRequestFactory
