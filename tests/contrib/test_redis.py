@@ -201,14 +201,21 @@ class TestRedis:
         assert repr(check) == "Redis()"
 
     def test_redis__repr_cluster_client(self):
-        """Verify repr falls back gracefully for RedisCluster clients without connection_pool."""
+        """Verify repr includes startup node hosts for RedisCluster clients."""
         from redis.asyncio import RedisCluster
+        from redis.asyncio.cluster import ClusterNode
 
         check = RedisHealthCheck(
-            client_factory=lambda: RedisCluster(host="clusterhost", port=7000)
+            client_factory=lambda: RedisCluster(
+                startup_nodes=[ClusterNode("node1", 7000), ClusterNode("node2", 7001)]
+            )
         )
-        # RedisCluster has no connection_pool attribute, so __repr__ should fall back
-        assert repr(check) == "Redis()"
+        assert "node1:7000" in repr(check), (
+            "repr should include the first cluster node host:port"
+        )
+        assert "node2:7001" in repr(check), (
+            "repr should include the second cluster node host:port"
+        )
 
     @pytest.mark.integration
     @pytest.mark.asyncio
