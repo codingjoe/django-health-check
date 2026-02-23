@@ -217,7 +217,57 @@ class TestRedis:
             "repr should include the second cluster node host:port"
         )
 
-    @pytest.mark.integration
+    def test_redis__repr_excludes_password(self):
+        """Verify repr never leaks passwords for standard Redis clients."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient(
+                host="myhost", port=6379, db=0, password="supersecret"
+            )
+        )
+        assert "supersecret" not in repr(check), (
+            "repr must never expose the Redis password"
+        )
+
+    def test_redis__repr_excludes_password_from_url(self):
+        """Verify repr never leaks passwords embedded in a Redis URL."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient.from_url(
+                "redis://admin:supersecret@cache.example.com:6379/3"
+            )
+        )
+        result = repr(check)
+        assert "supersecret" not in result, (
+            "repr must never expose the password from a Redis URL"
+        )
+        assert "admin" not in result, (
+            "repr must never expose the username from a Redis URL"
+        )
+
+    def test_redis__repr_excludes_cluster_password(self):
+        """Verify repr never leaks passwords for RedisCluster clients."""
+        from redis.asyncio import RedisCluster
+        from redis.asyncio.cluster import ClusterNode
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisCluster(
+                startup_nodes=[ClusterNode("node1", 7000)],
+                password="clusterpass",
+                username="clusteruser",
+            )
+        )
+        result = repr(check)
+        assert "clusterpass" not in result, (
+            "repr must never expose the cluster password"
+        )
+        assert "clusteruser" not in result, (
+            "repr must never expose the cluster username"
+        )
+
+
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):
         """Ping real Redis server when REDIS_URL is configured."""
