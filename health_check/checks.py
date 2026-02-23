@@ -11,13 +11,15 @@ import dns.asyncresolver
 from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
+from django.core.cache.backends.base import InvalidCacheBackendError
 from django.core.files.base import ContentFile
+from django.core.files.storage import InvalidStorageError, storages
 from django.core.files.storage import Storage as DjangoStorage
-from django.core.files.storage import storages
 from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import connections
 from django.db.models import Expression
+from django.utils.connection import ConnectionDoesNotExist
 
 from health_check.base import HealthCheck
 from health_check.exceptions import (
@@ -62,7 +64,10 @@ class Cache(HealthCheck):
     )
 
     async def run(self):
-        cache = caches[self.alias]
+        try:
+            cache = caches[self.alias]
+        except InvalidCacheBackendError as e:
+            raise ServiceUnavailable("Cache alias does not exist") from e
         # Use an isolated key per probe run to avoid cross-process write races.
         cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
         cache_value = f"itworks-{datetime.datetime.now().timestamp()}"
@@ -109,7 +114,10 @@ class Database(HealthCheck):
     alias: str = "default"
 
     def run(self):
-        connection = connections[self.alias]
+        try:
+            connection = connections[self.alias]
+        except ConnectionDoesNotExist as e:
+            raise ServiceUnavailable("Database alias does not exist") from e
         result = None
         try:
             compiler = connection.ops.compiler("SQLCompiler")(
@@ -237,7 +245,10 @@ class Storage(HealthCheck):
 
     @property
     def storage(self) -> DjangoStorage:
-        return storages[self.alias]
+        try:
+            return storages[self.alias]
+        except InvalidStorageError as e:
+            raise ServiceUnavailable("Storage alias does not exist") from e
 
     def get_file_name(self):
         return f"health_check_storage_test/test-{uuid.uuid4()}.txt"
