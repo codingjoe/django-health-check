@@ -156,7 +156,7 @@ class TestRedis:
         check = RedisHealthCheck(
             client_factory=lambda: RedisClient(host="myhost", port=6379, db=2)
         )
-        assert repr(check) == "Redis(client=RedisClient(host=myhost, db=2))"
+        assert repr(check) == "Redis(db=2, host='myhost')"
 
     def test_redis__repr_from_url(self):
         """Verify repr includes host and db when client is created via from_url."""
@@ -167,7 +167,7 @@ class TestRedis:
                 "redis://cache.example.com:6379/3"
             )
         )
-        assert "host=cache.example.com" in repr(check), (
+        assert "host='cache.example.com'" in repr(check), (
             "repr should include the host from the Redis URL"
         )
         assert "db=3" in repr(check), "repr should include the db from the Redis URL"
@@ -180,7 +180,7 @@ class TestRedis:
             check = RedisHealthCheck(
                 client=RedisClient(host="oldhost", port=6379, db=5)
             )
-        assert "host=oldhost" in repr(check), (
+        assert "host='oldhost'" in repr(check), (
             "repr should include the host from the deprecated client"
         )
         assert "db=5" in repr(check), (

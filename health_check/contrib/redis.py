@@ -62,11 +62,15 @@ class Redis(HealthCheck):
             client = self.client
 
         try:
-            conn_kwargs = client.connection_pool.connection_kwargs
-            host = conn_kwargs["host"]
-            db = conn_kwargs["db"]
-            return f"Redis(client=RedisClient(host={host}, db={db}))"
-        except (AttributeError, KeyError):
+            safe_connection_str = ", ".join(
+                f"{key}={value!r}"
+                for key, value in sorted(
+                    client.connection_pool.connection_kwargs.items()
+                )
+                if key in {"host", "db"}
+            )
+            return f"Redis({safe_connection_str})"
+        except AttributeError:
             pass
 
         try:
