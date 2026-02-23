@@ -11,6 +11,7 @@ import dns.asyncresolver
 from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
+from django.core.cache.backends.base import InvalidCacheBackendError
 from django.core.files.base import ContentFile
 from django.core.files.storage import InvalidStorageError, storages
 from django.core.files.storage import Storage as DjangoStorage
@@ -65,7 +66,7 @@ class Cache(HealthCheck):
     async def run(self):
         try:
             cache = caches[self.alias]
-        except ConnectionDoesNotExist as e:
+        except InvalidCacheBackendError as e:
             raise ServiceUnavailable("Cache alias does not exist") from e
         # Use an isolated key per probe run to avoid cross-process write races.
         cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
