@@ -55,7 +55,6 @@ class Redis(HealthCheck):
 
     def __repr__(self):
         # include client host name and logical database number to identify them
-        # Create a new client for this health check request
         if self.client_factory is not None:
             client = self.client_factory()
         else:
