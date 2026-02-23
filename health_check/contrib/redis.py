@@ -55,7 +55,6 @@ class Redis(HealthCheck):
 
     def __repr__(self):
         # include client host name and logical database number to identify them
-        # Create a new client for this health check request
         if self.client_factory is not None:
             client = self.client_factory()
         else:
@@ -68,7 +67,12 @@ class Redis(HealthCheck):
             db = conn_kwargs["db"]
             return f"Redis(client=RedisClient(host={host}, db={db}))"
         except (AttributeError, KeyError):
-            # If the client doesn't have connection_pool or connection_kwargs, fall back to default repr
+            pass
+
+        try:
+            hosts = [node.name for node in client.startup_nodes]
+            return f"Redis(client=RedisCluster(hosts={hosts!r}))"
+        except AttributeError:
             return super().__repr__()
 
     def __post_init__(self):
