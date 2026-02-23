@@ -223,7 +223,10 @@ class TestRedis:
 
         check = RedisHealthCheck(
             client_factory=lambda: RedisClient(
-                host="myhost", port=6379, db=0, password="supersecret"
+                host="myhost",
+                port=6379,
+                db=0,
+                password="supersecret",  # noqa: S106
             )
         )
         assert "supersecret" not in repr(check), (
@@ -255,7 +258,7 @@ class TestRedis:
         check = RedisHealthCheck(
             client_factory=lambda: RedisCluster(
                 startup_nodes=[ClusterNode("node1", 7000)],
-                password="clusterpass",
+                password="clusterpass",  # noqa: S106
                 username="clusteruser",
             )
         )
