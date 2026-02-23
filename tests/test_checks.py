@@ -7,8 +7,6 @@ from unittest import mock
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
-from django.core.files.storage import InvalidStorageError
-from django.utils.connection import ConnectionDoesNotExist
 
 from health_check import Storage
 from health_check.checks import DNS, Cache, Database, Mail
