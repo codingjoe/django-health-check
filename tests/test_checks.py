@@ -20,6 +20,16 @@ class TestCache:
     """Test the Cache health check."""
 
     @pytest.mark.asyncio
+    async def test_run_check__invalid_alias(self):
+        """Raise ServiceUnavailable when cache alias does not exist."""
+        check = Cache(alias="nonexistent-alias")
+        result = await check.get_result()
+        assert isinstance(result.error, ServiceUnavailable), (
+            "Expected ServiceUnavailable for a non-existent cache alias"
+        )
+        assert "Cache alias does not exist" in str(result.error)
+
+    @pytest.mark.asyncio
     async def test_run_check__cache_working(self):
         """Cache backend successfully sets and retrieves values."""
         check = Cache()
@@ -114,6 +124,17 @@ class TestDatabase:
 
     @pytest.mark.django_db
     @pytest.mark.asyncio
+    async def test_run_check__invalid_alias(self):
+        """Raise ServiceUnavailable when database alias does not exist."""
+        check = Database(alias="nonexistent-alias")
+        result = await check.get_result()
+        assert isinstance(result.error, ServiceUnavailable), (
+            "Expected ServiceUnavailable for a non-existent database alias"
+        )
+        assert "Database alias does not exist" in str(result.error)
+
+    @pytest.mark.django_db
+    @pytest.mark.asyncio
     async def test_run_check__database_available(self):
         """Database connection returns successful query result."""
         check = Database()
@@ -145,6 +166,16 @@ class TestMail:
 
 class TestStorage:
     """Test the Storage health check."""
+
+    @pytest.mark.asyncio
+    async def test_run_check__invalid_alias(self):
+        """Raise ServiceUnavailable when storage alias does not exist."""
+        check = Storage(alias="nonexistent-alias")
+        result = await check.get_result()
+        assert isinstance(result.error, ServiceUnavailable), (
+            "Expected ServiceUnavailable for a non-existent storage alias"
+        )
+        assert "Storage alias does not exist" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_run_check__default_storage(self):
