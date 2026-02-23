@@ -170,16 +170,16 @@ class TestRedis:
         assert "host=cache.example.com" in repr(check), (
             "repr should include the host from the Redis URL"
         )
-        assert "db=3" in repr(check), (
-            "repr should include the db from the Redis URL"
-        )
+        assert "db=3" in repr(check), "repr should include the db from the Redis URL"
 
     def test_redis__repr_deprecated_client(self):
         """Verify repr includes host and db when using deprecated client parameter."""
         from redis.asyncio import Redis as RedisClient
 
         with pytest.warns(DeprecationWarning):
-            check = RedisHealthCheck(client=RedisClient(host="oldhost", port=6379, db=5))
+            check = RedisHealthCheck(
+                client=RedisClient(host="oldhost", port=6379, db=5)
+            )
         assert "host=oldhost" in repr(check), (
             "repr should include the host from the deprecated client"
         )
@@ -266,7 +266,6 @@ class TestRedis:
         assert "clusteruser" not in result, (
             "repr must never expose the cluster username"
         )
-
 
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):
