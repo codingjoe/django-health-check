@@ -200,6 +200,16 @@ class TestRedis:
         # __repr__ should fall back to the default dataclass repr without raising
         assert repr(check) == "Redis()"
 
+    def test_redis__repr_cluster_client(self):
+        """Verify repr falls back gracefully for RedisCluster clients without connection_pool."""
+        from redis.asyncio import RedisCluster
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisCluster(host="clusterhost", port=7000)
+        )
+        # RedisCluster has no connection_pool attribute, so __repr__ should fall back
+        assert repr(check) == "Redis()"
+
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):
