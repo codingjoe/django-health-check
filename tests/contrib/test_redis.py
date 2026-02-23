@@ -149,7 +149,127 @@ class TestRedis:
         ):
             RedisHealthCheck()
 
-    @pytest.mark.integration
+    def test_redis__repr_standard_client(self):
+        """Verify repr includes host and db for a standard Redis client."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient(host="myhost", port=6379, db=2)
+        )
+        assert repr(check) == "Redis(client=RedisClient(host=myhost, db=2))"
+
+    def test_redis__repr_from_url(self):
+        """Verify repr includes host and db when client is created via from_url."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient.from_url(
+                "redis://cache.example.com:6379/3"
+            )
+        )
+        assert "host=cache.example.com" in repr(check), (
+            "repr should include the host from the Redis URL"
+        )
+        assert "db=3" in repr(check), "repr should include the db from the Redis URL"
+
+    def test_redis__repr_deprecated_client(self):
+        """Verify repr includes host and db when using deprecated client parameter."""
+        from redis.asyncio import Redis as RedisClient
+
+        with pytest.warns(DeprecationWarning):
+            check = RedisHealthCheck(
+                client=RedisClient(host="oldhost", port=6379, db=5)
+            )
+        assert "host=oldhost" in repr(check), (
+            "repr should include the host from the deprecated client"
+        )
+        assert "db=5" in repr(check), (
+            "repr should include the db from the deprecated client"
+        )
+
+    def test_redis__repr_sentinel_client(self):
+        """Verify repr falls back gracefully for Sentinel clients without host/db."""
+        from redis.asyncio import Sentinel
+
+        check = RedisHealthCheck(
+            client_factory=lambda: Sentinel([("localhost", 26379)]).master_for(
+                "mymaster"
+            )
+        )
+        # Sentinel clients don't expose host/db in connection_pool.connection_kwargs
+        # __repr__ should fall back to the default dataclass repr without raising
+        assert repr(check) == "Redis()"
+
+    def test_redis__repr_cluster_client(self):
+        """Verify repr includes startup node hosts for RedisCluster clients."""
+        from redis.asyncio import RedisCluster
+        from redis.asyncio.cluster import ClusterNode
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisCluster(
+                startup_nodes=[ClusterNode("node1", 7000), ClusterNode("node2", 7001)]
+            )
+        )
+        assert "node1:7000" in repr(check), (
+            "repr should include the first cluster node host:port"
+        )
+        assert "node2:7001" in repr(check), (
+            "repr should include the second cluster node host:port"
+        )
+
+    def test_redis__repr_excludes_password(self):
+        """Verify repr never leaks passwords for standard Redis clients."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient(
+                host="myhost",
+                port=6379,
+                db=0,
+                password="supersecret",  # noqa: S106
+            )
+        )
+        assert "supersecret" not in repr(check), (
+            "repr must never expose the Redis password"
+        )
+
+    def test_redis__repr_excludes_password_from_url(self):
+        """Verify repr never leaks passwords embedded in a Redis URL."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient.from_url(
+                "redis://admin:supersecret@cache.example.com:6379/3"
+            )
+        )
+        result = repr(check)
+        assert "supersecret" not in result, (
+            "repr must never expose the password from a Redis URL"
+        )
+        assert "admin" not in result, (
+            "repr must never expose the username from a Redis URL"
+        )
+
+    def test_redis__repr_excludes_cluster_password(self):
+        """Verify repr never leaks passwords for RedisCluster clients."""
+        from redis.asyncio import RedisCluster
+        from redis.asyncio.cluster import ClusterNode
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisCluster(
+                startup_nodes=[ClusterNode("node1", 7000)],
+                password="clusterpass",  # noqa: S106
+                username="clusteruser",
+            )
+        )
+        result = repr(check)
+        assert "clusterpass" not in result, (
+            "repr must never expose the cluster password"
+        )
+        assert "clusteruser" not in result, (
+            "repr must never expose the cluster username"
+        )
+
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):
         """Ping real Redis server when REDIS_URL is configured."""
