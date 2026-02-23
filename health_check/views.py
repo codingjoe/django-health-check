@@ -260,11 +260,10 @@ class HealthCheckView(TemplateView):
                 if result.error
                 else datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
             )
-            status = str(result.error) if result.error else "OK"
             feed.add_item(
                 title=repr(result.check),
                 link=self.request.build_absolute_uri(self.request.path),
-                description=f"{result.check!r}\nStatus: {status}\nResponse time: {result.time_taken:.3f}s",
+                description=str(result.error) if result.error else "OK",
                 pubdate=published_at,
                 updateddate=published_at,
                 author_name=self.feed_author,
