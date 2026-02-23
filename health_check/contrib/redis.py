@@ -63,9 +63,9 @@ class Redis(HealthCheck):
 
         try:
             safe_connection_str = ", ".join(
-                f"{k}={v!r}"
-                for k, v in client.connection_pool.connection_kwargs.items()
-                if k in ["host", "db"]
+                f"{key}={value!r}"
+                for key, value in sorted(client.connection_pool.connection_kwargs.items())
+                if key in {"host", "db"}
             )
             return f"Redis({safe_connection_str})"
         except AttributeError:
