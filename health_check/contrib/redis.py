@@ -53,6 +53,24 @@ class Redis(HealthCheck):
         dataclasses.field(repr=False, default=None)
     )
 
+    def __repr__(self):
+        # include client host name and logical database number to identify them
+        # Create a new client for this health check request
+        if self.client_factory is not None:
+            client = self.client_factory()
+        else:
+            # Use the deprecated client parameter (user manages lifecycle)
+            client = self.client
+
+        try:
+            conn_kwargs = client.connection_pool.connection_kwargs
+            host = conn_kwargs["host"]
+            db = conn_kwargs["db"]
+            return f"Redis(client=RedisClient(host={host}, db={db}))"
+        except (AttributeError, KeyError):
+            # If the client doesn't have connection_pool or connection_kwargs, fall back to default repr
+            return super().__repr__()
+
     def __post_init__(self):
         # Validate that exactly one of client or client_factory is provided
         if self.client is not None and self.client_factory is not None:
