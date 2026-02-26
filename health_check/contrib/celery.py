@@ -18,6 +18,7 @@ class Ping(HealthCheck):
 
     Args:
         app: Celery application instance to use for the health check, defaults to the [default Celery app][celery.app.default_app].
+        custom_task_queue_names: Set of Celery queue names to be checked if set, defaults to [{}].
         timeout: Timeout duration for the ping command.
         limit: Maximum number of workers to wait for before returning. If not
             specified, waits for the full timeout duration. When set, returns
@@ -27,6 +28,7 @@ class Ping(HealthCheck):
 
     CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
     app: celery.Celery = dataclasses.field(default_factory=app_or_default)
+    custom_task_queue_names: set[str] | None = dataclasses.field(default=None, repr=False)
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
@@ -59,11 +61,15 @@ class Ping(HealthCheck):
             yield worker
 
     def check_active_queues(self, *active_workers):
-        try:
-            defined_queues = {queue.name for queue in self.app.conf.task_queues}
-        except TypeError:
-            # conf.task_queues may be None
-            defined_queues = {self.app.conf.task_default_queue}
+        if self.custom_task_queue_names:
+            defined_queues = self.custom_task_queue_names
+        else:
+            try:
+                defined_queues = {queue.name for queue in self.app.conf.task_queues}
+            except TypeError:
+                # conf.task_queues may be None
+                defined_queues = {self.app.conf.task_default_queue}
+
         active_queues = {
             queue.get("name")
             for queues in self.app.control.inspect(active_workers)
