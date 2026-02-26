@@ -1,5 +1,7 @@
 """Unit tests for health_check.exceptions module."""
 
+import datetime
+
 import pytest
 
 from health_check.exceptions import (
@@ -15,6 +17,17 @@ class TestHealthCheckException:
         """Store message passed to constructor."""
         exc = HealthCheckException("test message")
         assert exc.message == "test message"
+
+    def test_init__timestamp_defaults_to_none(self):
+        """Default timestamp to None when not provided."""
+        exc = HealthCheckException("test message")
+        assert exc.timestamp is None
+
+    def test_init__store_timestamp(self):
+        """Store timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        exc = HealthCheckException("test message", timestamp=ts)
+        assert exc.timestamp == ts
 
     def test_str__format_with_type(self):
         """Format string with message type and message."""
