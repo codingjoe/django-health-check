@@ -14,7 +14,11 @@ from health_check.contrib.rss import (
     GoogleCloud,
     Heroku,
 )
-from health_check.exceptions import ServiceUnavailable, ServiceWarning
+from health_check.exceptions import (
+    ServiceUnavailable,
+    ServiceWarning,
+    StatusPageWarning,
+)
 
 
 class TestAWS:
@@ -106,7 +110,7 @@ class TestAWS:
 
     @pytest.mark.asyncio
     async def test_check_status__incident_carries_source_timestamp(self):
-        """ServiceWarning carries the most recent incident date as its timestamp."""
+        """StatusPageWarning carries the most recent incident date as its timestamp."""
         rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -145,10 +149,10 @@ class TestAWS:
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
                 assert result.error is not None
-                assert isinstance(result.error, ServiceWarning)
+                assert isinstance(result.error, StatusPageWarning)
                 expected_ts = datetime.datetime(2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc)
                 assert result.error.timestamp == expected_ts, (
-                    "ServiceWarning should carry the most recent incident date as its timestamp"
+                    "StatusPageWarning should carry the most recent incident date as its timestamp"
                 )
 
     @pytest.mark.asyncio

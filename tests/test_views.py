@@ -4,7 +4,11 @@ import json
 import pytest
 
 from health_check.base import HealthCheck
-from health_check.exceptions import HealthCheckException, ServiceWarning
+from health_check.exceptions import (
+    HealthCheckException,
+    ServiceWarning,
+    StatusPageWarning,
+)
 from health_check.views import HealthCheckView, MediaType
 
 
@@ -539,7 +543,7 @@ class TestHealthCheckView:
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed", timestamp=source_date)
+                raise StatusPageWarning("Check failed", timestamp=source_date)
 
         response = await health_check_view([TimestampedBackend], format_param="rss")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -563,7 +567,7 @@ class TestHealthCheckView:
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed", timestamp=source_date)
+                raise StatusPageWarning("Check failed", timestamp=source_date)
 
         response = await health_check_view([TimestampedBackend], format_param="atom")
         feed = feedparser.parse(response.content.decode("utf-8"))

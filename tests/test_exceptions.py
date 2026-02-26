@@ -9,6 +9,7 @@ from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
+    StatusPageWarning,
 )
 
 
@@ -17,17 +18,6 @@ class TestHealthCheckException:
         """Store message passed to constructor."""
         exc = HealthCheckException("test message")
         assert exc.message == "test message"
-
-    def test_init__timestamp_defaults_to_none(self):
-        """Default timestamp to None when not provided."""
-        exc = HealthCheckException("test message")
-        assert exc.timestamp is None
-
-    def test_init__store_timestamp(self):
-        """Store timestamp passed to constructor."""
-        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
-        exc = HealthCheckException("test message", timestamp=ts)
-        assert exc.timestamp == ts
 
     def test_str__format_with_type(self):
         """Format string with message type and message."""
@@ -113,3 +103,38 @@ class TestServiceReturnedUnexpectedResult:
         """Can be caught as ServiceReturnedUnexpectedResult specifically."""
         with pytest.raises(ServiceReturnedUnexpectedResult):
             raise ServiceReturnedUnexpectedResult("unexpected result message")
+
+
+class TestStatusPageWarning:
+    def test_init__store_message(self):
+        """Store message passed to constructor."""
+        exc = StatusPageWarning("incident detected")
+        assert exc.message == "incident detected"
+
+    def test_init__timestamp_defaults_to_none(self):
+        """Default timestamp to None when not provided."""
+        exc = StatusPageWarning("incident detected")
+        assert exc.timestamp is None
+
+    def test_init__store_timestamp(self):
+        """Store timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        exc = StatusPageWarning("incident detected", timestamp=ts)
+        assert exc.timestamp == ts
+
+    def test_str__format_with_warning_type(self):
+        """Format string with 'warning' message type."""
+        exc = StatusPageWarning("incident detected")
+        assert str(exc) == "Warning: incident detected"
+
+    def test_inherits_from_service_warning(self):
+        """Inherit from ServiceWarning."""
+        exc = StatusPageWarning("incident")
+        assert isinstance(exc, ServiceWarning)
+        assert isinstance(exc, HealthCheckException)
+
+    def test_can_raise_and_catch_as_service_warning(self):
+        """Can be caught as ServiceWarning."""
+        with pytest.raises(ServiceWarning):
+            raise StatusPageWarning("incident")
+
