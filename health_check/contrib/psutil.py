@@ -2,7 +2,6 @@ import dataclasses
 import datetime
 import os
 import pathlib
-import socket
 
 import psutil
 
@@ -27,7 +26,6 @@ class Battery(HealthCheck):
 
     min_percent_available: float | None = dataclasses.field(default=20.0, repr=False)
     power_plugged: bool = dataclasses.field(default=False, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
         try:
@@ -66,7 +64,6 @@ class CPU(HealthCheck):
 
     max_usage_percent: float | None = dataclasses.field(default=80.0, repr=False)
     interval: datetime.timedelta | None = dataclasses.field(default=None, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
         try:
@@ -96,7 +93,6 @@ class Disk(HealthCheck):
 
     path: pathlib.Path | str = dataclasses.field(default_factory=os.getcwd)
     max_disk_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
         try:
@@ -123,7 +119,6 @@ class Memory(HealthCheck):
 
     min_gibibytes_available: float | None = dataclasses.field(default=None, repr=False)
     max_memory_usage_percent: float | None = dataclasses.field(default=90.0, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
         try:
@@ -160,7 +155,6 @@ class Temperature(HealthCheck):
 
     device: str | None = dataclasses.field(default="coretemp")
     max_temperature_celsius: float | None = dataclasses.field(default=None, repr=False)
-    hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
         try:
