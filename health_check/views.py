@@ -256,7 +256,7 @@ class HealthCheckView(TemplateView):
 
         for result in self.results:
             published_at = (
-                timezone.now()
+                (getattr(result.error, "timestamp", None) or timezone.now())
                 if result.error
                 else datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
             )

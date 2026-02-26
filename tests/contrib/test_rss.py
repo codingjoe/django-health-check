@@ -14,7 +14,11 @@ from health_check.contrib.rss import (
     GoogleCloud,
     Heroku,
 )
-from health_check.exceptions import ServiceUnavailable, ServiceWarning
+from health_check.exceptions import (
+    ServiceUnavailable,
+    ServiceWarning,
+    StatusPageWarning,
+)
 
 
 class TestAWS:
@@ -103,6 +107,53 @@ class TestAWS:
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "\n" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__incident_carries_source_timestamp(self):
+        """StatusPageWarning carries the most recent incident date as its timestamp."""
+        rss_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Older incident</title>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Newer incident</title>
+      <pubDate>Mon, 01 Jan 2024 06:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+        with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.text = rss_content.decode("utf-8")
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            mock_now = datetime.datetime(
+                2024, 1, 1, 8, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            with mock.patch(
+                "health_check.contrib.rss.datetime", wraps=datetime
+            ) as mock_datetime:
+                mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
+                mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
+                mock_datetime.timezone = datetime.timezone
+
+                check = AWS(region="us-east-1", service="ec2")
+                result = await check.get_result()
+                assert result.error is not None
+                assert isinstance(result.error, StatusPageWarning)
+                expected_ts = datetime.datetime(2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc)
+                assert result.error.timestamp == expected_ts, (
+                    "StatusPageWarning should carry the most recent incident date as its timestamp"
+                )
 
     @pytest.mark.asyncio
     async def test_check_status__no_recent_incidents(self):

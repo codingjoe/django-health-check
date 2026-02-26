@@ -4,7 +4,11 @@ import json
 import pytest
 
 from health_check.base import HealthCheck
-from health_check.exceptions import HealthCheckException, ServiceWarning
+from health_check.exceptions import (
+    HealthCheckException,
+    ServiceWarning,
+    StatusPageWarning,
+)
 from health_check.views import HealthCheckView, MediaType
 
 
@@ -526,6 +530,54 @@ class TestHealthCheckView:
         )
         assert (now - published_at).total_seconds() < 60, (
             "Failed check should use current timestamp (within last 60 seconds)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__rss_feed_error_uses_exception_timestamp(self, health_check_view):
+        """Use exception timestamp in RSS feed when provided."""
+        import datetime
+
+        feedparser = pytest.importorskip("feedparser")
+
+        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+        class TimestampedBackend(HealthCheck):
+            async def run(self):
+                raise StatusPageWarning("Check failed", timestamp=source_date)
+
+        response = await health_check_view([TimestampedBackend], format_param="rss")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        published_at = datetime.datetime(
+            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+        )
+        assert published_at == source_date, (
+            "Feed item should use the exception's timestamp, not current time"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get__atom_feed_error_uses_exception_timestamp(self, health_check_view):
+        """Use exception timestamp in Atom feed when provided."""
+        import datetime
+
+        feedparser = pytest.importorskip("feedparser")
+
+        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+        class TimestampedBackend(HealthCheck):
+            async def run(self):
+                raise StatusPageWarning("Check failed", timestamp=source_date)
+
+        response = await health_check_view([TimestampedBackend], format_param="atom")
+        feed = feedparser.parse(response.content.decode("utf-8"))
+        assert len(feed.entries) == 1
+        entry = feed.entries[0]
+        published_at = datetime.datetime(
+            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+        )
+        assert published_at == source_date, (
+            "Feed item should use the exception's timestamp, not current time"
         )
 
     @pytest.mark.asyncio

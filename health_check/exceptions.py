@@ -20,3 +20,11 @@ class ServiceUnavailable(HealthCheckException):
 
 class ServiceReturnedUnexpectedResult(HealthCheckException):
     message_type = "Unexpected Result"
+
+
+class StatusPageWarning(ServiceWarning):
+    """Warning from an external status page, carrying the source incident timestamp."""
+
+    def __init__(self, message, *, timestamp=None):
+        super().__init__(message)
+        self.timestamp = timestamp
