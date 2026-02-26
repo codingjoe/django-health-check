@@ -28,7 +28,9 @@ class Ping(HealthCheck):
 
     CORRECT_PING_RESPONSE: typing.ClassVar[dict[str, str]] = {"ok": "pong"}
     app: celery.Celery = dataclasses.field(default_factory=app_or_default)
-    custom_task_queue_names: set[str] | None = dataclasses.field(default=None, repr=False)
+    custom_task_queue_names: set[str] | None = dataclasses.field(
+        default=None, repr=False
+    )
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=1), repr=False
     )
