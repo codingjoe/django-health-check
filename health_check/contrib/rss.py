@@ -96,7 +96,9 @@ class Feed(HealthCheck):
                     f" {getattr(entry, 'link', self.feed_url) or self.feed_url}"
                     for entry, _ in incidents
                 ),
-                timestamp=max(filter(None, (date for _, date in incidents)), default=None),
+                timestamp=max(
+                    filter(None, (date for _, date in incidents)), default=None
+                ),
             )
 
         logger.debug("No recent incidents found in feed")

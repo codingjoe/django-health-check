@@ -137,4 +137,3 @@ class TestStatusPageWarning:
         """Can be caught as ServiceWarning."""
         with pytest.raises(ServiceWarning):
             raise StatusPageWarning("incident")
-

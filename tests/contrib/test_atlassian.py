@@ -154,7 +154,9 @@ class TestFlyIo:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, StatusPageWarning)
-            expected_ts = datetime.datetime(2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc)
+            expected_ts = datetime.datetime(
+                2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc
+            )
             assert result.error.timestamp == expected_ts, (
                 "StatusPageWarning should carry the most recent incident timestamp"
             )

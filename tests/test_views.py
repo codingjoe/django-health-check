@@ -533,13 +533,17 @@ class TestHealthCheckView:
         )
 
     @pytest.mark.asyncio
-    async def test_get__rss_feed_error_uses_exception_timestamp(self, health_check_view):
+    async def test_get__rss_feed_error_uses_exception_timestamp(
+        self, health_check_view
+    ):
         """Use exception timestamp in RSS feed when provided."""
         import datetime
 
         feedparser = pytest.importorskip("feedparser")
 
-        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        source_date = datetime.datetime(
+            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
+        )
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
@@ -557,13 +561,17 @@ class TestHealthCheckView:
         )
 
     @pytest.mark.asyncio
-    async def test_get__atom_feed_error_uses_exception_timestamp(self, health_check_view):
+    async def test_get__atom_feed_error_uses_exception_timestamp(
+        self, health_check_view
+    ):
         """Use exception timestamp in Atom feed when provided."""
         import datetime
 
         feedparser = pytest.importorskip("feedparser")
 
-        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        source_date = datetime.datetime(
+            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
+        )
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
