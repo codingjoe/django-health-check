@@ -6,7 +6,7 @@ class HealthCheckException(Exception):
 
     def __init__(self, message, *, timestamp=None):
         self.message = message
-        self.timestamp = timestamp or timezone.now()
+        self.timestamp = timezone.now() if timestamp is None else timestamp
 
     def __str__(self):
         return f"{self.message_type}: {self.message}"

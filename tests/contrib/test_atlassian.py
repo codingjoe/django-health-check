@@ -56,6 +56,8 @@ class TestFlyIo:
                 {
                     "name": "Database connectivity issues",
                     "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
                 }
             ],
         }
@@ -89,10 +91,14 @@ class TestFlyIo:
                 {
                     "name": "Database connectivity issues",
                     "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
                 },
                 {
                     "name": "Network degradation",
                     "shortlink": "https://stspg.io/def456",
+                    "status": "identified",
+                    "updated_at": "2024-01-01T01:00:00.000Z",
                 },
             ],
         }
@@ -119,19 +125,21 @@ class TestFlyIo:
 
     @pytest.mark.asyncio
     async def test_check_status__incident_carries_source_timestamp(self):
-        """StatusPageWarning carries the most recent incident created_at as its timestamp."""
+        """StatusPageWarning carries the most recent incident updated_at as its timestamp."""
         api_response = {
             "page": {"id": "test"},
             "incidents": [
                 {
                     "name": "Older incident",
                     "shortlink": "https://stspg.io/older",
-                    "created_at": "2024-01-01T00:00:00.000Z",
+                    "status": "monitoring",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
                 },
                 {
                     "name": "Newer incident",
                     "shortlink": "https://stspg.io/newer",
-                    "created_at": "2024-01-01T06:00:00.000Z",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
                 },
             ],
         }
@@ -161,16 +169,23 @@ class TestFlyIo:
             )
 
     @pytest.mark.asyncio
-    async def test_check_status__incident_with_invalid_timestamp(self):
-        """Incidents with unparseable timestamps are treated as having no timestamp."""
+    async def test_check_status__resolved_incidents_are_filtered(self):
+        """Resolved and postmortem incidents are excluded from warnings."""
         api_response = {
             "page": {"id": "test"},
             "incidents": [
                 {
-                    "name": "Incident with bad date",
-                    "shortlink": "https://stspg.io/xyz",
-                    "created_at": "not-a-date",
-                }
+                    "name": "Resolved incident",
+                    "shortlink": "https://stspg.io/resolved",
+                    "status": "resolved",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
+                },
+                {
+                    "name": "Postmortem incident",
+                    "shortlink": "https://stspg.io/postmortem",
+                    "status": "postmortem",
+                    "updated_at": "2024-01-01T01:00:00.000Z",
+                },
             ],
         }
 
@@ -187,14 +202,10 @@ class TestFlyIo:
             )
             mock_client.return_value = mock_context
 
-            before = datetime.datetime.now(tz=datetime.timezone.utc)
             check = FlyIo()
             result = await check.get_result()
-            after = datetime.datetime.now(tz=datetime.timezone.utc)
-            assert result.error is not None
-            assert isinstance(result.error, StatusPageWarning)
-            assert before <= result.error.timestamp <= after, (
-                "Unparseable incident timestamp should fall back to current time"
+            assert result.error is None, (
+                "Resolved and postmortem incidents should not raise a warning"
             )
 
     @pytest.mark.asyncio

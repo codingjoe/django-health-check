@@ -42,7 +42,7 @@ class AtlassianStatusPage(HealthCheck):
         if incidents := [i async for i in self._fetch_incidents()]:
             raise StatusPageWarning(
                 "\n".join(msg for msg, _ in incidents),
-                timestamp=max(filter(None, (ts for _, ts in incidents)), default=None),
+                timestamp=max(ts for _, ts in incidents),
             )
         logger.debug("No recent incidents found")
 
@@ -76,24 +76,13 @@ class AtlassianStatusPage(HealthCheck):
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
         for incident in data["incidents"]:
-            yield (
-                f"{incident['name']}: {incident['shortlink']}",
-                self._parse_incident_timestamp(incident),
-            )
-
-    def _parse_incident_timestamp(self, incident):
-        """Extract and parse the most relevant timestamp from an incident dict."""
-        for field in ("started_at", "created_at", "updated_at"):
-            if ts_str := incident.get(field):
-                try:
-                    return datetime.datetime.fromisoformat(
-                        ts_str.replace("Z", "+00:00")
-                    )
-                except ValueError:
-                    logger.warning(
-                        "Failed to parse incident timestamp %r", ts_str, exc_info=True
-                    )
-        return None
+            if incident["status"] not in ("resolved", "postmortem"):
+                yield (
+                    f"{incident['name']}: {incident['shortlink']}",
+                    datetime.datetime.fromisoformat(
+                        incident["updated_at"].replace("Z", "+00:00")
+                    ),
+                )
 
 
 @dataclasses.dataclass
