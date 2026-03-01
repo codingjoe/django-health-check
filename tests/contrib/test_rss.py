@@ -4,18 +4,17 @@ import datetime
 import logging
 from unittest import mock
 
-import httpx
 import pytest
 
-pytest.importorskip("httpx")
+httpx = pytest.importorskip("httpx")
 
-from health_check.contrib.rss import (
+from health_check.contrib.rss import (  # noqa: E402
     AWS,
     Azure,
     GoogleCloud,
     Heroku,
 )
-from health_check.exceptions import ServiceUnavailable, ServiceWarning
+from health_check.exceptions import ServiceUnavailable, ServiceWarning  # noqa: E402
 
 
 class TestAWS:
@@ -438,6 +437,22 @@ class TestHeroku:
         assert check.feed_url == "https://status.heroku.com/feed"
 
 
+class TestHetzner:
+    """Test Hetzner platform status health check."""
+
+    @pytest.mark.asyncio
+    async def test_feed_url(self):
+        """Verify correct feed URL for Hetzner."""
+        from health_check.contrib.rss import Hetzner
+
+        check = Hetzner()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                check.feed_url, headers={"User-Agent": "django-health-check"}
+            )
+        assert response.status_code != 404, "Hetzner feed URL is not valid"
+
+
 class TestAzure:
     """Test Azure platform status health check."""
 
@@ -508,22 +523,6 @@ class TestAzure:
                 assert result.error is not None
                 assert isinstance(result.error, ServiceWarning)
                 assert "Virtual Machines outage" in str(result.error)
-
-
-class TestHezner:
-    """Test Hetzner platform status health check."""
-
-    @pytest.mark.asyncio
-    async def test_feed_url(self):
-        """Verify correct feed URL for Hetzner."""
-        from health_check.contrib.rss import Hetzner
-
-        check = Hetzner()
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                check.feed_url, headers={"User-Agent": "django-health-check"}
-            )
-        assert response.status_code != 404, "Hetzner feed URL is not valid"
 
 
 class TestGoogleCloud:
