@@ -40,6 +40,7 @@ dynamic = [
 dependencies = [
   "Django>=5.2",
   "dnspython>=2.0.0",
+  "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]

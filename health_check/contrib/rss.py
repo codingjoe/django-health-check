@@ -207,6 +207,28 @@ class Azure(Feed):
 
 
 @dataclasses.dataclass
+class Hetzner(Feed):
+    """
+    Check Hetzner platform status via their public RSS status feed.
+
+    Args:
+        timeout: Request timeout duration.
+        max_age: Maximum age for an incident to be considered active.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    max_age: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(hours=8), repr=False
+    )
+    feed_url: str = dataclasses.field(
+        default="https://status.hetzner.com/en.atom", init=False, repr=False
+    )
+
+
+@dataclasses.dataclass
 class GoogleCloud(Feed):
     """
     Check Google Cloud platform status via their public Atom status feed.
