@@ -1,12 +1,16 @@
 """Unit tests for health_check.exceptions module."""
 
+import datetime
+
 import pytest
+from django.utils import timezone
 
 from health_check.exceptions import (
     HealthCheckException,
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
+    StatusPageWarning,
 )
 
 
@@ -15,6 +19,19 @@ class TestHealthCheckException:
         """Store message passed to constructor."""
         exc = HealthCheckException("test message")
         assert exc.message == "test message"
+
+    def test_init__timestamp_defaults_to_now(self):
+        """Default timestamp to current time when not provided."""
+        before = timezone.now()
+        exc = HealthCheckException("test message")
+        after = timezone.now()
+        assert before <= exc.timestamp <= after
+
+    def test_init__store_timestamp(self):
+        """Store explicit timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        exc = HealthCheckException("test message", timestamp=ts)
+        assert exc.timestamp == ts
 
     def test_str__format_with_type(self):
         """Format string with message type and message."""
@@ -100,3 +117,39 @@ class TestServiceReturnedUnexpectedResult:
         """Can be caught as ServiceReturnedUnexpectedResult specifically."""
         with pytest.raises(ServiceReturnedUnexpectedResult):
             raise ServiceReturnedUnexpectedResult("unexpected result message")
+
+
+class TestStatusPageWarning:
+    def test_init__store_message(self):
+        """Store message passed to constructor."""
+        exc = StatusPageWarning("incident detected")
+        assert exc.message == "incident detected"
+
+    def test_init__timestamp_defaults_to_now(self):
+        """Default timestamp to current time when not provided."""
+        before = timezone.now()
+        exc = StatusPageWarning("incident detected")
+        after = timezone.now()
+        assert before <= exc.timestamp <= after
+
+    def test_init__store_timestamp(self):
+        """Store timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        exc = StatusPageWarning("incident detected", timestamp=ts)
+        assert exc.timestamp == ts
+
+    def test_str__format_with_warning_type(self):
+        """Format string with 'warning' message type."""
+        exc = StatusPageWarning("incident detected")
+        assert str(exc) == "Warning: incident detected"
+
+    def test_inherits_from_service_warning(self):
+        """Inherit from ServiceWarning."""
+        exc = StatusPageWarning("incident")
+        assert isinstance(exc, ServiceWarning)
+        assert isinstance(exc, HealthCheckException)
+
+    def test_can_raise_and_catch_as_service_warning(self):
+        """Can be caught as ServiceWarning."""
+        with pytest.raises(ServiceWarning):
+            raise StatusPageWarning("incident")

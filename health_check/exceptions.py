@@ -1,8 +1,12 @@
+from django.utils import timezone
+
+
 class HealthCheckException(Exception):
     message_type: str = "Unknown Error"
 
-    def __init__(self, message):
+    def __init__(self, message, *, timestamp=None):
         self.message = message
+        self.timestamp = timezone.now() if timestamp is None else timestamp
 
     def __str__(self):
         return f"{self.message_type}: {self.message}"
@@ -20,3 +24,7 @@ class ServiceUnavailable(HealthCheckException):
 
 class ServiceReturnedUnexpectedResult(HealthCheckException):
     message_type = "Unexpected Result"
+
+
+class StatusPageWarning(ServiceWarning):
+    """Warning from an external status page, carrying the source incident timestamp."""

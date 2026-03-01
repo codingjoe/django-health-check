@@ -8,7 +8,7 @@ import logging
 import httpx
 
 from health_check import HealthCheck, __version__
-from health_check.exceptions import ServiceUnavailable, ServiceWarning
+from health_check.exceptions import ServiceUnavailable, StatusPageWarning
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,11 @@ class AtlassianStatusPage(HealthCheck):
     timeout: datetime.timedelta = NotImplemented
 
     async def run(self):
-        if msg := "\n".join([i async for i in self._fetch_incidents()]):
-            raise ServiceWarning(msg)
+        if incidents := [i async for i in self._fetch_incidents()]:
+            raise StatusPageWarning(
+                "\n".join(msg for msg, _ in incidents),
+                timestamp=max(ts for _, ts in incidents),
+            )
         logger.debug("No recent incidents found")
 
     async def _fetch_incidents(self):
@@ -73,7 +76,13 @@ class AtlassianStatusPage(HealthCheck):
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
         for incident in data["incidents"]:
-            yield f"{incident['name']}: {incident['shortlink']}"
+            if incident["status"] not in ("resolved", "postmortem"):
+                yield (
+                    f"{incident['name']}: {incident['shortlink']}",
+                    datetime.datetime.fromisoformat(
+                        incident["updated_at"].replace("Z", "+00:00")
+                    ),
+                )
 
 
 @dataclasses.dataclass

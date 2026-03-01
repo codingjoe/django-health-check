@@ -1,3 +1,4 @@
+import datetime
 from unittest import mock
 
 import pytest
@@ -14,7 +15,11 @@ from health_check.contrib.atlassian import (
     Sentry,
     Vercel,
 )
-from health_check.exceptions import ServiceUnavailable, ServiceWarning
+from health_check.exceptions import (
+    ServiceUnavailable,
+    ServiceWarning,
+    StatusPageWarning,
+)
 
 
 class TestFlyIo:
@@ -51,6 +56,8 @@ class TestFlyIo:
                 {
                     "name": "Database connectivity issues",
                     "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
                 }
             ],
         }
@@ -84,10 +91,14 @@ class TestFlyIo:
                 {
                     "name": "Database connectivity issues",
                     "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
                 },
                 {
                     "name": "Network degradation",
                     "shortlink": "https://stspg.io/def456",
+                    "status": "identified",
+                    "updated_at": "2024-01-01T01:00:00.000Z",
                 },
             ],
         }
@@ -111,6 +122,91 @@ class TestFlyIo:
             assert isinstance(result.error, ServiceWarning)
             assert "Database connectivity issues" in str(result.error)
             assert "Network degradation" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__incident_carries_source_timestamp(self):
+        """StatusPageWarning carries the most recent incident updated_at as its timestamp."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Older incident",
+                    "shortlink": "https://stspg.io/older",
+                    "status": "monitoring",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
+                },
+                {
+                    "name": "Newer incident",
+                    "shortlink": "https://stspg.io/newer",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
+                },
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = FlyIo()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, StatusPageWarning)
+            expected_ts = datetime.datetime(
+                2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc
+            )
+            assert result.error.timestamp == expected_ts, (
+                "StatusPageWarning should carry the most recent incident timestamp"
+            )
+
+    @pytest.mark.asyncio
+    async def test_check_status__resolved_incidents_are_filtered(self):
+        """Resolved and postmortem incidents are excluded from warnings."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Resolved incident",
+                    "shortlink": "https://stspg.io/resolved",
+                    "status": "resolved",
+                    "updated_at": "2024-01-01T00:00:00.000Z",
+                },
+                {
+                    "name": "Postmortem incident",
+                    "shortlink": "https://stspg.io/postmortem",
+                    "status": "postmortem",
+                    "updated_at": "2024-01-01T01:00:00.000Z",
+                },
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = FlyIo()
+            result = await check.get_result()
+            assert result.error is None, (
+                "Resolved and postmortem incidents should not raise a warning"
+            )
 
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):

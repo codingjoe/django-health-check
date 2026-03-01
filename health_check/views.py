@@ -5,7 +5,6 @@ import typing
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
-from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
@@ -256,7 +255,7 @@ class HealthCheckView(TemplateView):
 
         for result in self.results:
             published_at = (
-                timezone.now()
+                result.error.timestamp
                 if result.error
                 else datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
             )
