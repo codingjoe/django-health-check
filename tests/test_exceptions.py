@@ -3,6 +3,7 @@
 import datetime
 
 import pytest
+from django.utils import timezone
 
 from health_check.exceptions import (
     HealthCheckException,
@@ -20,10 +21,10 @@ class TestHealthCheckException:
         assert exc.message == "test message"
 
     def test_init__timestamp_defaults_to_now(self):
-        """Default timestamp to current UTC time when not provided."""
-        before = datetime.datetime.now(tz=datetime.timezone.utc)
+        """Default timestamp to current time when not provided."""
+        before = timezone.now()
         exc = HealthCheckException("test message")
-        after = datetime.datetime.now(tz=datetime.timezone.utc)
+        after = timezone.now()
         assert before <= exc.timestamp <= after
 
     def test_init__store_timestamp(self):
@@ -125,10 +126,10 @@ class TestStatusPageWarning:
         assert exc.message == "incident detected"
 
     def test_init__timestamp_defaults_to_now(self):
-        """Default timestamp to current UTC time when not provided."""
-        before = datetime.datetime.now(tz=datetime.timezone.utc)
+        """Default timestamp to current time when not provided."""
+        before = timezone.now()
         exc = StatusPageWarning("incident detected")
-        after = datetime.datetime.now(tz=datetime.timezone.utc)
+        after = timezone.now()
         assert before <= exc.timestamp <= after
 
     def test_init__store_timestamp(self):

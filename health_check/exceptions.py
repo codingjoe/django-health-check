@@ -1,4 +1,4 @@
-import datetime
+from django.utils import timezone
 
 
 class HealthCheckException(Exception):
@@ -6,7 +6,7 @@ class HealthCheckException(Exception):
 
     def __init__(self, message, *, timestamp=None):
         self.message = message
-        self.timestamp = timestamp or datetime.datetime.now(tz=datetime.timezone.utc)
+        self.timestamp = timestamp or timezone.now()
 
     def __str__(self):
         return f"{self.message_type}: {self.message}"
@@ -28,6 +28,3 @@ class ServiceReturnedUnexpectedResult(HealthCheckException):
 
 class StatusPageWarning(ServiceWarning):
     """Warning from an external status page, carrying the source incident timestamp."""
-
-    def __init__(self, message, *, timestamp=None):
-        super().__init__(message, timestamp=timestamp)
