@@ -1,3 +1,4 @@
+import datetime
 from unittest import mock
 
 import pytest
@@ -119,8 +120,6 @@ class TestFlyIo:
     @pytest.mark.asyncio
     async def test_check_status__incident_carries_source_timestamp(self):
         """StatusPageWarning carries the most recent incident created_at as its timestamp."""
-        import datetime
-
         api_response = {
             "page": {"id": "test"},
             "incidents": [
@@ -159,6 +158,43 @@ class TestFlyIo:
             )
             assert result.error.timestamp == expected_ts, (
                 "StatusPageWarning should carry the most recent incident timestamp"
+            )
+
+    @pytest.mark.asyncio
+    async def test_check_status__incident_with_invalid_timestamp(self):
+        """Incidents with unparseable timestamps are treated as having no timestamp."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Incident with bad date",
+                    "shortlink": "https://stspg.io/xyz",
+                    "created_at": "not-a-date",
+                }
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            before = datetime.datetime.now(tz=datetime.timezone.utc)
+            check = FlyIo()
+            result = await check.get_result()
+            after = datetime.datetime.now(tz=datetime.timezone.utc)
+            assert result.error is not None
+            assert isinstance(result.error, StatusPageWarning)
+            assert before <= result.error.timestamp <= after, (
+                "Unparseable incident timestamp should fall back to current time"
             )
 
     @pytest.mark.asyncio

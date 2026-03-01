@@ -19,6 +19,19 @@ class TestHealthCheckException:
         exc = HealthCheckException("test message")
         assert exc.message == "test message"
 
+    def test_init__timestamp_defaults_to_now(self):
+        """Default timestamp to current UTC time when not provided."""
+        before = datetime.datetime.now(tz=datetime.timezone.utc)
+        exc = HealthCheckException("test message")
+        after = datetime.datetime.now(tz=datetime.timezone.utc)
+        assert before <= exc.timestamp <= after
+
+    def test_init__store_timestamp(self):
+        """Store explicit timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        exc = HealthCheckException("test message", timestamp=ts)
+        assert exc.timestamp == ts
+
     def test_str__format_with_type(self):
         """Format string with message type and message."""
         exc = HealthCheckException("foo")
@@ -111,10 +124,12 @@ class TestStatusPageWarning:
         exc = StatusPageWarning("incident detected")
         assert exc.message == "incident detected"
 
-    def test_init__timestamp_defaults_to_none(self):
-        """Default timestamp to None when not provided."""
+    def test_init__timestamp_defaults_to_now(self):
+        """Default timestamp to current UTC time when not provided."""
+        before = datetime.datetime.now(tz=datetime.timezone.utc)
         exc = StatusPageWarning("incident detected")
-        assert exc.timestamp is None
+        after = datetime.datetime.now(tz=datetime.timezone.utc)
+        assert before <= exc.timestamp <= after
 
     def test_init__store_timestamp(self):
         """Store timestamp passed to constructor."""
