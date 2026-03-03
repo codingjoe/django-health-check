@@ -151,12 +151,13 @@ class TestRedis:
 
     def test_redis__repr_standard_client(self):
         """Verify repr includes host and db for a standard Redis client."""
+        # https://github.com/codingjoe/django-health-check/issues/659
         from redis.asyncio import Redis as RedisClient
 
         check = RedisHealthCheck(
             client_factory=lambda: RedisClient(host="myhost", port=6379, db=2)
         )
-        assert repr(check) == "Redis(db=2, host='myhost')"
+        assert repr(check) == "Redis(db=2, host='myhost', port=6379)"
 
     def test_redis__repr_from_url(self):
         """Verify repr includes host and db when client is created via from_url."""
