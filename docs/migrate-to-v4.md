@@ -10,6 +10,12 @@
    python manage.py migrate db zero
    ```
 
+1. Update the dependencies, making sure to include the extras for the checks you want to use.
+
+   ```shell
+   uv add 'django-health-check[psutil,celery,kafka,rabbitmq,redis,rss,atlassian]>=4.0.0'
+   ```
+
 1. Remove these `health_check.*` sub‑apps from `INSTALLED_APPS` but keep `health_check`!
 
 1. Remove all `HEALTH_CHECK_*` settings from your settings file.
