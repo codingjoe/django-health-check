@@ -47,6 +47,14 @@
       table-layout: auto;
     }
 
+    @media screen and (min-width: calc(1200px + 2em)) {
+      table {
+        border-radius: 0.5em;
+        overflow: hidden;
+        transition: border-radius 0.25s ease;
+      }
+    }
+
     table tr {
       background-color: light-dark(white, #121212);
     }
