@@ -20,16 +20,23 @@ class AtlassianStatusPage(HealthCheck):
     Monitor cloud provider service health via Atlassian Status Page API v2.
 
     Each subclass should define the `base_url` for the specific status page
-    and appropriate `timeout` value. The `max_age` parameter is not used
-    since the API endpoint only returns currently unresolved incidents.
+    and appropriate `timeout` value.
+
+    When `component` is non-empty, only incidents affecting that named component
+    are reported. If no component with that name is found in the provider's
+    component list, a :exc:`~health_check.exceptions.ServiceUnavailable` error
+    is raised, guarding against silent misconfiguration. An empty string (the
+    default) reports all open incidents regardless of which components they
+    affect.
+
+    Use separate check instances to monitor multiple components independently:
 
     Examples:
         >>> import dataclasses
         >>> import datetime
-        >>> import typing
         >>> from health_check.contrib.atlassian import AtlassianStatusPage
         >>> @dataclasses.dataclass
-        >>> class FlyIo(AtlassianStatusPage):
+        ... class FlyIo(AtlassianStatusPage):
         ...     timeout: datetime.timedelta = datetime.timedelta(seconds=10)
         ...     base_url: str = dataclasses.field(default="https://status.flyio.net", init=False, repr=False)
 
@@ -37,6 +44,7 @@ class AtlassianStatusPage(HealthCheck):
 
     base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
+    component: str = ""
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
@@ -44,10 +52,10 @@ class AtlassianStatusPage(HealthCheck):
                 "\n".join(msg for msg, _ in incidents),
                 timestamp=max(ts for _, ts in incidents),
             )
-        logger.debug("No recent incidents found")
+        logger.debug("No incidents found")
 
     async def _fetch_incidents(self):
-        api_url = f"{self.base_url}/api/v2/incidents/unresolved.json"
+        api_url = f"{self.base_url}/api/v2/components.json"
         logger.debug("Fetching incidents from %r", api_url)
 
         async with httpx.AsyncClient() as client:
@@ -75,8 +83,22 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        for incident in data["incidents"]:
-            if incident["status"] not in ("resolved", "postmortem"):
+        if self.component:
+            components_by_name = {c["name"]: c for c in data["components"]}
+            try:
+                _ = components_by_name[self.component]
+            except KeyError as e:
+                raise ServiceUnavailable(
+                    f"Component {self.component!r} not found"
+                ) from e
+
+        for incident in data.get("incidents", []):
+            if (incident.get("status") not in ("resolved", "postmortem")) and (
+                not self.component
+                or any(
+                    c["name"] == self.component for c in incident.get("components", [])
+                )
+            ):
                 yield (
                     f"{incident['name']}: {incident['shortlink']}",
                     datetime.datetime.fromisoformat(
@@ -92,6 +114,8 @@ class Cloudflare(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -101,6 +125,7 @@ class Cloudflare(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://www.cloudflarestatus.com", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -110,6 +135,8 @@ class FlyIo(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -119,6 +146,7 @@ class FlyIo(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.flyio.net", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -129,6 +157,8 @@ class GitHub(AtlassianStatusPage):
     Args:
         enterprise_region: GitHub Enterprise status page region (if applicable).
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -153,6 +183,7 @@ class GitHub(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
+    component: str = ""
 
     def __post_init__(self):
         self.base_url = f"https://{self.enterprise_region if self.enterprise_region else 'www'}.githubstatus.com"
@@ -165,6 +196,8 @@ class PlatformSh(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -174,6 +207,7 @@ class PlatformSh(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.platform.sh", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -183,6 +217,8 @@ class DigitalOcean(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -192,6 +228,7 @@ class DigitalOcean(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.digitalocean.com", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -201,6 +238,8 @@ class Render(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -210,6 +249,7 @@ class Render(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.render.com", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -219,6 +259,8 @@ class Sentry(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -228,6 +270,7 @@ class Sentry(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.sentry.io", init=False, repr=False
     )
+    component: str = ""
 
 
 @dataclasses.dataclass
@@ -237,6 +280,8 @@ class Vercel(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
@@ -246,3 +291,4 @@ class Vercel(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://www.vercel-status.com", init=False, repr=False
     )
+    component: str = ""

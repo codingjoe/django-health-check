@@ -22,13 +22,44 @@ from health_check.exceptions import (
 )
 
 
+def _make_response(components, incidents=None):
+    """Build a minimal /api/v2/components.json payload."""
+    return {
+        "page": {"id": "test"},
+        "components": list(components),
+        "incidents": list(incidents or []),
+    }
+
+
+def _component(name, status="operational", updated_at="2024-01-01T00:00:00.000Z"):
+    return {"name": name, "status": status, "updated_at": updated_at}
+
+
+def _incident(
+    name,
+    shortlink,
+    status="investigating",
+    updated_at="2024-01-01T06:00:00.000Z",
+    components=None,
+):
+    return {
+        "name": name,
+        "shortlink": shortlink,
+        "status": status,
+        "updated_at": updated_at,
+        "components": [{"name": c} for c in (components or [])],
+    }
+
+
 class TestFlyIo:
     """Test Fly.io platform status health check via Atlassian API."""
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [_component("Networking"), _component("Compute")],
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -49,18 +80,17 @@ class TestFlyIo:
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
-        """Raise ServiceWarning when incidents are found."""
-        api_response = {
-            "page": {"id": "test"},
-            "incidents": [
-                {
-                    "name": "Database connectivity issues",
-                    "shortlink": "https://stspg.io/abc123",
-                    "status": "investigating",
-                    "updated_at": "2024-01-01T06:00:00.000Z",
-                }
+        """Raise ServiceWarning when an open incident is found."""
+        api_response = _make_response(
+            [_component("Networking", status="partial_outage")],
+            incidents=[
+                _incident(
+                    "Networking degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Networking"],
+                )
             ],
-        }
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -79,29 +109,30 @@ class TestFlyIo:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
-            assert "Database connectivity issues" in str(result.error)
+            assert "Networking degraded performance" in str(result.error)
             assert "https://stspg.io/abc123" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__multiple_incidents(self):
-        """Show all unresolved incidents."""
-        api_response = {
-            "page": {"id": "test"},
-            "incidents": [
-                {
-                    "name": "Database connectivity issues",
-                    "shortlink": "https://stspg.io/abc123",
-                    "status": "investigating",
-                    "updated_at": "2024-01-01T00:00:00.000Z",
-                },
-                {
-                    "name": "Network degradation",
-                    "shortlink": "https://stspg.io/def456",
-                    "status": "identified",
-                    "updated_at": "2024-01-01T01:00:00.000Z",
-                },
+        """Report all open incidents."""
+        api_response = _make_response(
+            [
+                _component("Networking", status="partial_outage"),
+                _component("Compute", status="major_outage"),
             ],
-        }
+            incidents=[
+                _incident(
+                    "Networking issues",
+                    "https://stspg.io/abc123",
+                    components=["Networking"],
+                ),
+                _incident(
+                    "Compute outage",
+                    "https://stspg.io/def456",
+                    components=["Compute"],
+                ),
+            ],
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -120,29 +151,30 @@ class TestFlyIo:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
-            assert "Database connectivity issues" in str(result.error)
-            assert "Network degradation" in str(result.error)
+            assert "Networking issues" in str(result.error)
+            assert "Compute outage" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__incident_carries_source_timestamp(self):
         """StatusPageWarning carries the most recent incident updated_at as its timestamp."""
-        api_response = {
-            "page": {"id": "test"},
-            "incidents": [
-                {
-                    "name": "Older incident",
-                    "shortlink": "https://stspg.io/older",
-                    "status": "monitoring",
-                    "updated_at": "2024-01-01T00:00:00.000Z",
-                },
-                {
-                    "name": "Newer incident",
-                    "shortlink": "https://stspg.io/newer",
-                    "status": "investigating",
-                    "updated_at": "2024-01-01T06:00:00.000Z",
-                },
+        api_response = _make_response(
+            [
+                _component("Networking", status="degraded_performance"),
+                _component("Compute", status="partial_outage"),
             ],
-        }
+            incidents=[
+                _incident(
+                    "Older incident",
+                    "https://stspg.io/older",
+                    updated_at="2024-01-01T00:00:00.000Z",
+                ),
+                _incident(
+                    "Newer incident",
+                    "https://stspg.io/newer",
+                    updated_at="2024-01-01T06:00:00.000Z",
+                ),
+            ],
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -170,24 +202,22 @@ class TestFlyIo:
 
     @pytest.mark.asyncio
     async def test_check_status__resolved_incidents_are_filtered(self):
-        """Resolved and postmortem incidents are excluded from warnings."""
-        api_response = {
-            "page": {"id": "test"},
-            "incidents": [
-                {
-                    "name": "Resolved incident",
-                    "shortlink": "https://stspg.io/resolved",
-                    "status": "resolved",
-                    "updated_at": "2024-01-01T00:00:00.000Z",
-                },
-                {
-                    "name": "Postmortem incident",
-                    "shortlink": "https://stspg.io/postmortem",
-                    "status": "postmortem",
-                    "updated_at": "2024-01-01T01:00:00.000Z",
-                },
+        """Resolved and postmortem incidents do not produce warnings."""
+        api_response = _make_response(
+            [_component("Networking")],
+            incidents=[
+                _incident(
+                    "Resolved incident",
+                    "https://stspg.io/resolved",
+                    status="resolved",
+                ),
+                _incident(
+                    "Postmortem incident",
+                    "https://stspg.io/postmortem",
+                    status="postmortem",
+                ),
             ],
-        }
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -307,8 +337,10 @@ class TestGitHub:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [_component("Actions"), _component("API Requests")],
+        )
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -332,14 +364,149 @@ class TestGitHub:
         assert GitHub().base_url == "https://www.githubstatus.com"
         assert GitHub("eu").base_url == "https://eu.githubstatus.com"
 
+    @pytest.mark.asyncio
+    async def test_check_status__component_filter_match(self):
+        """Raise ServiceWarning when an incident affects the watched component."""
+        api_response = _make_response(
+            [
+                _component("Actions", status="partial_outage"),
+                _component("API Requests"),
+            ],
+            incidents=[
+                _incident(
+                    "Actions degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Actions", "API Requests"],
+                )
+            ],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(component="Actions")
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "Actions degraded performance" in str(result.error)
+            assert "https://stspg.io/abc123" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__component_filter_no_match(self):
+        """Pass when no incident affects the watched component."""
+        api_response = _make_response(
+            [_component("Actions"), _component("Pages", status="partial_outage")],
+            incidents=[
+                _incident(
+                    "Pages outage",
+                    "https://stspg.io/abc123",
+                    components=["Pages"],
+                )
+            ],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(component="Actions")
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__component_not_found(self):
+        """Raise ServiceUnavailable when the configured component name does not exist."""
+        api_response = _make_response(
+            [_component("Actions"), _component("API Requests")],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(component="Nonexistent")
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Nonexistent" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__no_component_filter(self):
+        """Report all open incidents when no component filter is set."""
+        api_response = _make_response(
+            [
+                _component("Actions", status="partial_outage"),
+                _component("Pages", status="degraded_performance"),
+            ],
+            incidents=[
+                _incident(
+                    "Actions degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Actions"],
+                ),
+                _incident(
+                    "Pages outage",
+                    "https://stspg.io/def456",
+                    components=["Pages"],
+                ),
+            ],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub()
+            result = await check.get_result()
+            assert result.error is not None
+            assert "Actions degraded performance" in str(result.error)
+            assert "Pages outage" in str(result.error)
+
 
 class TestCloudflare:
     """Test Cloudflare platform status health check via Atlassian API."""
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("CDN")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -369,8 +536,8 @@ class TestPlatformSh:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Hosting")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -400,8 +567,8 @@ class TestDigitalOcean:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Droplets")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -431,8 +598,8 @@ class TestRender:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Web Services")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -462,8 +629,8 @@ class TestSentry:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Error Tracking")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -484,7 +651,8 @@ class TestSentry:
 
     def test_base_url_format(self):
         """Verify correct base URL for Sentry."""
-        assert Sentry().base_url == "https://status.sentry.io"
+        check = Sentry()
+        assert check.base_url == "https://status.sentry.io"
 
 
 class TestVercel:
@@ -492,8 +660,8 @@ class TestVercel:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when no unresolved incidents are found."""
-        api_response = {"page": {"id": "test"}, "incidents": []}
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Deployments")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
