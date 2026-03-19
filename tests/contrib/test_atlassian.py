@@ -22,11 +22,12 @@ from health_check.exceptions import (
 )
 
 
-def _make_components_response(*components):
+def _make_response(components, incidents=None):
     """Build a minimal /api/v2/components.json payload."""
     return {
         "page": {"id": "test"},
         "components": list(components),
+        "incidents": list(incidents or []),
     }
 
 
@@ -34,15 +35,30 @@ def _component(name, status="operational", updated_at="2024-01-01T00:00:00.000Z"
     return {"name": name, "status": status, "updated_at": updated_at}
 
 
+def _incident(
+    name,
+    shortlink,
+    status="investigating",
+    updated_at="2024-01-01T06:00:00.000Z",
+    components=None,
+):
+    return {
+        "name": name,
+        "shortlink": shortlink,
+        "status": status,
+        "updated_at": updated_at,
+        "components": [{"name": c} for c in (components or [])],
+    }
+
+
 class TestFlyIo:
     """Test Fly.io platform status health check via Atlassian API."""
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(
-            _component("Networking"),
-            _component("Compute"),
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [_component("Networking"), _component("Compute")],
         )
 
         with mock.patch(
@@ -64,9 +80,16 @@ class TestFlyIo:
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
-        """Raise ServiceWarning when a component is not operational."""
-        api_response = _make_components_response(
-            _component("Networking", status="partial_outage"),
+        """Raise ServiceWarning when an open incident is found."""
+        api_response = _make_response(
+            [_component("Networking", status="partial_outage")],
+            incidents=[
+                _incident(
+                    "Networking degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Networking"],
+                )
+            ],
         )
 
         with mock.patch(
@@ -86,15 +109,29 @@ class TestFlyIo:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
-            assert "Networking" in str(result.error)
-            assert "partial_outage" in str(result.error)
+            assert "Networking degraded performance" in str(result.error)
+            assert "https://stspg.io/abc123" in str(result.error)
 
     @pytest.mark.asyncio
-    async def test_check_status__multiple_degraded_components(self):
-        """Report all non-operational components."""
-        api_response = _make_components_response(
-            _component("Networking", status="partial_outage"),
-            _component("Compute", status="major_outage"),
+    async def test_check_status__multiple_incidents(self):
+        """Report all open incidents."""
+        api_response = _make_response(
+            [
+                _component("Networking", status="partial_outage"),
+                _component("Compute", status="major_outage"),
+            ],
+            incidents=[
+                _incident(
+                    "Networking issues",
+                    "https://stspg.io/abc123",
+                    components=["Networking"],
+                ),
+                _incident(
+                    "Compute outage",
+                    "https://stspg.io/def456",
+                    components=["Compute"],
+                ),
+            ],
         )
 
         with mock.patch(
@@ -114,23 +151,29 @@ class TestFlyIo:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
-            assert "Networking" in str(result.error)
-            assert "Compute" in str(result.error)
+            assert "Networking issues" in str(result.error)
+            assert "Compute outage" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__incident_carries_source_timestamp(self):
-        """StatusPageWarning carries the most recent component updated_at as its timestamp."""
-        api_response = _make_components_response(
-            _component(
-                "Networking",
-                status="degraded_performance",
-                updated_at="2024-01-01T00:00:00.000Z",
-            ),
-            _component(
-                "Compute",
-                status="partial_outage",
-                updated_at="2024-01-01T06:00:00.000Z",
-            ),
+        """StatusPageWarning carries the most recent incident updated_at as its timestamp."""
+        api_response = _make_response(
+            [
+                _component("Networking", status="degraded_performance"),
+                _component("Compute", status="partial_outage"),
+            ],
+            incidents=[
+                _incident(
+                    "Older incident",
+                    "https://stspg.io/older",
+                    updated_at="2024-01-01T00:00:00.000Z",
+                ),
+                _incident(
+                    "Newer incident",
+                    "https://stspg.io/newer",
+                    updated_at="2024-01-01T06:00:00.000Z",
+                ),
+            ],
         )
 
         with mock.patch(
@@ -154,15 +197,26 @@ class TestFlyIo:
                 2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc
             )
             assert result.error.timestamp == expected_ts, (
-                "StatusPageWarning should carry the most recent component timestamp"
+                "StatusPageWarning should carry the most recent incident timestamp"
             )
 
     @pytest.mark.asyncio
-    async def test_check_status__operational_not_reported(self):
-        """Operational components do not produce warnings."""
-        api_response = _make_components_response(
-            _component("Networking", status="operational"),
-            _component("Compute", status="partial_outage"),
+    async def test_check_status__resolved_incidents_are_filtered(self):
+        """Resolved and postmortem incidents do not produce warnings."""
+        api_response = _make_response(
+            [_component("Networking")],
+            incidents=[
+                _incident(
+                    "Resolved incident",
+                    "https://stspg.io/resolved",
+                    status="resolved",
+                ),
+                _incident(
+                    "Postmortem incident",
+                    "https://stspg.io/postmortem",
+                    status="postmortem",
+                ),
+            ],
         )
 
         with mock.patch(
@@ -180,9 +234,9 @@ class TestFlyIo:
 
             check = FlyIo()
             result = await check.get_result()
-            assert result.error is not None
-            assert "Networking" not in str(result.error)
-            assert "Compute" in str(result.error)
+            assert result.error is None, (
+                "Resolved and postmortem incidents should not raise a warning"
+            )
 
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):
@@ -283,10 +337,9 @@ class TestGitHub:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(
-            _component("Actions"),
-            _component("API Requests"),
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [_component("Actions"), _component("API Requests")],
         )
 
         with mock.patch(
@@ -313,10 +366,19 @@ class TestGitHub:
 
     @pytest.mark.asyncio
     async def test_check_status__component_filter_match(self):
-        """Raise ServiceWarning when the watched component is not operational."""
-        api_response = _make_components_response(
-            _component("Actions", status="partial_outage"),
-            _component("API Requests"),
+        """Raise ServiceWarning when an incident affects the watched component."""
+        api_response = _make_response(
+            [
+                _component("Actions", status="partial_outage"),
+                _component("API Requests"),
+            ],
+            incidents=[
+                _incident(
+                    "Actions degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Actions", "API Requests"],
+                )
+            ],
         )
 
         with mock.patch(
@@ -336,15 +398,21 @@ class TestGitHub:
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
-            assert "Actions" in str(result.error)
-            assert "partial_outage" in str(result.error)
+            assert "Actions degraded performance" in str(result.error)
+            assert "https://stspg.io/abc123" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__component_filter_no_match(self):
-        """Pass when the watched component is operational."""
-        api_response = _make_components_response(
-            _component("Actions"),
-            _component("Pages", status="partial_outage"),
+        """Pass when no incident affects the watched component."""
+        api_response = _make_response(
+            [_component("Actions"), _component("Pages", status="partial_outage")],
+            incidents=[
+                _incident(
+                    "Pages outage",
+                    "https://stspg.io/abc123",
+                    components=["Pages"],
+                )
+            ],
         )
 
         with mock.patch(
@@ -367,9 +435,8 @@ class TestGitHub:
     @pytest.mark.asyncio
     async def test_check_status__component_not_found(self):
         """Raise ServiceUnavailable when the configured component name does not exist."""
-        api_response = _make_components_response(
-            _component("Actions"),
-            _component("API Requests"),
+        api_response = _make_response(
+            [_component("Actions"), _component("API Requests")],
         )
 
         with mock.patch(
@@ -393,10 +460,24 @@ class TestGitHub:
 
     @pytest.mark.asyncio
     async def test_check_status__no_component_filter(self):
-        """Report all non-operational components when no filter is set."""
-        api_response = _make_components_response(
-            _component("Actions", status="partial_outage"),
-            _component("Pages", status="degraded_performance"),
+        """Report all open incidents when no component filter is set."""
+        api_response = _make_response(
+            [
+                _component("Actions", status="partial_outage"),
+                _component("Pages", status="degraded_performance"),
+            ],
+            incidents=[
+                _incident(
+                    "Actions degraded performance",
+                    "https://stspg.io/abc123",
+                    components=["Actions"],
+                ),
+                _incident(
+                    "Pages outage",
+                    "https://stspg.io/def456",
+                    components=["Pages"],
+                ),
+            ],
         )
 
         with mock.patch(
@@ -415,8 +496,8 @@ class TestGitHub:
             check = GitHub()
             result = await check.get_result()
             assert result.error is not None
-            assert "Actions" in str(result.error)
-            assert "Pages" in str(result.error)
+            assert "Actions degraded performance" in str(result.error)
+            assert "Pages outage" in str(result.error)
 
 
 class TestCloudflare:
@@ -424,8 +505,8 @@ class TestCloudflare:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("CDN"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("CDN")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -455,8 +536,8 @@ class TestPlatformSh:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("Hosting"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Hosting")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -486,8 +567,8 @@ class TestDigitalOcean:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("Droplets"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Droplets")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -517,8 +598,8 @@ class TestRender:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("Web Services"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Web Services")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -548,8 +629,8 @@ class TestSentry:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("Error Tracking"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Error Tracking")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
@@ -579,8 +660,8 @@ class TestVercel:
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
-        """Pass when all components are operational."""
-        api_response = _make_components_response(_component("Deployments"))
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("Deployments")])
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"

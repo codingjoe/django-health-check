@@ -22,11 +22,12 @@ class AtlassianStatusPage(HealthCheck):
     Each subclass should define the `base_url` for the specific status page
     and appropriate `timeout` value.
 
-    When `component` is non-empty, only the status of that named component is
-    checked. If no component with that name is found, a
-    :exc:`~health_check.exceptions.ServiceUnavailable` error is raised, guarding
-    against silent misconfiguration. An empty string (the default) checks all
-    components and reports any that are not operational.
+    When `component` is non-empty, only incidents affecting that named component
+    are reported. If no component with that name is found in the provider's
+    component list, a :exc:`~health_check.exceptions.ServiceUnavailable` error
+    is raised, guarding against silent misconfiguration. An empty string (the
+    default) reports all open incidents regardless of which components they
+    affect.
 
     Use separate check instances to monitor multiple components independently:
 
@@ -46,16 +47,16 @@ class AtlassianStatusPage(HealthCheck):
     component: str = ""
 
     async def run(self):
-        if problems := [p async for p in self._fetch_component_status()]:
+        if incidents := [i async for i in self._fetch_incidents()]:
             raise StatusPageWarning(
-                "\n".join(msg for msg, _ in problems),
-                timestamp=max(ts for _, ts in problems),
+                "\n".join(msg for msg, _ in incidents),
+                timestamp=max(ts for _, ts in incidents),
             )
-        logger.debug("No component issues found")
+        logger.debug("No incidents found")
 
-    async def _fetch_component_status(self):
+    async def _fetch_incidents(self):
         api_url = f"{self.base_url}/api/v2/components.json"
-        logger.debug("Fetching component status from %r", api_url)
+        logger.debug("Fetching incidents from %r", api_url)
 
         async with httpx.AsyncClient() as client:
             try:
@@ -82,22 +83,26 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        components = data["components"]
-
         if self.component:
-            components = [c for c in components if c["name"] == self.component]
-            if not components:
+            components_by_name = {c["name"]: c for c in data["components"]}
+            try:
+                _ = components_by_name[self.component]
+            except KeyError:
                 raise ServiceUnavailable(
                     f"Component {self.component!r} not found"
-                )
+                ) from None
 
-        for comp in components:
-            if comp.get("status") == "operational":
+        for incident in data.get("incidents", []):
+            if incident.get("status") in ("resolved", "postmortem"):
+                continue
+            if self.component and not any(
+                c["name"] == self.component for c in incident.get("components", [])
+            ):
                 continue
             yield (
-                f"{comp['name']}: {comp['status']}",
+                f"{incident['name']}: {incident['shortlink']}",
                 datetime.datetime.fromisoformat(
-                    comp["updated_at"].replace("Z", "+00:00")
+                    incident["updated_at"].replace("Z", "+00:00")
                 ),
             )
 
