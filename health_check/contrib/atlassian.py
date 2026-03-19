@@ -87,24 +87,22 @@ class AtlassianStatusPage(HealthCheck):
             components_by_name = {c["name"]: c for c in data["components"]}
             try:
                 _ = components_by_name[self.component]
-            except KeyError:
+            except KeyError as e:
                 raise ServiceUnavailable(
                     f"Component {self.component!r} not found"
-                ) from None
+                ) from e
 
         for incident in data.get("incidents", []):
-            if incident.get("status") in ("resolved", "postmortem"):
-                continue
-            if self.component and not any(
+            if (incident.get("status") not in ("resolved", "postmortem")) and (
+            self.component and any(
                 c["name"] == self.component for c in incident.get("components", [])
-            ):
-                continue
-            yield (
-                f"{incident['name']}: {incident['shortlink']}",
-                datetime.datetime.fromisoformat(
-                    incident["updated_at"].replace("Z", "+00:00")
-                ),
-            )
+            )):
+                yield (
+                    f"{incident['name']}: {incident['shortlink']}",
+                    datetime.datetime.fromisoformat(
+                        incident["updated_at"].replace("Z", "+00:00")
+                    ),
+                )
 
 
 @dataclasses.dataclass
