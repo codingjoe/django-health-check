@@ -94,8 +94,8 @@ class AtlassianStatusPage(HealthCheck):
 
         for incident in data.get("incidents", []):
             if (incident.get("status") not in ("resolved", "postmortem")) and (
-                self.component
-                and any(
+                not self.component
+                or any(
                     c["name"] == self.component for c in incident.get("components", [])
                 )
             ):
