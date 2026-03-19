@@ -6,6 +6,7 @@ import pytest
 pytest.importorskip("httpx")
 
 from health_check.contrib.atlassian import (
+    _ComponentNamesCheck,
     Cloudflare,
     DigitalOcean,
     FlyIo,
@@ -20,6 +21,74 @@ from health_check.exceptions import (
     ServiceWarning,
     StatusPageWarning,
 )
+
+
+class TestComponentNamesCheck:
+    """Test _ComponentNamesCheck Django system check."""
+
+    def test_check_component_names__all_valid(self):
+        """Return no warnings when all configured components exist."""
+        api_response = {
+            "components": [
+                {"name": "Actions", "status": "operational"},
+                {"name": "API Requests", "status": "operational"},
+            ]
+        }
+        with mock.patch("health_check.contrib.atlassian.httpx.get") as mock_get, mock.patch(
+            "django.core.checks.register"
+        ):
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_get.return_value = mock_response
+
+            check = GitHub(components=frozenset(["Actions"]))
+            assert _ComponentNamesCheck(check)(app_configs=None) == []
+
+    def test_check_component_names__unknown_component(self):
+        """Return a Warning for each unknown component name."""
+        api_response = {
+            "components": [
+                {"name": "Actions", "status": "operational"},
+            ]
+        }
+        with mock.patch("health_check.contrib.atlassian.httpx.get") as mock_get, mock.patch(
+            "django.core.checks.register"
+        ):
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_get.return_value = mock_response
+
+            check = GitHub(components=frozenset(["Nonexistent"]))
+            warnings = _ComponentNamesCheck(check)(app_configs=None)
+            assert len(warnings) == 1
+            assert "Nonexistent" in warnings[0].msg
+            assert "Actions" in warnings[0].hint
+            assert warnings[0].id == "health_check.W001"
+
+    def test_check_component_names__api_unreachable(self):
+        """Return no warnings when the API is unreachable."""
+        with mock.patch("health_check.contrib.atlassian.httpx.get") as mock_get, mock.patch(
+            "django.core.checks.register"
+        ):
+            mock_get.side_effect = Exception("Connection refused")
+
+            check = GitHub(components=frozenset(["Actions"]))
+            assert _ComponentNamesCheck(check)(app_configs=None) == []
+
+    def test_check_registration__registered_when_components_set(self):
+        """Register a Django check when components are configured."""
+        with mock.patch("django.core.checks.register") as mock_register:
+            check = GitHub(components=frozenset(["Actions"]))
+            mock_register.assert_called_once()
+            registered = mock_register.call_args[0][0]
+            assert isinstance(registered, _ComponentNamesCheck)
+            assert registered.status_page is check
+
+    def test_check_registration__not_registered_when_no_components(self):
+        """Skip check registration when no components are configured."""
+        with mock.patch("django.core.checks.register") as mock_register:
+            GitHub()
+            mock_register.assert_not_called()
 
 
 class TestFlyIo:
@@ -350,7 +419,7 @@ class TestGitHub:
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
-        ) as mock_client:
+        ) as mock_client, mock.patch("django.core.checks.register"):
             mock_response = mock.MagicMock()
             mock_response.json.return_value = api_response
             mock_response.raise_for_status = mock.MagicMock()
@@ -385,7 +454,7 @@ class TestGitHub:
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
-        ) as mock_client:
+        ) as mock_client, mock.patch("django.core.checks.register"):
             mock_response = mock.MagicMock()
             mock_response.json.return_value = api_response
             mock_response.raise_for_status = mock.MagicMock()
@@ -425,7 +494,7 @@ class TestGitHub:
 
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
-        ) as mock_client:
+        ) as mock_client, mock.patch("django.core.checks.register"):
             mock_response = mock.MagicMock()
             mock_response.json.return_value = api_response
             mock_response.raise_for_status = mock.MagicMock()

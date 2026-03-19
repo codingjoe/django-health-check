@@ -13,6 +13,48 @@ from health_check.exceptions import ServiceUnavailable, StatusPageWarning
 logger = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass(eq=False)
+class _ComponentNamesCheck:
+    """Django system check that validates configured component names against the provider's components API."""
+
+    status_page: "AtlassianStatusPage"
+
+    def __call__(self, app_configs, **kwargs):
+        from django.core.checks import Warning as CheckWarning
+
+        api_url = f"{self.status_page.base_url}/api/v2/components.json"
+        try:
+            response = httpx.get(
+                api_url,
+                headers={"User-Agent": f"django-health-check@{__version__}"},
+                timeout=self.status_page.timeout.total_seconds(),
+                follow_redirects=True,
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception:
+            logger.warning(
+                "Could not validate components: failed to fetch %r",
+                api_url,
+                exc_info=True,
+            )
+            return []
+
+        valid_names = {
+            component["name"] for component in data.get("components", [])
+        }
+        return [
+            CheckWarning(
+                f"Unknown component {name!r} configured for {self.status_page!r}.",
+                hint=f"Valid component names: {', '.join(sorted(valid_names))}",
+                obj=self.status_page,
+                id="health_check.W001",
+            )
+            for name in self.status_page.components
+            if name not in valid_names
+        ]
+
+
 class AtlassianStatusPage(HealthCheck):
     """
     Base class for Atlassian status page health checks.
@@ -42,6 +84,13 @@ class AtlassianStatusPage(HealthCheck):
     base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
     components: frozenset[str] = frozenset()
+
+    def __post_init__(self):
+        """Register a Django system check to validate configured component names."""
+        if self.components:
+            from django.core import checks
+
+            checks.register(_ComponentNamesCheck(self))
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
@@ -172,6 +221,7 @@ class GitHub(AtlassianStatusPage):
 
     def __post_init__(self):
         self.base_url = f"https://{self.enterprise_region if self.enterprise_region else 'www'}.githubstatus.com"
+        super().__post_init__()
 
 
 @dataclasses.dataclass
