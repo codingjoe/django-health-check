@@ -94,9 +94,11 @@ class AtlassianStatusPage(HealthCheck):
 
         for incident in data.get("incidents", []):
             if (incident.get("status") not in ("resolved", "postmortem")) and (
-            self.component and any(
-                c["name"] == self.component for c in incident.get("components", [])
-            )):
+                self.component
+                and any(
+                    c["name"] == self.component for c in incident.get("components", [])
+                )
+            ):
                 yield (
                     f"{incident['name']}: {incident['shortlink']}",
                     datetime.datetime.fromisoformat(
