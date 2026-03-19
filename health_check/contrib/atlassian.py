@@ -22,14 +22,8 @@ class AtlassianStatusPage(HealthCheck):
     Each subclass should define the `base_url` for the specific status page
     and appropriate `timeout` value.
 
-    When `component` is non-empty, only incidents affecting that named component
-    are reported. If no component with that name is found in the provider's
-    component list, a :exc:`~health_check.exceptions.ServiceUnavailable` error
-    is raised, guarding against silent misconfiguration. An empty string (the
-    default) reports all open incidents regardless of which components they
-    affect.
-
-    Use separate check instances to monitor multiple components independently:
+    When `component` is non-empty, only incidents affecting that named component are
+    reported. Use separate check instances to monitor multiple components independently.
 
     Examples:
         >>> import dataclasses
