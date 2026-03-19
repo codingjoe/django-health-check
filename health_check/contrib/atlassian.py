@@ -23,6 +23,10 @@ class AtlassianStatusPage(HealthCheck):
     and appropriate `timeout` value. The `max_age` parameter is not used
     since the API endpoint only returns currently unresolved incidents.
 
+    When `components` is non-empty, only incidents affecting at least one
+    of the named components are reported. An empty frozenset (the default)
+    reports all incidents regardless of which components they affect.
+
     Examples:
         >>> import dataclasses
         >>> import datetime
@@ -37,6 +41,7 @@ class AtlassianStatusPage(HealthCheck):
 
     base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
+    components: frozenset[str] = frozenset()
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
@@ -76,13 +81,18 @@ class AtlassianStatusPage(HealthCheck):
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
         for incident in data["incidents"]:
-            if incident["status"] not in ("resolved", "postmortem"):
-                yield (
-                    f"{incident['name']}: {incident['shortlink']}",
-                    datetime.datetime.fromisoformat(
-                        incident["updated_at"].replace("Z", "+00:00")
-                    ),
-                )
+            if incident["status"] in ("resolved", "postmortem"):
+                continue
+            if self.components and not any(
+                c["name"] in self.components for c in incident.get("components", [])
+            ):
+                continue
+            yield (
+                f"{incident['name']}: {incident['shortlink']}",
+                datetime.datetime.fromisoformat(
+                    incident["updated_at"].replace("Z", "+00:00")
+                ),
+            )
 
 
 @dataclasses.dataclass
@@ -92,6 +102,7 @@ class Cloudflare(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -101,6 +112,7 @@ class Cloudflare(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://www.cloudflarestatus.com", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -110,6 +122,7 @@ class FlyIo(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -119,6 +132,7 @@ class FlyIo(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.flyio.net", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -129,6 +143,7 @@ class GitHub(AtlassianStatusPage):
     Args:
         enterprise_region: GitHub Enterprise status page region (if applicable).
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -153,6 +168,7 @@ class GitHub(AtlassianStatusPage):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
     def __post_init__(self):
         self.base_url = f"https://{self.enterprise_region if self.enterprise_region else 'www'}.githubstatus.com"
@@ -165,6 +181,7 @@ class PlatformSh(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -174,6 +191,7 @@ class PlatformSh(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.platform.sh", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -183,6 +201,7 @@ class DigitalOcean(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -192,6 +211,7 @@ class DigitalOcean(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.digitalocean.com", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -201,6 +221,7 @@ class Render(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -210,6 +231,7 @@ class Render(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.render.com", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -219,6 +241,7 @@ class Sentry(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -228,6 +251,7 @@ class Sentry(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.sentry.io", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)
 
 
 @dataclasses.dataclass
@@ -237,6 +261,7 @@ class Vercel(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
+        components: Limit alerts to incidents affecting these component names.
 
     """
 
@@ -246,3 +271,4 @@ class Vercel(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://www.vercel-status.com", init=False, repr=False
     )
+    components: frozenset[str] = dataclasses.field(default_factory=frozenset)

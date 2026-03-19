@@ -332,6 +332,158 @@ class TestGitHub:
         assert GitHub().base_url == "https://www.githubstatus.com"
         assert GitHub("eu").base_url == "https://eu.githubstatus.com"
 
+    @pytest.mark.asyncio
+    async def test_check_status__component_filter_match(self):
+        """Raise ServiceWarning when incident affects a watched component."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Actions degraded performance",
+                    "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
+                    "components": [{"name": "Actions"}, {"name": "API Requests"}],
+                }
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(components=frozenset(["Actions"]))
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceWarning)
+            assert "Actions degraded performance" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__component_filter_no_match(self):
+        """Pass when incidents exist but none affect the watched components."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Pages degraded performance",
+                    "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
+                    "components": [{"name": "Pages"}],
+                }
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(components=frozenset(["Actions"]))
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__component_filter_partial_match(self):
+        """Report only incidents that affect the watched components."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Actions degraded performance",
+                    "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
+                    "components": [{"name": "Actions"}],
+                },
+                {
+                    "name": "Pages outage",
+                    "shortlink": "https://stspg.io/def456",
+                    "status": "identified",
+                    "updated_at": "2024-01-01T07:00:00.000Z",
+                    "components": [{"name": "Pages"}],
+                },
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub(components=frozenset(["Actions"]))
+            result = await check.get_result()
+            assert result.error is not None
+            assert "Actions degraded performance" in str(result.error)
+            assert "Pages outage" not in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__no_component_filter(self):
+        """Report all incidents when no component filter is set."""
+        api_response = {
+            "page": {"id": "test"},
+            "incidents": [
+                {
+                    "name": "Actions degraded performance",
+                    "shortlink": "https://stspg.io/abc123",
+                    "status": "investigating",
+                    "updated_at": "2024-01-01T06:00:00.000Z",
+                    "components": [{"name": "Actions"}],
+                },
+                {
+                    "name": "Pages outage",
+                    "shortlink": "https://stspg.io/def456",
+                    "status": "identified",
+                    "updated_at": "2024-01-01T07:00:00.000Z",
+                    "components": [{"name": "Pages"}],
+                },
+            ],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub()
+            result = await check.get_result()
+            assert result.error is not None
+            assert "Actions degraded performance" in str(result.error)
+            assert "Pages outage" in str(result.error)
+
 
 class TestCloudflare:
     """Test Cloudflare platform status health check via Atlassian API."""
