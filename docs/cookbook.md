@@ -290,7 +290,7 @@ Subscribe to the RSS feed in Slack:
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
 1. In your `#ops` or `#incidents` channel, run:
    ```
-   /feed subscribe https://www.example.com/health/pipeline/?format=rss
+   /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
    ```
 
 ... or subscribe in Matrix:
@@ -299,7 +299,7 @@ Subscribe to the RSS feed in Slack:
 # config.toml
 [[bridge]]
     name = "Pipeline Health Monitor"
-    feed_url = "https://example.com/health/pipeline/?format=rss"
+    feed_url = "https://example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss"
     room_id = "!YourRoomId:matrix.org"
 ```
 
