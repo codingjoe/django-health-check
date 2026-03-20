@@ -44,7 +44,7 @@ node_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}",
+        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
         include(
             [
                 path(
@@ -110,12 +110,12 @@ services:
       timeout: 10s
 ```
 
-### Caddy or Traefik
+### Load balancers
 
-Caddy's and Traefik's reverse-proxies provide sophisticated load balancing.
+Most reverse-proxies provide sophisticated load balancing support.
 If configured, it can ensure that traffic is only routed to healthy instances.
 
-In Caddy, the configuration would look like this:
+In [Caddy][caddy-active-health-checks], the configuration would look like this:
 
 ```caddy
 # Caddyfile
@@ -128,7 +128,7 @@ example.com {
 }
 ```
 
-... and in Traefik, the configuration would look like this:
+… in [Traefik][traefik-health-checks], the configuration would look like this:
 
 ```yaml
 # compose.yml
@@ -139,6 +139,26 @@ services:
       - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/${HEALTH_CHECK_SECRET:-dev}/node/"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.interval=30s"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.timeout=5s"
+```
+
+… in [Nginx][nginx-health-checks], the configuration would look like this:
+
+```nginx
+# nginx.conf
+upstream myapp {
+    server localhost:8000;
+    health_check interval=30s timeout=5s uri=/health/${HEALTH_CHECK_SECRET:-dev}/node/;
+}
+```
+
+… and in [HAProxy][haproxy-health-checks], the configuration would look like this:
+
+```haproxy
+# haproxy.cfg
+backend myapp
+    server app1 localhost:8000 check inter 30s fall 3 rise 2
+    http-check expect status 200
+    http-check send meth GET uri /health/${HEALTH_CHECK_SECRET:-dev}/node/
 ```
 
 ## Application health checks
@@ -184,7 +204,7 @@ application_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}",
+        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
         include(
             [
                 # other endpoints …
@@ -246,7 +266,7 @@ pipeline_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}",
+        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
         include(
             [
                 # other endpoints …
@@ -358,3 +378,8 @@ urlpatterns = [
     ),
 ]
 ```
+
+[caddy-active-health-checks]: https://www.haproxy.com/documentation/haproxy-configuration-tutorials/reliability/health-checks/#http-health-checks
+[haproxy-health-checks]: https://www.haproxy.com/documentation/hapee/2-5r1/traffic-management/load-balancing/health-checks/
+[nginx-health-checks]: https://nginx.org/en/docs/http/ngx_http_upstream_hc_module.html#health_check
+[traefik-health-checks]: https://doc.traefik.io/traefik/routing/services/#health-check
