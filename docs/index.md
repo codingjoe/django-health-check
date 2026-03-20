@@ -43,7 +43,7 @@ there are multiple machine-readable formats available for integration:
 
 - [HTTP Status Codes] for load balancers and uptime monitors
 - [OpenMetrics] for [Prometheus] and [Grafana]
-- [CLI](container.md) for [Docker], [Podman] or [Kubernetes] health checks
+- [CLI](usage.md#django-command) for [Docker], [Podman] or [Kubernetes] health checks
 - [RSS]/[Atom] feed
 - [JSON] API for custom integrations
 
