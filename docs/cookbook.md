@@ -73,6 +73,32 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health/node/ || exit 1
 ```
 
+### 5. Configure Caddy as a reverse proxy
+
+```caddy
+# Caddyfile
+example.com {
+    reverse_proxy localhost:8000 {
+        health_uri      /health/node/
+        health_interval 30s
+        health_timeout  5s
+    }
+}
+```
+
+### 6. Configure Traefik as a reverse proxy
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    image: myapp
+    labels:
+      - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/node/"
+      - "traefik.http.services.myapp.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.myapp.loadbalancer.healthcheck.timeout=5s"
+```
+
 ---
 
 ## Application health checks
@@ -185,7 +211,10 @@ urlpatterns = [
                 ),
                 "health_check.contrib.celery.Ping",
                 # Cloud provider status (pick the ones relevant to your stack)
-                "health_check.contrib.atlassian.GitHub",
+                (
+                    "health_check.contrib.atlassian.GitHub",
+                    {"component": "GitHub Actions"},
+                ),
                 "health_check.contrib.atlassian.Cloudflare",
                 (
                     "health_check.contrib.rss.AWS",
@@ -270,7 +299,10 @@ urlpatterns = [
         HealthCheckView.as_view(
             checks=[
                 *_application_checks,
-                "health_check.contrib.atlassian.GitHub",
+                (
+                    "health_check.contrib.atlassian.GitHub",
+                    {"component": "GitHub Actions"},
+                ),
                 "health_check.contrib.atlassian.Cloudflare",
                 (
                     "health_check.contrib.rss.AWS",
