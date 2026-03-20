@@ -20,7 +20,7 @@ application. These are suitable for **liveness and readiness probes** in contain
 orchestrators such as Kubernetes, Docker, and Podman, or for reverse-proxy health
 checks in HAProxy, nginx, Caddy, and Traefik.
 
-The ps utils extra includes checks OS resouces checks such as CPU, memory, and disk usage.
+The `psutil` extra provides OS resource checks such as CPU, memory, and disk usage.
 
 ```shell
 pip install "django-health-check[psutil]"
@@ -199,7 +199,7 @@ urlpatterns = [
 ]
 ```
 
-Point your uptime monitor at `https://example.com/health/YOURT_TOKEN/application/`.
+Point your uptime monitor at `https://example.com/health/<HEALTH_CHECK_SECRET>/application/`.
 The endpoint returns HTTP 200 when all checks pass and HTTP 500 when any check fails,
 which is exactly what uptime monitors expect.
 
@@ -233,10 +233,9 @@ pipeline_checks = [
     # You may want to include application health alerts here too
     *application_checks,
     # Cloud provider status (pick the ones relevant to your stack)
-    (
-        "health_check.contrib.atlassian.GitHub",
-        {"component": "GitHub"},
-    ),
+    # GitHub status; to filter by a specific component, use a
+    # tuple like ("health_check.contrib.atlassian.GitHub", {"component": "<exact name from githubstatus.com>"})
+    "health_check.contrib.atlassian.GitHub",
     "health_check.contrib.atlassian.Cloudflare",
     (
         "health_check.contrib.rss.AWS",
