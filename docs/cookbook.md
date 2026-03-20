@@ -18,7 +18,7 @@ A well-designed health check strategy exposes **three tiers** of endpoints:
 Node checks verify that the underlying server has sufficient resources to run the
 application. These are suitable for **liveness and readiness probes** in container
 orchestrators such as Kubernetes, Docker, and Podman, or for reverse-proxy health
-checks in HAProxy or nginx.
+checks in HAProxy, nginx, Caddy, and Traefik.
 
 ### 1. Install the `psutil` extra
 
@@ -33,17 +33,18 @@ pip install "django-health-check[psutil]"
 from django.urls import path
 from health_check.views import HealthCheckView
 
+_node_checks = [
+    "health_check.contrib.psutil.CPU",
+    "health_check.contrib.psutil.Memory",
+    "health_check.contrib.psutil.Disk",
+]
+
 urlpatterns = [
     # …
     path(
         "health/node/",
-        HealthCheckView.as_view(
-            checks=[
-                "health_check.contrib.psutil.CPU",
-                "health_check.contrib.psutil.Memory",
-                "health_check.contrib.psutil.Disk",
-            ]
-        ),
+        HealthCheckView.as_view(checks=_node_checks),
+        name="health_check-node",
     ),
 ]
 ```
@@ -66,14 +67,43 @@ readinessProbe:
   periodSeconds: 10
 ```
 
+> [!NOTE]
+> When using `httpGet` probes, ensure your WSGI/ASGI server binds to `0.0.0.0`
+> (not just `127.0.0.1`) so the kubelet can reach it.
+
 ### 4. Configure a Docker health check
 
+> [!TIP]
+> Use the built-in Django management command instead of `curl` to keep your
+> container image lean. See the [Django command](usage.md#django-command) docs.
+
 ```dockerfile
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health/node/ || exit 1
+# Containerfile / Dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python manage.py health_check health_check-node localhost:8000 || exit 1
 ```
 
-### 5. Configure Caddy as a reverse proxy
+> [!IMPORTANT]
+> The `localhost` hostname must be in your `ALLOWED_HOSTS` setting, or you must
+> pass `--forwarded-host` to override the `Host` header:
+> ```shell
+> python manage.py health_check health_check-node localhost:8000 --forwarded-host example.com
+> ```
+
+### 5. Configure Docker Compose
+
+```yaml
+# compose.yml
+services:
+  web:
+    # … your service definition …
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "health_check", "health_check-node", "web:8000"]
+      interval: 30s
+      timeout: 10s
+```
+
+### 6. Configure Caddy as a reverse proxy
 
 ```caddy
 # Caddyfile
@@ -86,10 +116,10 @@ example.com {
 }
 ```
 
-### 6. Configure Traefik as a reverse proxy
+### 7. Configure Traefik as a reverse proxy
 
 ```yaml
-# docker-compose.yml
+# compose.yml
 services:
   app:
     image: myapp
@@ -121,33 +151,34 @@ from django.urls import path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
 
+_application_checks = [
+    # Django built-ins
+    "health_check.Cache",
+    "health_check.Database",
+    "health_check.Mail",
+    "health_check.Storage",
+    # Message brokers & caches
+    (
+        "health_check.contrib.redis.Redis",
+        {
+            "client_factory": lambda: RedisClient.from_url(
+                "redis://localhost:6379"
+            )
+        },
+    ),
+    (
+        "health_check.contrib.rabbitmq.RabbitMQ",
+        {"amqp_url": "amqp://guest:guest@localhost:5672//"},
+    ),
+    "health_check.contrib.celery.Ping",
+]
+
 urlpatterns = [
     # …
     path(
         "health/application/",
-        HealthCheckView.as_view(
-            checks=[
-                # Django built-ins
-                "health_check.Cache",
-                "health_check.Database",
-                "health_check.Mail",
-                "health_check.Storage",
-                # Message brokers & caches
-                (
-                    "health_check.contrib.redis.Redis",
-                    {
-                        "client_factory": lambda: RedisClient.from_url(
-                            "redis://localhost:6379"
-                        )
-                    },
-                ),
-                (
-                    "health_check.contrib.rabbitmq.RabbitMQ",
-                    {"amqp_url": "amqp://guest:guest@localhost:5672//"},
-                ),
-                "health_check.contrib.celery.Ping",
-            ]
-        ),
+        HealthCheckView.as_view(checks=_application_checks),
+        name="health_check-application",
     ),
 ]
 ```
@@ -183,45 +214,27 @@ pip install "django-health-check[redis,rabbitmq,celery,rss,atlassian]"
 # urls.py
 from django.urls import path
 from health_check.views import HealthCheckView
-from redis.asyncio import Redis as RedisClient
+
+_pipeline_checks = [
+    *_application_checks,
+    # Cloud provider status (pick the ones relevant to your stack)
+    (
+        "health_check.contrib.atlassian.GitHub",
+        {"component": "GitHub Actions"},
+    ),
+    "health_check.contrib.atlassian.Cloudflare",
+    (
+        "health_check.contrib.rss.AWS",
+        {"region": "eu-west-1", "service": "s3"},
+    ),
+]
 
 urlpatterns = [
     # …
     path(
         "health/pipeline/",
-        HealthCheckView.as_view(
-            checks=[
-                # Django built-ins
-                "health_check.Cache",
-                "health_check.Database",
-                "health_check.Mail",
-                "health_check.Storage",
-                # Infrastructure
-                (
-                    "health_check.contrib.redis.Redis",
-                    {
-                        "client_factory": lambda: RedisClient.from_url(
-                            "redis://localhost:6379"
-                        )
-                    },
-                ),
-                (
-                    "health_check.contrib.rabbitmq.RabbitMQ",
-                    {"amqp_url": "amqp://guest:guest@localhost:5672//"},
-                ),
-                "health_check.contrib.celery.Ping",
-                # Cloud provider status (pick the ones relevant to your stack)
-                (
-                    "health_check.contrib.atlassian.GitHub",
-                    {"component": "GitHub Actions"},
-                ),
-                "health_check.contrib.atlassian.Cloudflare",
-                (
-                    "health_check.contrib.rss.AWS",
-                    {"region": "eu-west-1", "service": "s3"},
-                ),
-            ]
-        ),
+        HealthCheckView.as_view(checks=_pipeline_checks),
+        name="health_check-pipeline",
     ),
 ]
 ```
@@ -248,13 +261,21 @@ urlpatterns = [
 
 ## Complete example
 
-Below is a complete `urls.py` that wires all three tiers together.
+Below is a complete `urls.py` that wires all three tiers together using
+[`include()`](https://docs.djangoproject.com/en/stable/ref/urls/#include) for
+path grouping.
 
 ```python
 # urls.py
-from django.urls import path
+from django.urls import include, path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
+
+_node_checks = [
+    "health_check.contrib.psutil.CPU",
+    "health_check.contrib.psutil.Memory",
+    "health_check.contrib.psutil.Disk",
+]
 
 _application_checks = [
     "health_check.Cache",
@@ -276,40 +297,42 @@ _application_checks = [
     "health_check.contrib.celery.Ping",
 ]
 
+_pipeline_checks = [
+    *_application_checks,
+    (
+        "health_check.contrib.atlassian.GitHub",
+        {"component": "GitHub Actions"},
+    ),
+    "health_check.contrib.atlassian.Cloudflare",
+    (
+        "health_check.contrib.rss.AWS",
+        {"region": "eu-west-1", "service": "s3"},
+    ),
+]
+
 urlpatterns = [
-    # Tier 1 – node: for Kubernetes/Docker liveness & readiness probes
     path(
-        "health/node/",
-        HealthCheckView.as_view(
-            checks=[
-                "health_check.contrib.psutil.CPU",
-                "health_check.contrib.psutil.Memory",
-                "health_check.contrib.psutil.Disk",
-            ]
-        ),
-    ),
-    # Tier 2 – application: for uptime monitors & on-call alerts
-    path(
-        "health/application/",
-        HealthCheckView.as_view(checks=_application_checks),
-    ),
-    # Tier 3 – pipeline: for developer RSS/Atom feeds (Slack, Matrix)
-    path(
-        "health/pipeline/",
-        HealthCheckView.as_view(
-            checks=[
-                *_application_checks,
-                (
-                    "health_check.contrib.atlassian.GitHub",
-                    {"component": "GitHub Actions"},
-                ),
-                "health_check.contrib.atlassian.Cloudflare",
-                (
-                    "health_check.contrib.rss.AWS",
-                    {"region": "eu-west-1", "service": "s3"},
-                ),
-            ]
-        ),
+        "health/",
+        include([
+            # Tier 1 – node: liveness & readiness probes
+            path(
+                "node/",
+                HealthCheckView.as_view(checks=_node_checks),
+                name="health_check-node",
+            ),
+            # Tier 2 – application: uptime monitors & on-call alerts
+            path(
+                "application/",
+                HealthCheckView.as_view(checks=_application_checks),
+                name="health_check-application",
+            ),
+            # Tier 3 – pipeline: developer RSS/Atom feeds (Slack, Matrix)
+            path(
+                "pipeline/",
+                HealthCheckView.as_view(checks=_pipeline_checks),
+                name="health_check-pipeline",
+            ),
+        ]),
     ),
 ]
 ```
