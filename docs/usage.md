@@ -7,30 +7,9 @@ monitor service status. The `/health/` endpoint will respond with an HTTP
 200 if all checks passed and with an HTTP 500 if any of the tests
 failed.
 
-### Slack channel monitoring
-
-Slack has an RSS app that can be used to monitor RSS feeds.
-You can set up a Slack channel to receive updates from your health check RSS feed,
-allowing your team to stay informed about the status of your services in real-time.
-
-1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack)
-1. Subscribe to the RSS feed in your Slack channel:
-   ```
-   /feed subscribe https://www.example.com/health/?format=rss
-   ```
-
-### Matrix channel monitoring
-
-Matrix has an [RSS bridge](https://gitlab.com/matrix-rss-bridge/matrix-rss-bridge) too.
-Similarly you can set up a Matrix channel to receive updates from your health check RSS feed.
-
-```toml
-# config.toml
-[[bridge]]
-    name = "Health Check Monitor"
-    feed_url = "https://example.com/health/?format=rss"
-    room_id = "!AUweUQXCxcVfFOaOIU:matrix.org"
-```
+For concrete, step-by-step examples of multi-tier endpoint setups including
+uptime monitoring, container probes, reverse-proxy configuration, and RSS/Atom
+integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
 ## Getting machine-readable reports
 
