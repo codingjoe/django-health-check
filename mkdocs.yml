@@ -29,7 +29,7 @@ plugins:
             - https://docs.djangoproject.com/en/stable/objects.inv
             - https://www.psycopg.org/psycopg3/docs/objects.inv
             - https://docs.celeryq.dev/en/stable/objects.inv
-            - https://psutil.readthedocs.io/en/latest/objects.inv
+            - https://psutil.readthedocs.io/en/stable/objects.inv
             - https://django-storages.readthedocs.io/en/latest/objects.inv
             - https://redis.readthedocs.io/en/stable/objects.inv
 theme:
