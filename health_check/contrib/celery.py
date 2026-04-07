@@ -65,7 +65,9 @@ class Ping(HealthCheck):
             # conf.task_queues may be None
             defined_queues = {self.app.conf.task_default_queue}
         inspect_result = self.app.control.inspect(active_workers)
-        active_queues_by_worker = inspect_result.active_queues() if inspect_result else None
+        active_queues_by_worker = (
+            inspect_result.active_queues() if inspect_result else None
+        )
         if not active_queues_by_worker:
             active_queues_by_worker = {}
 
