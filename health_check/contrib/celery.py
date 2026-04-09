@@ -66,9 +66,9 @@ class Ping(HealthCheck):
             defined_queues = {self.app.conf.task_default_queue}
         active_queues = {
             queue.get("name")
-            for queues in self.app.control.inspect(active_workers)
-            .active_queues()
-            .values()
+            for queues in (
+                self.app.control.inspect(active_workers).active_queues() or {}
+            ).values()
             for queue in queues
         }
 

@@ -158,3 +158,22 @@ class TestCelery:
 
         result = await check.get_result()
         assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__none_active_queues(self):
+        """Treat None from inspect.active_queues() as no active queues."""
+        mock_app = mock.MagicMock()
+        mock_app.conf.task_queues = [Queue("default", routing_key="default")]
+        mock_app.conf.task_default_queue = "default"
+        mock_app.control.ping.return_value = [{"celery@worker1": {"ok": "pong"}}]
+        mock_inspect = mock.MagicMock()
+        mock_inspect.active_queues.return_value = None
+        mock_app.control.inspect.return_value = mock_inspect
+
+        check = CeleryPingHealthCheck()
+        check.app = mock_app
+
+        result = await check.get_result()
+        assert result.error is not None
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "default" in str(result.error)
