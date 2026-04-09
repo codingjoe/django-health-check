@@ -118,12 +118,11 @@ class Database(HealthCheck):
             connection = connections[self.alias]
         except ConnectionDoesNotExist as e:
             raise ServiceUnavailable("Database alias does not exist") from e
-        result = None
         try:
             compiler = connection.ops.compiler("SQLCompiler")(
                 _SelectOne(), connection, None
             )
-            with connection.cursor() as cursor:
+            with connection.temporary_connection() as cursor:
                 cursor.execute(*compiler.compile(_SelectOne()))
                 result = cursor.fetchone()
         except db.Error as e:
@@ -133,8 +132,6 @@ class Database(HealthCheck):
                 raise ServiceUnavailable(
                     "Health Check query did not return the expected result."
                 )
-        finally:
-            connection.close_if_unusable_or_obsolete()
 
 
 @dataclasses.dataclass
