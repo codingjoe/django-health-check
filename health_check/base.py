@@ -74,11 +74,12 @@ class HealthCheck(abc.ABC):
         return "OK"
 
     async def get_result(self: HealthCheck) -> HealthCheckResult:
+        loop = asyncio.get_running_loop()
         start = timeit.default_timer()
         try:
             await self.run() if inspect.iscoroutinefunction(
                 self.run
-            ) else await asyncio.to_thread(self.run)
+            ) else await loop.run_in_executor(None, self.run)
         except HealthCheckException as e:
             error = e
         except BaseException:
