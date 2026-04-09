@@ -64,16 +64,11 @@ class Ping(HealthCheck):
         except TypeError:
             # conf.task_queues may be None
             defined_queues = {self.app.conf.task_default_queue}
-        inspect_result = self.app.control.inspect(active_workers)
-        active_queues_by_worker = (
-            inspect_result.active_queues() if inspect_result else None
-        )
-        if not active_queues_by_worker:
-            active_queues_by_worker = {}
-
         active_queues = {
             queue.get("name")
-            for queues in active_queues_by_worker.values()
+            for queues in (
+                self.app.control.inspect(active_workers).active_queues() or {}
+            ).values()
             for queue in queues
         }
 
