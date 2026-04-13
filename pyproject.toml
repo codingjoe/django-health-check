@@ -38,7 +38,7 @@ dynamic = [
   "description",
 ]
 dependencies = [
-  "Django>=5.2",
+  "Django>=5.2.13",
   "dnspython>=2.0.0",
 ]
 
