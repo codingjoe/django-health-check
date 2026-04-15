@@ -156,7 +156,11 @@ This pool is usually persisted across requests. This may lead to high performanc
 permanently allocating more memory. This may be undesirable for some applications,
 especially with `S3Storage`, which uses thread-local connections.
 
-This can be mitigated by using a custom executor that creates a new thread pool for each request, which is then cleaned up after the checks are completed. This can be achieved by subclassing `HealthCheckView` and overriding the `get_executor` method to return a new `ThreadPoolExecutor` instance for each request.
+This can be mitigated by using a custom executor that creates a new
+thread pool for each request, which is then cleaned up after the checks
+are completed. This can be achieved by subclassing `HealthCheckView`
+and overriding the `get_executor` method to return a context manager
+providing a new `ThreadPoolExecutor` instance for each request.
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -164,10 +168,8 @@ from health_check.views import HealthCheckView
 
 
 class CustomHealthCheckView(HealthCheckView):
-    @staticmethod
     def get_executor(self):
-        with ThreadPoolExecutor(max_workers=len(self.checks)) as executor:
-            yield executor
+        return ThreadPoolExecutor(max_workers=len(self.checks))
 ```
 
 This approach ensures that each request gets a fresh thread pool,

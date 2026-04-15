@@ -113,7 +113,7 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(never_cache)
     async def get(self, request, *args, **kwargs):
-        with contextlib.contextmanager(self.get_executor)() as executor:
+        with self.get_executor() as executor:
             self.results = await asyncio.gather(
                 *(check.get_result(executor) for check in self.get_checks())
             )
@@ -162,20 +162,19 @@ class HealthCheckView(TemplateView):
             "errors": any(result.error for result in self.results),
         }
 
-    def get_executor(self) -> typing.Generator[Executor | None, None, None]:
+    def get_executor(self) -> contextlib.AbstractContextManager[Executor | None]:
         """
-        Yield an executor to run synchronous checks.
+        Return a context manager providing an executor for synchronous checks.
 
-        Yield None to use the event loop's default executor.
+        Return a context manager that yields ``None`` to use the event loop's
+        default executor.
 
         Example:
-            @staticmethod
-            def get_executor():
-                with ThreadPoolExecutor(max_workers=5) as executor:
-                    yield executor
+            def get_executor(self):
+                return ThreadPoolExecutor(max_workers=5)
 
         """
-        yield None
+        return contextlib.nullcontext(None)
 
     def render_to_response_json(self, status):
         """Return JSON response with health check results."""
