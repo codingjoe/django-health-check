@@ -6,6 +6,7 @@ import dataclasses
 import inspect
 import logging
 import timeit
+from concurrent.futures import Executor
 
 from health_check.exceptions import HealthCheckException
 
@@ -70,16 +71,16 @@ class HealthCheck(abc.ABC):
         ...
 
     def pretty_status(self) -> str:
-        """Return human-readable status string, always 'OK' for the check itself."""
+        """Return a human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
-    async def get_result(self: HealthCheck) -> HealthCheckResult:
+    async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
         loop = asyncio.get_running_loop()
         start = timeit.default_timer()
         try:
             await self.run() if inspect.iscoroutinefunction(
                 self.run
-            ) else await loop.run_in_executor(None, self.run)
+            ) else await loop.run_in_executor(executor, self.run)
         except HealthCheckException as e:
             error = e
         except BaseException:

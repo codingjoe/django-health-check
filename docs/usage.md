@@ -141,3 +141,37 @@ CustomHealthCheck        ... Unavailable: Something went wrong!
 
 Similar to the http version, a critical error will cause the command to
 quit with the exit code `1`.
+
+## Performance tweaks
+
+All checks are executed asynchronously, either via `asyncio` or via a thread pool,
+depending on the implementation of the individual checks.
+This allows for concurrent execution of the IO-bound checks,
+which reduces the response time.
+
+The event loop's default executor is used to run synchronous checks
+(e.g. [Database][health_check.checks.Database], [Mail][health_check.checks.Mail],
+or [Storage][health_check.checks.Storage]) in a thread pool.
+This pool is usually persisted across requests. This may lead to high performance while
+permanently allocating more memory. This may be undesirable for some applications,
+especially with `S3Storage`, which uses thread-local connections.
+
+This can be mitigated by using a custom executor that creates a new
+thread pool for each request, which is then cleaned up after the checks
+are completed. This can be achieved by subclassing `HealthCheckView`
+and overriding the `get_executor` method to return a context manager
+providing a new `ThreadPoolExecutor` instance for each request.
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+from health_check.views import HealthCheckView
+
+
+class CustomHealthCheckView(HealthCheckView):
+    def get_executor(self):
+        return ThreadPoolExecutor(max_workers=len(self.checks))
+```
+
+This approach ensures that each request gets a fresh thread pool,
+which can help manage memory usage more effectively
+while still providing the benefits of concurrent execution for synchronous checks.

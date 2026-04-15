@@ -1,3 +1,6 @@
+import asyncio
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from health_check.base import HealthCheck, HealthCheckResult
@@ -45,6 +48,36 @@ class TestHealthCheck:
         result = await check.get_result()
         assert result.error is None
         assert isinstance(result, HealthCheckResult)
+
+    @pytest.mark.asyncio
+    async def test_run__sync_check_uses_custom_executor(self):
+        """Pass custom executor to run_in_executor for synchronous checks."""
+
+        class SyncCheck(HealthCheck):
+            def run(self):
+                pass
+
+        check = SyncCheck()
+        custom_executor = MagicMock()
+        loop = asyncio.get_running_loop()
+        with patch.object(loop, "run_in_executor", wraps=loop.run_in_executor) as mock:
+            await check.get_result(executor=custom_executor)
+        mock.assert_called_once_with(custom_executor, check.run)
+
+    @pytest.mark.asyncio
+    async def test_run__sync_check_default_executor(self):
+        """Use default executor (None) for synchronous checks when none is supplied."""
+
+        class SyncCheck(HealthCheck):
+            def run(self):
+                pass
+
+        check = SyncCheck()
+        loop = asyncio.get_running_loop()
+        with patch.object(loop, "run_in_executor", wraps=loop.run_in_executor) as mock:
+            result = await check.get_result()
+        mock.assert_called_once_with(None, check.run)
+        assert result.error is None
 
     @pytest.mark.asyncio
     async def test_result__timing(self):

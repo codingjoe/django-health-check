@@ -194,11 +194,11 @@ class DNS(HealthCheck):
 @dataclasses.dataclass
 class Mail(HealthCheck):
     """
-    Check that mail backend is able to open and close connection.
+    Check that an email backend is able to open and close the connection.
 
     Args:
         backend: The email backend to test against.
-        timeout: Timeout for connection to mail server in seconds.
+        timeout: Timeout for connection to an email server in seconds.
 
     """
 
@@ -231,7 +231,7 @@ class Storage(HealthCheck):
     """
     Check file storage backends by saving, reading, and deleting a test file.
 
-    It can be setup multiple times for different storage backends if needed.
+    It can be set up multiple times for different storage backends if needed.
 
     Args:
         alias: The alias of the storage backend to check.

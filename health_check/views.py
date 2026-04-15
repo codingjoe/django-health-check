@@ -1,7 +1,9 @@
 import asyncio
+import contextlib
 import datetime
 import re
 import typing
+from concurrent.futures import Executor
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
@@ -111,9 +113,10 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(never_cache)
     async def get(self, request, *args, **kwargs):
-        self.results = await asyncio.gather(
-            *(check.get_result() for check in self.get_checks())
-        )
+        with self.get_executor() as executor:
+            self.results = await asyncio.gather(
+                *(check.get_result(executor) for check in self.get_checks())
+            )
         has_errors = any(result.error for result in self.results)
         status_code = 500 if has_errors else 200
         format_override = request.GET.get("format")
@@ -159,6 +162,20 @@ class HealthCheckView(TemplateView):
             "errors": any(result.error for result in self.results),
         }
 
+    def get_executor(self) -> contextlib.AbstractContextManager[Executor | None]:
+        """
+        Return a context manager providing an executor for synchronous checks.
+
+        Return a context manager that yields ``None`` to use the event loop's
+        default executor.
+
+        Example:
+            def get_executor(self):
+                return ThreadPoolExecutor(max_workers=5)
+
+        """
+        return contextlib.nullcontext(None)
+
     def render_to_response_json(self, status):
         """Return JSON response with health check results."""
         return JsonResponse(
@@ -170,7 +187,7 @@ class HealthCheckView(TemplateView):
         )
 
     def render_to_response_text(self, status):
-        """Return plain text response with health check results."""
+        """Return a plain text response with health check results."""
         lines = (
             f"{repr(result.check)}: {'OK' if not result.error else str(result.error)}"
             for result in self.results

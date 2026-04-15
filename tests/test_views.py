@@ -1038,3 +1038,36 @@ class TestHealthCheckView:
         assert ": OK" in content
         assert "FailingBackend" in content
         assert "Failed" in content
+
+    def test_get_executor__returns_null_context(self):
+        """Default get_executor returns a nullcontext yielding None."""
+        import contextlib
+
+        view = HealthCheckView()
+        ctx = view.get_executor()
+        assert isinstance(ctx, contextlib.AbstractContextManager)
+        with ctx as executor:
+            assert executor is None
+
+    @pytest.mark.asyncio
+    async def test_get_executor__custom_thread_pool(self):
+        """Custom get_executor returning a ThreadPoolExecutor is used for sync checks."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        from django.test import AsyncRequestFactory
+
+        class CustomHealthCheckView(HealthCheckView):
+            def get_executor(self):
+                return ThreadPoolExecutor(max_workers=1)
+
+        class SyncCheck(HealthCheck):
+            def run(self):
+                pass
+
+        factory = AsyncRequestFactory()
+        request = factory.get("/")
+        view = CustomHealthCheckView.as_view(checks=[SyncCheck])
+        response = await view(request)
+        if hasattr(response, "render"):
+            response.render()
+        assert response.status_code == 200
