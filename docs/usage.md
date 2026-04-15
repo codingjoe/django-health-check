@@ -146,8 +146,8 @@ quit with the exit code `1`.
 
 All checks are executed asynchronously, either via `asyncio` or via a thread pool,
 depending on the implementation of the individual checks.
-This allows for concurrent execution of the mostly IO-bound checks,
-which significantly improves the response time.
+This allows for concurrent execution of the IO-bound checks,
+which reduces the response time.
 
 The event loop's default executor is used to run synchronous checks
 (e.g. [Database][health_check.checks.Database], [Mail][health_check.checks.Mail],
