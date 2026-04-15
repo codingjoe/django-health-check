@@ -1053,6 +1053,7 @@ class TestHealthCheckView:
     async def test_get_executor__custom_thread_pool(self):
         """Custom get_executor returning a ThreadPoolExecutor is used for sync checks."""
         from concurrent.futures import ThreadPoolExecutor
+
         from django.test import AsyncRequestFactory
 
         class CustomHealthCheckView(HealthCheckView):
