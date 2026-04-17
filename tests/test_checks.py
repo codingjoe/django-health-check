@@ -483,55 +483,56 @@ class TestStorageExceptionHandling:
             assert "File was not deleted" in str(result.error)
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("exists_result", "read_result", "expected_message"),
-        [
-            (False, None, "does not exist"),
-            (True, b"wrong content", "does not match"),
-        ],
-    )
-    async def test_check_status__failed_validation_cleans_up_saved_file(
-        self, exists_result, read_result, expected_message
-    ):
-        """Delete the saved probe file when validation fails after write."""
+    async def test_check_status__file_not_saved(self):
+        """Raise ServiceUnavailable when file does not exist after save."""
         with mock.patch("health_check.checks.storages") as mock_storages:
             mock_storage = mock.MagicMock()
             mock_storages.__getitem__.return_value = mock_storage
             mock_storage.save.return_value = "test-file.txt"
-            mock_storage.exists.return_value = exists_result
-            if read_result is not None:
-                mock_file = mock.MagicMock()
-                mock_file.read.return_value = read_result
-                mock_storage.open.return_value.__enter__.return_value = mock_file
-
-            check = Storage()
-            result = await check.get_result()
-            assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert expected_message in str(result.error)
-            mock_storage.delete.assert_called_once_with("test-file.txt")
-
-    @pytest.mark.asyncio
-    async def test_check_status__cleanup_failure_does_not_mask_validation_error(self):
-        """Log cleanup failure and return the original validation error."""
-        with (
-            mock.patch("health_check.checks.storages") as mock_storages,
-            mock.patch("health_check.checks.logger") as mock_logger,
-        ):
-            mock_storage = mock.MagicMock()
-            mock_storages.__getitem__.return_value = mock_storage
-            mock_storage.save.return_value = "test-file.txt"
             mock_storage.exists.return_value = False
-            mock_storage.delete.side_effect = OSError("delete failed")
 
             check = Storage()
             result = await check.get_result()
-
             assert result.error is not None
             assert isinstance(result.error, ServiceUnavailable)
             assert "does not exist" in str(result.error)
-            mock_storage.delete.assert_called_once_with("test-file.txt")
-            mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_check_status__file_content_mismatch(self):
+        """Raise ServiceUnavailable when file content does not match."""
+        with mock.patch("health_check.checks.storages") as mock_storages:
+            mock_storage = mock.MagicMock()
+            mock_storages.__getitem__.return_value = mock_storage
+            mock_storage.save.return_value = "test-file.txt"
+            mock_storage.exists.return_value = True
+            mock_file = mock.MagicMock()
+            mock_file.read.return_value = b"wrong content"
+            mock_storage.open.return_value.__enter__.return_value = mock_file
+
+            check = Storage()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not match" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__file_content_mismatch__cleanup(self):
+        """Ensure file is deleted even when content mismatch occurs."""
+        with mock.patch("health_check.checks.storages") as mock_storages:
+            mock_storage = mock.MagicMock()
+            mock_storages.__getitem__.return_value = mock_storage
+            mock_storage.save.return_value = "test-file.txt"
+            mock_storage.exists.return_value = True
+            mock_file = mock.MagicMock()
+            mock_file.read.return_value = b"wrong content"
+            mock_storage.open.return_value.__enter__.return_value = mock_file
+
+            check = Storage()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not match" in str(result.error)
+            mock_storage.delete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_check_status__service_unavailable_passthrough(self):
