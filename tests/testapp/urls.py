@@ -57,6 +57,7 @@ try:
 except ImportError:
     pass
 else:
+
     def redis_client_factory():
         return RedisClient.from_url(settings.REDIS_URL)
 
