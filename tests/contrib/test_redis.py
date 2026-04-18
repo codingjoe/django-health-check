@@ -4,6 +4,7 @@ import os
 from unittest import mock
 
 import pytest
+from django.urls import reverse
 
 pytest.importorskip("redis")
 
@@ -16,6 +17,18 @@ from health_check.exceptions import ServiceUnavailable
 
 class TestRedis:
     """Test Redis health check."""
+
+    def test_redis__testapp_route_uses_current_constructor_contract(self, client):
+        """The test app Redis route instantiates the check with client_factory."""
+        with mock.patch(
+            "health_check.contrib.redis.Redis.run",
+            new=mock.AsyncMock(return_value=None),
+        ):
+            response = client.get(f"{reverse('health_check_redis')}?format=text")
+
+        assert response.status_code == 200
+        assert b"Redis(" in response.content
+        assert b"OK" in response.content
 
     @pytest.mark.asyncio
     async def test_redis__ok(self):
