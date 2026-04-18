@@ -516,6 +516,25 @@ class TestStorageExceptionHandling:
             assert "does not match" in str(result.error)
 
     @pytest.mark.asyncio
+    async def test_check_status__file_content_mismatch__cleanup(self):
+        """Ensure file is deleted even when content mismatch occurs."""
+        with mock.patch("health_check.checks.storages") as mock_storages:
+            mock_storage = mock.MagicMock()
+            mock_storages.__getitem__.return_value = mock_storage
+            mock_storage.save.return_value = "test-file.txt"
+            mock_storage.exists.return_value = True
+            mock_file = mock.MagicMock()
+            mock_file.read.return_value = b"wrong content"
+            mock_storage.open.return_value.__enter__.return_value = mock_file
+
+            check = Storage()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "does not match" in str(result.error)
+            mock_storage.delete.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_check_status__service_unavailable_passthrough(self):
         """Re-raise ServiceUnavailable exceptions."""
         with mock.patch("health_check.checks.storages") as mock_storages:

@@ -274,5 +274,8 @@ class Storage(HealthCheck):
         # write the file to the storage backend
         file_name = self.get_file_name()
         file_content = self.get_file_content()
-        file_name = self.check_save(file_name, file_content)
-        self.check_delete(file_name)
+        try:
+            file_name = self.check_save(file_name, file_content)
+            self.check_delete(file_name)
+        finally:
+            self.storage.delete(file_name)
