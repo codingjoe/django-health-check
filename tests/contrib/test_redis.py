@@ -4,6 +4,7 @@ import os
 from unittest import mock
 
 import pytest
+from django.conf import settings
 from django.urls import reverse
 
 pytest.importorskip("redis")
@@ -20,15 +21,26 @@ class TestRedis:
 
     def test_redis__testapp_route_uses_current_constructor_contract(self, client):
         """The test app Redis route instantiates the check with client_factory."""
+        mock_client = mock.AsyncMock()
+        mock_client.ping.return_value = True
+        mock_client.connection_pool.connection_kwargs = {
+            "host": "localhost",
+            "port": 6379,
+            "db": 1,
+        }
+
         with mock.patch(
-            "health_check.contrib.redis.Redis.run",
-            new=mock.AsyncMock(return_value=None),
-        ):
+            "tests.testapp.urls.RedisClient.from_url", return_value=mock_client
+        ) as mock_from_url:
             response = client.get(f"{reverse('health_check_redis')}?format=text")
 
         assert response.status_code == 200
         assert b"Redis(" in response.content
         assert b"OK" in response.content
+        assert mock_from_url.call_count == 2
+        mock_from_url.assert_called_with(settings.REDIS_URL)
+        mock_client.ping.assert_awaited_once()
+        mock_client.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_redis__ok(self):
