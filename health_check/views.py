@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import dataclasses
 import datetime
 import re
 import typing
@@ -217,6 +218,17 @@ class HealthCheckView(TemplateView):
         """
         return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
+    def _openmetrics_labels(self, check):
+        """Build OpenMetrics label set from a HealthCheck dataclass instance."""
+        escape = self._escape_openmetrics_label_value
+        parts = [f'check="{escape(check.__class__.__name__)}"']
+        for field in dataclasses.fields(check):
+            if field.repr:
+                parts.append(
+                    f'{field.name}="{escape(str(getattr(check, field.name)))}"'
+                )
+        return "{" + ",".join(parts) + "}"
+
     def render_to_response_openmetrics(self):
         """Return OpenMetrics response with health check results."""
         lines = [
@@ -227,11 +239,9 @@ class HealthCheckView(TemplateView):
 
         # Add status metrics for each check
         for result in self.results:
-            safe_label = self._escape_openmetrics_label_value(repr(result.check))
+            labels = self._openmetrics_labels(result.check)
             has_errors |= bool(result.error)
-            lines.append(
-                f'django_health_check_status{{check="{safe_label}"}} {not result.error:d}'
-            )
+            lines.append(f"django_health_check_status{labels} {not result.error:d}")
 
         # Add response time metrics
         lines += [
@@ -241,9 +251,9 @@ class HealthCheckView(TemplateView):
         ]
 
         for result in self.results:
-            safe_label = self._escape_openmetrics_label_value(repr(result.check))
+            labels = self._openmetrics_labels(result.check)
             lines.append(
-                f'django_health_check_response_time_seconds{{check="{safe_label}"}} {result.time_taken:.6f}'
+                f"django_health_check_response_time_seconds{labels} {result.time_taken:.6f}"
             )
 
         # Add overall health status
