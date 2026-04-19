@@ -74,15 +74,15 @@ class HealthCheck(abc.ABC):
         """Return a human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
-    def json_label(self) -> dict[str, str]:
-        """Return a label dict built from dataclass fields with ``repr=True``."""
+    @property
+    def labels(self) -> dict[str, str]:
+        """Return a human-readable label for the check, defaulting to the class name."""
         return {
-            "check": type(self).__name__,
-            **{
-                field.name: str(getattr(self, field.name))
-                for field in dataclasses.fields(self)
-                if field.repr
-            },
+            "check": self.__class__.__name__,
+        } | {
+            field.name: str(getattr(self, field.name))
+            for field in dataclasses.fields(self)
+            if field.repr
         }
 
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:

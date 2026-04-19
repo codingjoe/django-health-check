@@ -914,6 +914,7 @@ class TestHealthCheckView:
         response = await health_check_view([CustomCheck], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that the label value is present (with proper escaping)
+        print(content)
         assert 'check="CustomCheck",name="Custom-Check.Backend Test"' in content
 
     @pytest.mark.asyncio

@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import datetime
-import json
 import re
 import typing
 from concurrent.futures import Executor
@@ -208,12 +207,21 @@ class HealthCheckView(TemplateView):
         return self._render_feed(Rss201rev2Feed)
 
     @staticmethod
-    def _openmetrics_labels(check):
-        """Format a ``HealthCheck.json_label()`` dict as an OpenMetrics label set."""
-        return (
-            "{"
-            + ",".join(f"{k}={json.dumps(v)}" for k, v in check.json_label().items())
-            + "}"
+    def abnf_escape(value):
+        r"""
+        Escape ABNF OpenMetic labels according to RFC 5234 and RFC7405.
+
+        Escapes backslashes, double quotes, and newlines as required by the spec:
+        - Backslash (\) -> \\
+        - Double quote (") -> \"
+        - Line feed (\n) -> \n
+        """
+        return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+    @staticmethod
+    def abnf_dump(o: dict[str, str]):
+        return ",".join(
+            f'{key}="{HealthCheckView.abnf_escape(value)}"' for key, value in o.items()
         )
 
     def render_to_response_openmetrics(self):
@@ -226,9 +234,10 @@ class HealthCheckView(TemplateView):
 
         # Add status metrics for each check
         for result in self.results:
-            labels = self._openmetrics_labels(result.check)
             has_errors |= bool(result.error)
-            lines.append(f"django_health_check_status{labels} {not result.error:d}")
+            lines.append(
+                f"django_health_check_status{{{self.abnf_dump(result.check.labels)}}} {not result.error:d}"
+            )
 
         # Add response time metrics
         lines += [
@@ -238,9 +247,8 @@ class HealthCheckView(TemplateView):
         ]
 
         for result in self.results:
-            labels = self._openmetrics_labels(result.check)
             lines.append(
-                f"django_health_check_response_time_seconds{labels} {result.time_taken:.6f}"
+                f"django_health_check_response_time_seconds{{{self.abnf_dump(result.check.labels)}}} {result.time_taken:.6f}"
             )
 
         # Add overall health status
