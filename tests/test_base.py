@@ -102,6 +102,7 @@ class TestHealthCheck:
             foo: str = "bar"
             version: float = 1.0
             secret_key: str = dataclasses.field(default="secret", repr=False)
+            missing_value: str | None = None
 
             async def run(self):
                 pass
