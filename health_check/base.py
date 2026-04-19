@@ -80,9 +80,9 @@ class HealthCheck(abc.ABC):
         return {
             "check": self.__class__.__name__,
         } | {
-            field.name: str(getattr(self, field.name))
+            field.name: str(value)
             for field in dataclasses.fields(self)
-            if field.repr
+            if field.repr and (value := getattr(self, field.name)) is not None
         }
 
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
