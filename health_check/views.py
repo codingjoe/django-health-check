@@ -219,7 +219,8 @@ class HealthCheckView(TemplateView):
         return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
     @staticmethod
-    def abnf_dump(o: dict[str, str]):
+    def abnf_dumps(o: dict[str, str]):
+        """Return ABNF OpenMetic labels as a string suitable for use in a metric name."""
         return ",".join(
             f'{key}="{HealthCheckView.abnf_escape(value)}"' for key, value in o.items()
         )
@@ -236,7 +237,7 @@ class HealthCheckView(TemplateView):
         for result in self.results:
             has_errors |= bool(result.error)
             lines.append(
-                f"django_health_check_status{{{self.abnf_dump(result.check.labels)}}} {not result.error:d}"
+                f"django_health_check_status{{{self.abnf_dumps(result.check.labels)}}} {not result.error:d}"
             )
 
         # Add response time metrics
@@ -248,7 +249,7 @@ class HealthCheckView(TemplateView):
 
         for result in self.results:
             lines.append(
-                f"django_health_check_response_time_seconds{{{self.abnf_dump(result.check.labels)}}} {result.time_taken:.6f}"
+                f"django_health_check_response_time_seconds{{{self.abnf_dumps(result.check.labels)}}} {result.time_taken:.6f}"
             )
 
         # Add overall health status

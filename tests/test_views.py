@@ -1069,3 +1069,17 @@ class TestHealthCheckView:
         if hasattr(response, "render"):
             response.render()
         assert response.status_code == 200
+
+    def test_abnf_escape(self):
+        assert HealthCheckView.abnf_escape("simple") == "simple"
+        assert (
+            HealthCheckView.abnf_escape(r"backslash\backslash")
+            == "backslash\\\\backslash"
+        )
+        assert HealthCheckView.abnf_escape('quote"test') == 'quote\\"test'
+        assert HealthCheckView.abnf_escape("line\nbreak") == "line\\nbreak"
+
+    def test_abnf_dumps(self):
+        assert HealthCheckView.abnf_dumps({"a": "b"}) == 'a="b"'
+        assert HealthCheckView.abnf_dumps({"a": "b", "c": "d"}) == 'a="b",c="d"'
+        assert HealthCheckView.abnf_dumps({"a": 'b"c'}) == 'a="b\\"c"'
