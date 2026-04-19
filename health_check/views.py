@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
-import dataclasses
 import datetime
+import json
 import re
 import typing
 from concurrent.futures import Executor
@@ -207,27 +207,14 @@ class HealthCheckView(TemplateView):
         """Return RSS 2.0 feed response with health check results."""
         return self._render_feed(Rss201rev2Feed)
 
-    def _escape_openmetrics_label_value(self, value):
-        r"""
-        Escape label value according to OpenMetrics specification.
-
-        Escapes backslashes, double quotes, and newlines as required by the spec:
-        - Backslash (\) -> \\
-        - Double quote (") -> \"
-        - Line feed (\n) -> \n
-        """
-        return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-
-    def _openmetrics_labels(self, check):
-        """Build OpenMetrics label set from a HealthCheck dataclass instance."""
-        escape = self._escape_openmetrics_label_value
-        parts = [f'check="{escape(check.__class__.__name__)}"']
-        for field in dataclasses.fields(check):
-            if field.repr:
-                parts.append(
-                    f'{field.name}="{escape(str(getattr(check, field.name)))}"'
-                )
-        return "{" + ",".join(parts) + "}"
+    @staticmethod
+    def _openmetrics_labels(check):
+        """Format a ``HealthCheck.json_label()`` dict as an OpenMetrics label set."""
+        return (
+            "{"
+            + ",".join(f"{k}={json.dumps(v)}" for k, v in check.json_label().items())
+            + "}"
+        )
 
     def render_to_response_openmetrics(self):
         """Return OpenMetrics response with health check results."""
