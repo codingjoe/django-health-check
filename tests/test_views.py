@@ -906,16 +906,15 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class CustomCheck(HealthCheck):
+            name: str = "Custom-Check.Backend Test"
+
             async def run(self):
                 pass
-
-            def __repr__(self):
-                return "Custom-Check.Backend Test"
 
         response = await health_check_view([CustomCheck], format_param="openmetrics")
         content = response.content.decode("utf-8")
         # Check that the label value is present (with proper escaping)
-        assert 'check="Custom-Check.Backend Test"' in content
+        assert 'check="CustomCheck",name="Custom-Check.Backend Test"' in content
 
     @pytest.mark.asyncio
     async def test_get__openmetrics_label_escaping(self, health_check_view):
@@ -923,11 +922,10 @@ class TestHealthCheckView:
 
         @dataclasses.dataclass
         class EscapingCheck(HealthCheck):
+            name: str = 'Test "quoted" value\\with\\backslashes\nand newlines'
+
             async def run(self):
                 pass
-
-            def __repr__(self):
-                return 'Test "quoted" value\\with\\backslashes\nand newlines'
 
         response = await health_check_view([EscapingCheck], format_param="openmetrics")
         content = response.content.decode("utf-8")
@@ -1071,3 +1069,17 @@ class TestHealthCheckView:
         if hasattr(response, "render"):
             response.render()
         assert response.status_code == 200
+
+    def test_abnf_escape(self):
+        assert HealthCheckView.abnf_escape("simple") == "simple"
+        assert (
+            HealthCheckView.abnf_escape(r"backslash\backslash")
+            == "backslash\\\\backslash"
+        )
+        assert HealthCheckView.abnf_escape('quote"test') == 'quote\\"test'
+        assert HealthCheckView.abnf_escape("line\nbreak") == "line\\nbreak"
+
+    def test_abnf_dumps(self):
+        assert HealthCheckView.abnf_dumps({"a": "b"}) == 'a="b"'
+        assert HealthCheckView.abnf_dumps({"a": "b", "c": "d"}) == 'a="b",c="d"'
+        assert HealthCheckView.abnf_dumps({"a": 'b"c'}) == 'a="b\\"c"'

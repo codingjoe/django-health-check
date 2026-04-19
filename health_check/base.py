@@ -74,6 +74,17 @@ class HealthCheck(abc.ABC):
         """Return a human-readable status string, always 'OK' for the check itself."""
         return "OK"
 
+    @property
+    def labels(self) -> dict[str, str]:
+        """Return a human-readable label for the check, defaulting to the class name."""
+        return {
+            "check": self.__class__.__name__,
+        } | {
+            field.name: str(value)
+            for field in dataclasses.fields(self)
+            if field.repr and (value := getattr(self, field.name)) is not None
+        }
+
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
         loop = asyncio.get_running_loop()
         start = timeit.default_timer()

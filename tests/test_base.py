@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -92,3 +93,19 @@ class TestHealthCheck:
         check = SlowCheck()
         result = await check.get_result()
         assert result.time_taken > 0
+
+    def test_labels(self):
+        """Labels include class name and dataclass fields, excluding secret fields."""
+
+        @dataclasses.dataclass
+        class LabeledCheck(HealthCheck):
+            foo: str = "bar"
+            version: float = 1.0
+            secret_key: str = dataclasses.field(default="secret", repr=False)
+            missing_value: str | None = None
+
+            async def run(self):
+                pass
+
+        check = LabeledCheck()
+        assert check.labels == {"check": "LabeledCheck", "foo": "bar", "version": "1.0"}
