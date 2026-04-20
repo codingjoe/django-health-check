@@ -53,10 +53,14 @@ else:
     )
 
 try:
-    import redis  # noqa: F401
+    from redis.asyncio import Redis as RedisClient
 except ImportError:
     pass
 else:
+
+    def redis_client_factory():
+        return RedisClient.from_url(settings.REDIS_URL)
+
     urlpatterns.append(
         path(
             "health/redis/",
@@ -64,7 +68,7 @@ else:
                 checks=[
                     (
                         "health_check.contrib.redis.Redis",
-                        {"redis_url": settings.REDIS_URL},
+                        {"client_factory": redis_client_factory},
                     )
                 ]
             ),
