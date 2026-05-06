@@ -75,7 +75,7 @@ class Cache(HealthCheck):
             await cache.aset(
                 cache_key,
                 cache_value,
-                timeout=self.timeout.total_seconds(),
+                timeout=int(self.timeout.total_seconds()),
             )
             if not await cache.aget(cache_key) == cache_value:
                 raise ServiceUnavailable(f"Cache key {cache_key} does not match")
