@@ -56,7 +56,7 @@ class TestCache:
             cache_key = mock_cache.aset.await_args.args[0]
             assert cache_key.startswith("djangohealthcheck_test:")
             assert cache_key != "djangohealthcheck_test"
-            assert mock_cache.aset.await_args.kwargs["timeout"] == 5.0
+            assert mock_cache.aset.await_args.kwargs["timeout"] == 5
 
     @pytest.mark.asyncio
     async def test_run_check__cache_timeout_is_configurable(self):
@@ -74,7 +74,7 @@ class TestCache:
             check = Cache(timeout=datetime.timedelta(seconds=2))
             result = await check.get_result()
             assert result.error is None
-            assert mock_cache.aset.await_args.kwargs["timeout"] == 2.0
+            assert mock_cache.aset.await_args.kwargs["timeout"] == 2
 
     @pytest.mark.asyncio
     async def test_run_check__cache_supports_key_prefix_argument(self):
