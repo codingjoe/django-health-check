@@ -45,7 +45,7 @@ dependencies = [
 [project.optional-dependencies]
 psutil = ["psutil>=7.2.0"]
 celery = ["celery>=5.0.0"]
-kafka = ["confluent-kafka>=2.0.0"]
+kafka = ["confluent-kafka>=2.0.0", "typing-extensions>=4.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
 redis = ["redis>=4.2.0"]
 rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
