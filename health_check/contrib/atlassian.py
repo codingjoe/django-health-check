@@ -49,7 +49,7 @@ class AtlassianStatusPage(HealthCheck):
         logger.debug("No incidents found")
 
     async def _fetch_incidents(self):
-        api_url = f"{self.base_url}/api/v2/components.json"
+        api_url = f"{self.base_url}/api/v2/summary.json"
         logger.debug("Fetching incidents from %r", api_url)
 
         async with httpx.AsyncClient() as client:

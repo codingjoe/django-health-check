@@ -23,7 +23,7 @@ from health_check.exceptions import (
 
 
 def _make_response(components, incidents=None):
-    """Build a minimal /api/v2/components.json payload."""
+    """Build a minimal /api/v2/summary.json payload."""
     return {
         "page": {"id": "test"},
         "components": list(components),
@@ -77,6 +77,11 @@ class TestFlyIo:
             check = FlyIo()
             result = await check.get_result()
             assert result.error is None
+            mock_context.__aenter__.return_value.get.assert_awaited_once()
+            assert (
+                mock_context.__aenter__.return_value.get.await_args.args[0]
+                == "https://status.flyio.net/api/v2/summary.json"
+            )
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
