@@ -8,7 +8,11 @@ import logging
 import httpx
 
 from health_check import HealthCheck, __version__
-from health_check.exceptions import ServiceUnavailable, StatusPageWarning
+from health_check.exceptions import (
+    ServiceReturnedUnexpectedResult,
+    ServiceUnavailable,
+    StatusPageWarning,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,17 +81,17 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
+        if self.component:
+            components_by_name = {c["name"]: c for c in data["components"]}
+            try:
+                _ = components_by_name[self.component]
+            except KeyError as e:
+                raise ServiceReturnedUnexpectedResult(
+                    f"Component {self.component!r} not found"
+                ) from e
         try:
-            components = data["components"]
-            incidents = data["incidents"]
-
-            if self.component:
-                components_by_name = {c["name"]: c for c in components}
-                if self.component not in components_by_name:
-                    raise ServiceUnavailable(f"Component {self.component!r} not found")
-
-            for incident in incidents:
-                if (incident["status"] not in ("resolved", "postmortem")) and (
+            for incident in data["incidents"]:
+                if (incident.get("status") not in ("resolved", "postmortem")) and (
                     not self.component
                     or any(c["name"] == self.component for c in incident["components"])
                 ):
@@ -98,9 +102,8 @@ class AtlassianStatusPage(HealthCheck):
                         ),
                     )
         except KeyError as e:
-            key = e.args[0]
-            raise ServiceUnavailable(
-                f"Missing key {key!r} in Statuspage API response"
+            raise ServiceReturnedUnexpectedResult(
+                "Unexpected API response structure"
             ) from e
 
 

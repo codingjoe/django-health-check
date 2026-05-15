@@ -16,6 +16,7 @@ from health_check.contrib.atlassian import (
     Vercel,
 )
 from health_check.exceptions import (
+    ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
     StatusPageWarning,
@@ -395,8 +396,8 @@ class TestGitHub:
             check = GitHub()
             result = await check.get_result()
             assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Missing key 'incidents'" in str(result.error)
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Unexpected API response structure" in str(result.error)
 
     def test_base_url_format(self):
         """Verify correct base URL for GitHub."""
@@ -494,8 +495,8 @@ class TestGitHub:
             check = GitHub(component="Nonexistent")
             result = await check.get_result()
             assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Nonexistent" in str(result.error)
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Component 'Nonexistent' not found" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__no_component_filter(self):
