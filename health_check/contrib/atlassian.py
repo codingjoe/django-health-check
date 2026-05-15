@@ -77,28 +77,33 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        if self.component:
-            components_by_name = {c["name"]: c for c in data["components"]}
-            try:
-                _ = components_by_name[self.component]
-            except KeyError as e:
-                raise ServiceUnavailable(
-                    f"Component {self.component!r} not found"
-                ) from e
+        try:
+            components = data["components"]
+            incidents = data["incidents"]
 
-        for incident in data.get("incidents", []):
-            if (incident.get("status") not in ("resolved", "postmortem")) and (
-                not self.component
-                or any(
-                    c["name"] == self.component for c in incident.get("components", [])
-                )
-            ):
-                yield (
-                    f"{incident['name']}: {incident['shortlink']}",
-                    datetime.datetime.fromisoformat(
-                        incident["updated_at"].replace("Z", "+00:00")
-                    ),
-                )
+            if self.component:
+                components_by_name = {c["name"]: c for c in components}
+                if self.component not in components_by_name:
+                    raise ServiceUnavailable(
+                        f"Component {self.component!r} not found"
+                    )
+
+            for incident in incidents:
+                if (incident["status"] not in ("resolved", "postmortem")) and (
+                    not self.component
+                    or any(c["name"] == self.component for c in incident["components"])
+                ):
+                    yield (
+                        f"{incident['name']}: {incident['shortlink']}",
+                        datetime.datetime.fromisoformat(
+                            incident["updated_at"].replace("Z", "+00:00")
+                        ),
+                    )
+        except KeyError as e:
+            key = e.args[0]
+            raise ServiceUnavailable(
+                f"Missing key {key!r} in Statuspage API response"
+            ) from e
 
 
 @dataclasses.dataclass

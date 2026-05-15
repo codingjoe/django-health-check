@@ -340,6 +340,13 @@ class TestFlyIo:
 class TestGitHub:
     """Test GitHub platform status health check via Atlassian API."""
 
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_check_status__live_summary_endpoint(self):
+        """Verify the check can read a real Statuspage summary endpoint."""
+        result = await GitHub().get_result()
+        assert result.error is None or isinstance(result.error, StatusPageWarning)
+
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
         """Pass when there are no open incidents."""
@@ -363,6 +370,33 @@ class TestGitHub:
             check = GitHub()
             result = await check.get_result()
             assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__missing_expected_key(self):
+        """Raise ServiceUnavailable when the Statuspage payload is malformed."""
+        api_response = {
+            "page": {"id": "test"},
+            "components": [_component("Actions")],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceUnavailable)
+            assert "Missing key 'incidents'" in str(result.error)
 
     def test_base_url_format(self):
         """Verify correct base URL for GitHub."""
