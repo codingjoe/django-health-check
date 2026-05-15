@@ -84,9 +84,7 @@ class AtlassianStatusPage(HealthCheck):
             if self.component:
                 components_by_name = {c["name"]: c for c in components}
                 if self.component not in components_by_name:
-                    raise ServiceUnavailable(
-                        f"Component {self.component!r} not found"
-                    )
+                    raise ServiceUnavailable(f"Component {self.component!r} not found")
 
             for incident in incidents:
                 if (incident["status"] not in ("resolved", "postmortem")) and (
