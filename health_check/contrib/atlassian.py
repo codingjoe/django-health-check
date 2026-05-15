@@ -8,7 +8,11 @@ import logging
 import httpx
 
 from health_check import HealthCheck, __version__
-from health_check.exceptions import ServiceUnavailable, StatusPageWarning
+from health_check.exceptions import (
+    ServiceReturnedUnexpectedResult,
+    ServiceUnavailable,
+    StatusPageWarning,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +53,7 @@ class AtlassianStatusPage(HealthCheck):
         logger.debug("No incidents found")
 
     async def _fetch_incidents(self):
-        api_url = f"{self.base_url}/api/v2/components.json"
+        api_url = f"{self.base_url}/api/v2/summary.json"
         logger.debug("Fetching incidents from %r", api_url)
 
         async with httpx.AsyncClient() as client:
@@ -82,23 +86,25 @@ class AtlassianStatusPage(HealthCheck):
             try:
                 _ = components_by_name[self.component]
             except KeyError as e:
-                raise ServiceUnavailable(
+                raise ServiceReturnedUnexpectedResult(
                     f"Component {self.component!r} not found"
                 ) from e
-
-        for incident in data.get("incidents", []):
-            if (incident.get("status") not in ("resolved", "postmortem")) and (
-                not self.component
-                or any(
-                    c["name"] == self.component for c in incident.get("components", [])
-                )
-            ):
-                yield (
-                    f"{incident['name']}: {incident['shortlink']}",
-                    datetime.datetime.fromisoformat(
-                        incident["updated_at"].replace("Z", "+00:00")
-                    ),
-                )
+        try:
+            for incident in data["incidents"]:
+                if (incident.get("status") not in ("resolved", "postmortem")) and (
+                    not self.component
+                    or any(c["name"] == self.component for c in incident["components"])
+                ):
+                    yield (
+                        f"{incident['name']}: {incident['shortlink']}",
+                        datetime.datetime.fromisoformat(
+                            incident["updated_at"].replace("Z", "+00:00")
+                        ),
+                    )
+        except KeyError as e:
+            raise ServiceReturnedUnexpectedResult(
+                "Unexpected API response structure"
+            ) from e
 
 
 @dataclasses.dataclass

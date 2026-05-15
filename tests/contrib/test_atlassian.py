@@ -16,6 +16,7 @@ from health_check.contrib.atlassian import (
     Vercel,
 )
 from health_check.exceptions import (
+    ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
     StatusPageWarning,
@@ -23,7 +24,7 @@ from health_check.exceptions import (
 
 
 def _make_response(components, incidents=None):
-    """Build a minimal /api/v2/components.json payload."""
+    """Build a minimal /api/v2/summary.json payload."""
     return {
         "page": {"id": "test"},
         "components": list(components),
@@ -77,6 +78,11 @@ class TestFlyIo:
             check = FlyIo()
             result = await check.get_result()
             assert result.error is None
+            mock_context.__aenter__.return_value.get.assert_awaited_once()
+            assert (
+                mock_context.__aenter__.return_value.get.await_args.args[0]
+                == "https://status.flyio.net/api/v2/summary.json"
+            )
 
     @pytest.mark.asyncio
     async def test_check_status__raise_service_warning(self):
@@ -335,6 +341,13 @@ class TestFlyIo:
 class TestGitHub:
     """Test GitHub platform status health check via Atlassian API."""
 
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_check_status__live_summary_endpoint(self):
+        """Verify the check can read a real Statuspage summary endpoint."""
+        result = await GitHub().get_result()
+        assert result.error is None or isinstance(result.error, StatusPageWarning)
+
     @pytest.mark.asyncio
     async def test_check_status__ok(self):
         """Pass when there are no open incidents."""
@@ -358,6 +371,33 @@ class TestGitHub:
             check = GitHub()
             result = await check.get_result()
             assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__missing_expected_key(self):
+        """Raise ServiceUnavailable when the Statuspage payload is malformed."""
+        api_response = {
+            "page": {"id": "test"},
+            "components": [_component("Actions")],
+        }
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = GitHub()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Unexpected API response structure" in str(result.error)
 
     def test_base_url_format(self):
         """Verify correct base URL for GitHub."""
@@ -455,8 +495,8 @@ class TestGitHub:
             check = GitHub(component="Nonexistent")
             result = await check.get_result()
             assert result.error is not None
-            assert isinstance(result.error, ServiceUnavailable)
-            assert "Nonexistent" in str(result.error)
+            assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+            assert "Component 'Nonexistent' not found" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_check_status__no_component_filter(self):
