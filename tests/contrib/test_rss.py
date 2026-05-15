@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 
 httpx = pytest.importorskip("httpx")
+pytest.importorskip("feedparser")
 
 from health_check.contrib.rss import (  # noqa: E402
     AWS,
