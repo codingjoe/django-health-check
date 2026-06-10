@@ -17,7 +17,7 @@ _Pluggable health checks for Django applications_
 
 ## 🥳 Sponsors 🎉
 
-![Sponsors](https://django.the-box.sh/sponsors/codingjoe/django-health-check.svg?)
+![Sponsors](https://sponsor.pics/codingjoe/django-health-check.svg?)
 
 [![version](https://img.shields.io/pypi/v/django-health-check.svg)](https://pypi.python.org/pypi/django-health-check/)
 [![coverage](https://codecov.io/gh/codingjoe/django-health-check/branch/main/graph/badge.svg)](https://codecov.io/gh/codingjoe/django-health-check)
