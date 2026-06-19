@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'release' || github.event.release.prerelease == false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv run mkdocs build
       - uses: actions/upload-pages-artifact@v5
@@ -29,7 +29,7 @@ jobs:
   pypi-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uvx --from build pyproject-build --sdist --wheel
       - uses: actions/upload-artifact@v7

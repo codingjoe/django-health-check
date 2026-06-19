@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 1
     if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: REad docs to gh output
         id: docs
         run: echo "docs=$(find . -type f -name '*.md' -exec cat {} + | tr '\n' ' ')" >> $GITHUB_OUTPUT
