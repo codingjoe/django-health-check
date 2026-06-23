@@ -812,6 +812,23 @@ class TestHealthCheckView:
         assert "# EOF" in content
 
     @pytest.mark.asyncio
+    async def test_get__openmetrics_format__no_empty_lines(self, health_check_view):
+        """
+        Ensure OpenMetrics output does not contain empty lines.
+
+        Regression, see also:
+        https://github.com/codingjoe/django-health-check/issues/742
+        """
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], format_param="openmetrics")
+        content = response.content.decode("utf-8")
+        assert not any(line == "" for line in content.splitlines())
+
+    @pytest.mark.asyncio
     async def test_get__openmetrics_accept_header_openmetrics(self, health_check_view):
         """Return OpenMetrics when Accept header is application/openmetrics-text."""
 

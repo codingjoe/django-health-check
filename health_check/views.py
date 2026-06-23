@@ -242,7 +242,6 @@ class HealthCheckView(TemplateView):
 
         # Add response time metrics
         lines += [
-            "",
             "# HELP django_health_check_response_time_seconds Health check response time in seconds",
             "# TYPE django_health_check_response_time_seconds gauge",
         ]
@@ -254,7 +253,6 @@ class HealthCheckView(TemplateView):
 
         # Add overall health status
         lines += [
-            "",
             "# HELP django_health_check_overall_status Overall health check status (1 = all healthy, 0 = at least one unhealthy)",
             "# TYPE django_health_check_overall_status gauge",
             f"django_health_check_overall_status {not has_errors:d}",
