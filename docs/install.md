@@ -52,6 +52,7 @@ urlpatterns = [
                 (
                     "health_check.contrib.redis.Redis",
                     {
+                        "alias": "default",
                         "client_factory": lambda: RedisClient.from_url(
                             "redis://localhost:6379"
                         )

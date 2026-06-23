@@ -149,6 +149,14 @@ class TestRedis:
         ):
             RedisHealthCheck()
 
+    def test_redis__labels_include_alias(self):
+        """Include optional alias in labels without exposing Redis clients."""
+        mock_client = mock.AsyncMock()
+
+        check = RedisHealthCheck(alias="channels", client_factory=lambda: mock_client)
+
+        assert check.labels == {"check": "Redis", "alias": "channels"}
+
     def test_redis__repr_standard_client(self):
         """Verify repr includes host and db for a standard Redis client."""
         # https://github.com/codingjoe/django-health-check/issues/659

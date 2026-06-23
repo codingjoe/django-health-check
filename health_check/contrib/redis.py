@@ -24,6 +24,7 @@ class Redis(HealthCheck):
     including standard Redis, Sentinel, and Cluster clients.
 
     Args:
+        alias: Optional label used to identify this Redis check in reports and metrics.
         client_factory: A callable that returns an instance of a Redis client.
         client: Deprecated, use `client_factory` instead.
 
@@ -46,6 +47,7 @@ class Redis(HealthCheck):
 
     """
 
+    alias: str | None = None
     client: RedisClient | RedisCluster | None = dataclasses.field(
         repr=False, default=None
     )

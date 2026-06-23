@@ -192,7 +192,10 @@ application_checks = [
     # Message brokers & caches
     (
         "health_check.contrib.redis.Redis",
-        {"client_factory": lambda: RedisClient.from_url("redis://localhost:6379")},
+        {
+            "alias": "default",
+            "client_factory": lambda: RedisClient.from_url("redis://localhost:6379"),
+        },
     ),
     (
         "health_check.contrib.rabbitmq.RabbitMQ",
@@ -328,7 +331,10 @@ application_checks = [
     "health_check.Storage",
     (
         "health_check.contrib.redis.Redis",
-        {"client_factory": lambda: RedisClient.from_url("redis://localhost:6379")},
+        {
+            "alias": "default",
+            "client_factory": lambda: RedisClient.from_url("redis://localhost:6379"),
+        },
     ),
     (
         "health_check.contrib.rabbitmq.RabbitMQ",
