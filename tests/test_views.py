@@ -810,6 +810,7 @@ class TestHealthCheckView:
         assert "django_health_check_response_time_seconds" in content
         assert "django_health_check_overall_status" in content
         assert "# EOF" in content
+        assert not any(line == "" for line in content.splitlines())
 
     @pytest.mark.asyncio
     async def test_get__openmetrics_accept_header_openmetrics(self, health_check_view):
