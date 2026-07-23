@@ -45,7 +45,7 @@ class Redis(HealthCheck):
         >>> Redis(client_factory=lambda: Sentinel([('localhost', 26379)]).master_for('mymaster'))
 
     """
-
+    alias: str | None = None
     client: RedisClient | RedisCluster | None = dataclasses.field(
         repr=False, default=None
     )

@@ -312,3 +312,19 @@ class TestRedis:
         check = RedisHealthCheck(client_factory=factory)
         result = await check.get_result()
         assert result.error is None
+
+    def test_redis__labels_include_alias(self):
+        """Verify labels include alias when provided."""
+        mock_client = mock.AsyncMock()
+
+        check = RedisHealthCheck(
+            alias="channels",
+            client_factory=lambda: mock_client,
+        )
+
+        assert check.labels == {
+            "check": "Redis",
+            "alias": "channels",
+        }
+        assert "client" not in check.labels
+        assert "client_factory" not in check.labels
