@@ -24,6 +24,7 @@ class Redis(HealthCheck):
     including standard Redis, Sentinel, and Cluster clients.
 
     Args:
+        alias: A human-readable label for this check, used to distinguish multiple Redis checks.
         client_factory: A callable that returns an instance of a Redis client.
         client: Deprecated, use `client_factory` instead.
 
@@ -46,6 +47,7 @@ class Redis(HealthCheck):
 
     """
 
+    alias: str | None = None
     client: RedisClient | RedisCluster | None = dataclasses.field(
         repr=False, default=None
     )
@@ -54,6 +56,7 @@ class Redis(HealthCheck):
     )
 
     def __repr__(self):
+        alias_prefix = f"alias={self.alias!r}, " if self.alias is not None else ""
         # include client host name and logical database number to identify them
         if self.client_factory is not None:
             client = self.client_factory()
@@ -69,15 +72,15 @@ class Redis(HealthCheck):
                 )
                 if key in {"host", "port", "db"}
             )
-            return f"Redis({safe_connection_str})"
+            return f"Redis({alias_prefix}{safe_connection_str})"
         except AttributeError:
             pass
 
         try:
             hosts = [node.name for node in client.startup_nodes]
-            return f"Redis(client=RedisCluster(hosts={hosts!r}))"
+            return f"Redis({alias_prefix}client=RedisCluster(hosts={hosts!r}))"
         except AttributeError:
-            return super().__repr__()
+            return f"Redis({alias_prefix[:-2]})" if alias_prefix else super().__repr__()
 
     def __post_init__(self):
         # Validate that exactly one of client or client_factory is provided
