@@ -53,31 +53,40 @@ class Redis(HealthCheck):
         dataclasses.field(repr=False, default=None)
     )
 
-    def __repr__(self):
-        # include client host name and logical database number to identify them
-        if self.client_factory is not None:
-            client = self.client_factory()
-        else:
-            # Use the deprecated client parameter (user manages lifecycle)
-            client = self.client
-
+    def _connection_kwargs(self) -> dict[str, object]:
+        """Return identifying Redis connection parameters for repr and labels."""
+        client = (
+            self.client_factory() if self.client_factory is not None else self.client
+        )
         try:
-            safe_connection_str = ", ".join(
-                f"{key}={value!r}"
+            return {
+                key: value
                 for key, value in sorted(
                     client.connection_pool.connection_kwargs.items()
                 )
                 if key in {"host", "port", "db"}
-            )
-            return f"Redis({safe_connection_str})"
+            }
         except AttributeError:
             pass
-
         try:
-            hosts = [node.name for node in client.startup_nodes]
-            return f"Redis(client=RedisCluster(hosts={hosts!r}))"
+            return {"hosts": [node.name for node in client.startup_nodes]}
         except AttributeError:
-            return super().__repr__()
+            return {}
+
+    def __repr__(self):
+        match self._connection_kwargs():
+            case {"hosts": hosts}:
+                return f"Redis(client=RedisCluster(hosts={hosts!r}))"
+            case kwargs if kwargs:
+                return f"Redis({', '.join(f'{key}={value!r}' for key, value in kwargs.items())})"
+            case _:
+                return super().__repr__()
+
+    @property
+    def labels(self) -> dict[str, str]:
+        return super().labels | {
+            key: str(value) for key, value in self._connection_kwargs().items()
+        }
 
     def __post_init__(self):
         # Validate that exactly one of client or client_factory is provided

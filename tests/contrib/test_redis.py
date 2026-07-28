@@ -271,6 +271,73 @@ class TestRedis:
             "repr must never expose the cluster username"
         )
 
+    def test_redis__labels_standard_client(self):
+        """Labels include host, port and db for distinct OpenMetrics samples."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient(host="myhost", port=6379, db=2)
+        )
+        assert check.labels == {
+            "check": "Redis",
+            "host": "myhost",
+            "port": "6379",
+            "db": "2",
+        }
+
+    def test_redis__labels_distinct_across_clients(self):
+        """Multiple Redis checks with different connections produce distinct labels."""
+        from redis.asyncio import Redis as RedisClient
+
+        channels = RedisHealthCheck(
+            client_factory=lambda: RedisClient.from_url("redis://cache:6379/0")
+        )
+        constance = RedisHealthCheck(
+            client_factory=lambda: RedisClient.from_url("redis://broker:6379/1")
+        )
+        assert channels.labels != constance.labels
+        assert channels.labels["host"] == "cache"
+        assert constance.labels["host"] == "broker"
+
+    def test_redis__labels_cluster_client(self):
+        """Labels include cluster node hosts for RedisCluster clients."""
+        from redis.asyncio import RedisCluster
+        from redis.asyncio.cluster import ClusterNode
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisCluster(
+                startup_nodes=[ClusterNode("node1", 7000), ClusterNode("node2", 7001)]
+            )
+        )
+        assert check.labels["check"] == "Redis"
+        assert "node1:7000" in check.labels["hosts"]
+        assert "node2:7001" in check.labels["hosts"]
+
+    def test_redis__labels_excludes_password(self):
+        """Labels never leak passwords."""
+        from redis.asyncio import Redis as RedisClient
+
+        check = RedisHealthCheck(
+            client_factory=lambda: RedisClient(
+                host="myhost",
+                port=6379,
+                db=0,
+                password="supersecret",  # noqa: S106
+            )
+        )
+        assert "supersecret" not in str(check.labels)
+
+    def test_redis__labels_sentinel_fallback(self):
+        """Labels fall back to the base check name for Sentinel clients."""
+        from redis.asyncio import Sentinel
+
+        check = RedisHealthCheck(
+            client_factory=lambda: Sentinel([("localhost", 26379)]).master_for(
+                "mymaster"
+            )
+        )
+        assert check.labels == {"check": "Redis"}
+
     @pytest.mark.asyncio
     async def test_redis__real_connection(self):
         """Ping real Redis server when REDIS_URL is configured."""
