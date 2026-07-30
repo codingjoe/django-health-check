@@ -1,11 +1,12 @@
 import asyncio
 import dataclasses
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from health_check.base import HealthCheck, HealthCheckResult
-from health_check.exceptions import HealthCheckException
+from health_check.exceptions import HealthCheckException, ServiceUnavailable
 
 
 class TestHealthCheck:
@@ -36,6 +37,21 @@ class TestHealthCheck:
         assert result.error is not None
         assert isinstance(result.error, HealthCheckException)
         assert str(result.error) == "Unknown Error: unknown error"
+
+    @pytest.mark.asyncio
+    async def test_get_result__log_handled_failure(self, caplog):
+        """Log handled failure at warning level."""
+
+        class UnavailableCheck(HealthCheck):
+            async def run(self):
+                raise ServiceUnavailable("test service unavailable")
+
+        caplog.set_level(logging.WARNING, logger="health_check.base")
+        await UnavailableCheck().get_result()
+
+        assert caplog.messages == [
+            "Health check UnavailableCheck failed: Unavailable: test service unavailable"
+        ]
 
     @pytest.mark.asyncio
     async def test_run__sync_check(self):

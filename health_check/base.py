@@ -94,6 +94,7 @@ class HealthCheck(abc.ABC):
             ) else await loop.run_in_executor(executor, self.run)
         except HealthCheckException as e:
             error = e
+            logger.warning("Health check %s failed: %s", self.__class__.__name__, error)
         except BaseException:
             logger.exception("Unexpected exception during health check")
             error = HealthCheckException("unknown error")
