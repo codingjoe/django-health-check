@@ -141,6 +141,33 @@ class TestDatabase:
         result = await check.get_result()
         assert result.error is None
 
+    @pytest.mark.django_db
+    @pytest.mark.asyncio
+    async def test_run_check__stale_connection(self):
+        """Recycle a connection the database has already dropped."""
+        with mock.patch("health_check.checks.connections") as mock_connections:
+            mock_connection = mock_connections.__getitem__.return_value
+            mock_connection.temporary_connection.side_effect = db.Error(
+                "the connection is closed"
+            )
+            mock_connection.ops.compiler.return_value = mock.MagicMock(
+                return_value=mock.MagicMock(compile=lambda x: ("SELECT 1", []))
+            )
+
+            def revive_connection():
+                mock_connection.temporary_connection.side_effect = None
+                mock_connection.temporary_connection.return_value.__enter__.return_value.fetchone.return_value = (
+                    1,
+                )
+
+            mock_connection.close_if_unusable_or_obsolete.side_effect = (
+                revive_connection
+            )
+
+            assert (await Database().get_result()).error is None, (
+                "Expected the check to recycle the stale connection before probing"
+            )
+
 
 class TestDNS:
     """Test the DNS health check."""

@@ -118,6 +118,12 @@ class Database(HealthCheck):
             connection = connections[self.alias]
         except ConnectionDoesNotExist as e:
             raise ServiceUnavailable("Database alias does not exist") from e
+        # Synchronous checks run on the event loop's default executor, whose threads sit
+        # outside the request/response cycle where Django recycles connections. Without
+        # this, temporary_connection() reuses whatever connection the thread already
+        # holds, even one the server has dropped in the meantime, and the check reports
+        # a failure for a database that is perfectly healthy.
+        connection.close_if_unusable_or_obsolete()
         try:
             compiler = connection.ops.compiler("SQLCompiler")(
                 _SelectOne(), connection, None
