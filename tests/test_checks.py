@@ -4,9 +4,11 @@ import datetime
 import logging
 from unittest import mock
 
+import django
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
+from django.test import override_settings
 
 from health_check import Storage
 from health_check.checks import DNS, Cache, Database, Mail
@@ -159,9 +161,89 @@ class TestMail:
     @pytest.mark.asyncio
     async def test_run_check__locmem_backend(self):
         """Mail check completes with locmem backend."""
-        check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
-        result = await check.get_result()
-        assert result.error is None
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
+            check = Mail()
+            result = await check.get_result()
+            assert result.error is None
+
+    def test_defaults(self):
+        """Mail check defaults to backend=None and DEFAULT_MAILER_ALIAS."""
+        from health_check.checks import DEFAULT_MAILER_ALIAS
+
+        check = Mail()
+        assert check.backend is None
+        assert check.alias == DEFAULT_MAILER_ALIAS
+
+    @pytest.mark.skipif(
+        django.VERSION < (6, 1),
+        reason="mailers handler requires Django 6.1+",
+    )
+    def test_get_connection__mailers_configured(self):
+        """Use the mailers handler when available."""
+        mock_connection = mock.MagicMock()
+        mock_mailers = mock.MagicMock()
+        mock_mailers.__getitem__.return_value = mock_connection
+
+        with mock.patch("health_check.checks.mailers", mock_mailers):
+            check = Mail(alias="default")
+            connection = check._get_connection()
+
+        assert connection is mock_connection
+        mock_mailers.__getitem__.assert_called_once_with("default")
+
+    @pytest.mark.skipif(
+        django.VERSION < (6, 1),
+        reason="mailers handler requires Django 6.1+",
+    )
+    def test_get_connection__mailers_custom_alias(self):
+        """Use a custom mailer alias when available."""
+        mock_connection = mock.MagicMock()
+        mock_mailers = mock.MagicMock()
+        mock_mailers.__getitem__.return_value = mock_connection
+
+        with mock.patch("health_check.checks.mailers", mock_mailers):
+            check = Mail(alias="custom")
+            connection = check._get_connection()
+
+        assert connection is mock_connection
+        mock_mailers.__getitem__.assert_called_once_with("custom")
+
+    def test_get_connection__legacy_fallback(self):
+        """Fall back to get_connection on Django < 6.1."""
+        mock_connection = mock.MagicMock()
+
+        with (
+            mock.patch("health_check.checks.django.VERSION", (5, 2)),
+            mock.patch(
+                "health_check.checks.get_connection", return_value=mock_connection
+            ) as mock_get_conn,
+        ):
+            check = Mail(backend="django.core.mail.backends.locmem.EmailBackend")
+            connection = check._get_connection()
+
+        assert connection is mock_connection
+        mock_get_conn.assert_called_once_with(
+            "django.core.mail.backends.locmem.EmailBackend",
+            fail_silently=False,
+        )
+
+    @pytest.mark.skipif(
+        django.VERSION < (6, 1),
+        reason="MAILERS requires Django 6.1+",
+    )
+    @pytest.mark.asyncio
+    async def test_run_check__mailers_integration(self):
+        """Mail check completes end-to-end with MAILERS configured."""
+        with override_settings(
+            MAILERS={
+                "default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
+            }
+        ):
+            check = Mail()
+            result = await check.get_result()
+            assert result.error is None
 
 
 class TestStorage:
@@ -380,7 +462,7 @@ class TestMailExceptionHandling:
     @pytest.mark.asyncio
     async def test_check_status__success(self, caplog):
         """Successfully open and close connection logs debug message."""
-        with mock.patch("health_check.checks.get_connection") as mock_get_connection:
+        with mock.patch.object(Mail, "_get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.return_value = None
@@ -401,7 +483,7 @@ class TestMailExceptionHandling:
         """Raise ServiceUnavailable when SMTPException is raised."""
         import smtplib
 
-        with mock.patch("health_check.checks.get_connection") as mock_get_connection:
+        with mock.patch.object(Mail, "_get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.side_effect = smtplib.SMTPException("SMTP error")
@@ -416,7 +498,7 @@ class TestMailExceptionHandling:
     @pytest.mark.asyncio
     async def test_check_status__connection_refused_error(self):
         """Raise ServiceUnavailable when ConnectionRefusedError is raised."""
-        with mock.patch("health_check.checks.get_connection") as mock_get_connection:
+        with mock.patch.object(Mail, "_get_connection") as mock_get_connection:
             mock_connection = mock.MagicMock()
             mock_get_connection.return_value = mock_connection
             mock_connection.open.side_effect = ConnectionRefusedError(

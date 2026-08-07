@@ -7,9 +7,9 @@ import smtplib
 import socket
 import uuid
 
+import django
 import dns.asyncresolver
 from django import db
-from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
 from django.core.cache.backends.base import InvalidCacheBackendError
 from django.core.files.base import ContentFile
@@ -17,6 +17,12 @@ from django.core.files.storage import InvalidStorageError, storages
 from django.core.files.storage import Storage as DjangoStorage
 from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
+
+if django.VERSION >= (6, 1):
+    from django.core.mail import DEFAULT_MAILER_ALIAS, mailers
+else:  # Django < 6.1
+    DEFAULT_MAILER_ALIAS = "default"
+
 from django.db import connections
 from django.db.models import Expression
 from django.utils.connection import ConnectionDoesNotExist
@@ -197,18 +203,25 @@ class Mail(HealthCheck):
     Check that an email backend is able to open and close the connection.
 
     Args:
-        backend: The email backend to test against.
+        backend: The email backend to test against. Legacy, used only on Django < 6.1.
+        alias: The mailer alias to test.
         timeout: Timeout for connection to an email server in seconds.
 
     """
 
-    backend: str = settings.EMAIL_BACKEND
+    backend: str | None = dataclasses.field(default=None, repr=False)
+    alias: str = DEFAULT_MAILER_ALIAS
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=15), repr=False
     )
 
+    def _get_connection(self) -> BaseEmailBackend:
+        if django.VERSION >= (6, 1):
+            return mailers[self.alias]
+        return get_connection(self.backend, fail_silently=False)
+
     def run(self) -> None:
-        connection: BaseEmailBackend = get_connection(self.backend, fail_silently=False)
+        connection: BaseEmailBackend = self._get_connection()
         connection.timeout = self.timeout.total_seconds()
         logger.debug("Trying to open connection to mail backend.")
         try:
@@ -221,9 +234,7 @@ class Mail(HealthCheck):
             raise ServiceUnavailable("Connection refused error") from e
         finally:
             connection.close()
-        logger.debug(
-            "Connection established. Mail backend %r is healthy.", self.backend
-        )
+        logger.debug("Connection established. Mail backend %r is healthy.", connection)
 
 
 @dataclasses.dataclass
