@@ -158,29 +158,17 @@
       <table>
         <thead>
           <tr {% if errors %}class="thead-error"{% endif %}>
-            <th>
-              Service
-            </th>
-            <th>
-              Status
-            </th>
-            <th class="align-right shrink">
-              Timing
-            </th>
+            <th>Service</th>
+            <th>Status</th>
+            <th class="align-right shrink">Timing</th>
           </tr>
         </thead>
         <tbody>
           {% for result in results %}
             <tr {% if result.error %}class="error"{% endif %}>
-              <td data-label="Service">
-                {{ result.check|stringformat:'r' }}
-              </td>
-              <td data-label="Status" class="mono">
-                {{ result.error|default_if_none:"OK"|linebreaks }}
-              </td>
-              <td data-label="Timing" class="align-right mono">
-                {{ result.time_taken|floatformat:3 }}&#x202F;s
-              </td>
+              <td data-label="Service">{{ result.check|stringformat:'r' }}</td>
+              <td data-label="Status" class="mono">{{ result.error|default_if_none:"OK"|linebreaks }}</td>
+              <td data-label="Timing" class="align-right mono">{{ result.time_taken|floatformat:3 }}&#x202F;s</td>
             </tr>
           {% endfor %}
         </tbody>
