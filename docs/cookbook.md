@@ -169,7 +169,7 @@ Better Uptime, or StatusCake watch these endpoints and page on-call engineers wh
 something goes down.
 
 To cover the whole stack — databases, caches, message brokers, email, storage —
-you'll need a few extras:
+you'll need some extra dependencies:
 
 ```shell
 pip install "django-health-check[redis,rabbitmq,celery]"
