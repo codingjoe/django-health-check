@@ -1,7 +1,6 @@
 """Tests for Kafka health check."""
 
 import datetime
-import os
 from unittest import mock
 
 import pytest
@@ -96,13 +95,9 @@ class TestKafka:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_check_status__real_kafka(self):
-        """Connect to real Kafka server when KAFKA_BOOTSTRAP_SERVERS is configured."""
-        kafka_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
-        if not kafka_servers:
-            pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set; skipping integration test")
-
-        check = KafkaHealthCheck(bootstrap_servers=kafka_servers.split(","))
+    async def test_check_status__real_kafka(self, kafka_bootstrap_servers):
+        """Connect to a real Kafka server and report missing topics."""
+        check = KafkaHealthCheck(bootstrap_servers=[kafka_bootstrap_servers])
         result = await check.get_result()
         assert result.error
         assert isinstance(result.error, ServiceUnavailable)

@@ -74,6 +74,7 @@ test = [
   "pytest-django",
   "django-storages",
   "boto3",
+  "testcontainers",
 ]
 docs = [
   "mkdocs",

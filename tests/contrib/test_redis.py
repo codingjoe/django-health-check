@@ -1,6 +1,5 @@
 """Tests for Redis health check."""
 
-import os
 from unittest import mock
 
 import pytest
@@ -338,13 +337,10 @@ class TestRedis:
         )
         assert check.labels == {"check": "Redis"}
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_redis__real_connection(self):
-        """Ping real Redis server when REDIS_URL is configured."""
-        redis_url = os.getenv("REDIS_URL")
-        if not redis_url:
-            pytest.skip("REDIS_URL not set; skipping integration test")
-
+    async def test_redis__real_connection(self, redis_url):
+        """Ping a real Redis server."""
         from redis.asyncio import Redis as RedisClient
 
         check = RedisHealthCheck(client_factory=lambda: RedisClient.from_url(redis_url))
@@ -353,27 +349,14 @@ class TestRedis:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_redis__real_sentinel(self):
-        """Ping real Redis Sentinel when configured."""
-        sentinel_url = os.getenv("REDIS_SENTINEL_URL")
-        if not sentinel_url:
-            pytest.skip("REDIS_SENTINEL_URL not set; skipping integration test")
-
+    async def test_redis__real_sentinel(self, redis_sentinel):
+        """Ping a real Redis Sentinel."""
         from redis.asyncio import Sentinel
 
-        # Parse sentinel configuration from environment
-        sentinel_nodes = os.getenv("REDIS_SENTINEL_NODES", "localhost:26379")
-        service_name = os.getenv("REDIS_SENTINEL_SERVICE_NAME", "mymaster")
+        sentinel_nodes, service_name = redis_sentinel
 
-        # Parse sentinel nodes from comma-separated list
-        sentinels = []
-        for node in sentinel_nodes.split(","):
-            host, port = node.strip().split(":")
-            sentinels.append((host, int(port)))
-
-        # Create factory that returns Sentinel master client
         def factory():
-            sentinel = Sentinel(sentinels)
+            sentinel = Sentinel(sentinel_nodes)
             return sentinel.master_for(service_name)
 
         check = RedisHealthCheck(client_factory=factory)

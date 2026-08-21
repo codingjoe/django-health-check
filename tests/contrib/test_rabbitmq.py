@@ -1,6 +1,5 @@
 """Tests for RabbitMQ health check."""
 
-import os
 from unittest import mock
 
 import pytest
@@ -87,12 +86,8 @@ class TestRabbitMQ:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_check_status__real_rabbitmq(self):
-        """Connect to real RabbitMQ server when BROKER_URL is configured."""
-        broker_url = os.getenv("BROKER_URL") or os.getenv("RABBITMQ_URL")
-        if not broker_url:
-            pytest.skip("BROKER_URL/RABBITMQ_URL not set; skipping integration test")
-
-        check = RabbitMQHealthCheck(amqp_url=broker_url)
+    async def test_check_status__real_rabbitmq(self, rabbitmq_url):
+        """Connect to a real RabbitMQ server."""
+        check = RabbitMQHealthCheck(amqp_url=rabbitmq_url)
         result = await check.get_result()
         assert result.error is None
