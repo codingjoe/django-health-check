@@ -129,18 +129,26 @@ You can run the Django command `health_check` to perform your health
 checks via the command line, or periodically with a cron, as follows:
 
 ```shell
-django-admin health_check --help
+django-admin health_check health_check
 ```
 
-This should yield the following output:
+The `endpoint` argument is the `name` of the health check URL pattern defined in your
+`urls.py` (see the [installation guide](install.md)); the command resolves it via
+`reverse()`. The example above runs the checks over HTTP against the running server:
 
 ```
 Database                 ... OK
 CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
 
-Similar to the http version, a critical error will cause the command to
-quit with the exit code `1`.
+Pass `--no-http` to run the checks directly without an HTTP server, which is useful for
+container health checks where no web server needs to be running:
+
+```shell
+django-admin health_check health_check --no-http
+```
+
+A critical error will cause the command to quit with the exit code `1`.
 
 ## Performance tweaks
 

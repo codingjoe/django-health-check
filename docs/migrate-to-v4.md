@@ -50,6 +50,7 @@
                "health_check.contrib.redis.Redis",
            ]
        ),
+       name="health_check",
    )
    ```
 

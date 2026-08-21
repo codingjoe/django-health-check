@@ -64,9 +64,15 @@ urlpatterns = [
                 ),
             ],
         ),
+        name="health_check",
     ),
 ]
 ```
+
+> [!NOTE]
+> The `name` argument is required so that the `health_check` management command can
+> resolve this endpoint URL via `reverse()`. When using the command, pass this name as
+> the `endpoint` argument, e.g. `django-admin health_check health_check`.
 
 ## Security
 
@@ -87,6 +93,10 @@ You can protect the health check endpoint by adding a secure token to your URL.
 
    urlpatterns = [
        # …
-       path("health/super_secret_token/", HealthCheckView.as_view()),
+       path(
+           "health/super_secret_token/",
+           HealthCheckView.as_view(),
+           name="health_check",
+       ),
    ]
    ```
