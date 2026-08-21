@@ -18,7 +18,7 @@
 [![djversion](https://img.shields.io/pypi/djversions/django-health-check.svg)](https://pypi.python.org/pypi/django-health-check/)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://pypi.python.org/pypi/django-health-check/)
 
-This project checks for conditions and provides reports when anomalous behavior is detected.
+This project monitors your services and reports back when something looks wrong.
 
 [Documentation](https://codingjoe.dev/django-health-check/) | [Issues](https://github.com/codingjoe/django-health-check/issues/new/choose) | [Changelog](https://github.com/codingjoe/django-health-check/releases) | [Funding](https://github.com/sponsors/codingjoe) 💚
 
@@ -32,9 +32,9 @@ The following health checks are bundled with this project:
   [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] & [Redis][health_check.contrib.redis.Redis]
 - [Cloud provider status](checks.md#cloud-provider-status) for numerous cloud and PaaS providers.
 
-Writing your own custom health checks is also quick and easy.
+The bundled checks cover the common cases. If your stack is different, you can write your own.
 
-We also like contributions, so don’t be afraid to make a pull request.
+Contributions are welcome. Open a pull request and we'll take a look.
 
 ## Integrations
 

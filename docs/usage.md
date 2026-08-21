@@ -2,22 +2,21 @@
 
 ## Setting up monitoring
 
-You can use tools like Pingdom, StatusCake or other uptime robots to
-monitor service status. The `/health/` endpoint will respond with an HTTP
-200 if all checks passed and with an HTTP 500 if any of the tests
-failed.
+You can point an uptime monitor such as Pingdom, StatusCake, or other
+uptime robots at your service. The `/health/` endpoint returns an HTTP
+200 when every check passes, and an HTTP 500 when any of them fails.
 
-For concrete, step-by-step examples of multi-tier endpoint setups including
-uptime monitoring, container probes, reverse-proxy configuration, and RSS/Atom
+For step-by-step examples of multi-tier endpoint setups, including uptime
+monitoring, container probes, reverse-proxy configuration, and RSS/Atom
 integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
 ## Getting machine-readable reports
 
 ### Plain text
 
-For simple monitoring and scripting, you can request plain text output with the `Accept` HTTP header set to `text/plain` or pass `format=text` as a query parameter.
+For simple monitoring and scripting, ask for plain text. Set the `Accept` HTTP header to `text/plain`, or pass `format=text` as a query parameter.
 
-The endpoint will return a plain text response with HTTP 200 if all checks passed and HTTP 500 if any check failed:
+When everything passes, you get a plain text response with HTTP 200. When a check fails, you get HTTP 500:
 
 ```shell
 $ curl -v -X GET -H "Accept: text/plain" http://www.example.com/health/
@@ -46,15 +45,14 @@ DatabaseBackend: OK
 S3BotoStorageHealthCheck: OK
 ```
 
-This format is particularly useful for command-line tools and simple monitoring scripts that don't need the overhead of JSON parsing.
+This format is handy for command-line tools and simple scripts that don't want to parse JSON.
 
 ### JSON
 
-If you want machine-readable status reports you can request the `/health/`
-endpoint with the `Accept` HTTP header set to `application/json` or pass
-`format=json` as a query parameter.
+Want machine-readable results? Set the `Accept` HTTP header to
+`application/json`, or pass `format=json` as a query parameter.
 
-The backend will return a JSON response:
+The endpoint returns a JSON response:
 
 ```shell
 $ curl -v -X GET -H "Accept: application/json" http://www.example.com/health/
@@ -89,17 +87,17 @@ $ curl -v -X GET http://www.example.com/health/?format=json
 
 ### OpenMetrics for Prometheus
 
-For Prometheus monitoring, you can request OpenMetrics format:
+If you monitor with Prometheus, request the OpenMetrics format:
 
 ```shell
 $ curl http://www.example.com/health/?format=openmetrics
 ```
 
-This will return metrics in the OpenMetrics exposition format, which can be scraped by Prometheus.
+Prometheus can scrape these metrics directly.
 
 ### RSS and Atom feeds
 
-For RSS feed readers and monitoring tools, you can request RSS or Atom format:
+For feed readers and monitoring tools, request the RSS or Atom format:
 
 ```shell
 $ curl http://www.example.com/health/?format=rss
@@ -113,62 +111,58 @@ $ curl -H "Accept: application/rss+xml" http://www.example.com/health/
 $ curl -H "Accept: application/atom+xml" http://www.example.com/health/
 ```
 
-These endpoints always return a 200 status code with health check results in the feed content.
-Failed checks are indicated by categories and item descriptions.
+These endpoints always answer with HTTP 200. The feed lists each check, and failed checks show up as categories and item descriptions.
 
 ## Writing a custom health check
 
-You can write your own health checks by inheriting from
-[HealthCheck][health_check.HealthCheck] and implementing the `run` method.
+You can write your own checks too. Inherit from
+[HealthCheck][health_check.HealthCheck] and implement the `run` method.
 
 ::: health_check.HealthCheck
 
 ## Django command
 
-You can run the Django command `health_check` to perform your health
-checks via the command line, or periodically with a cron, as follows:
+Run the Django command `health_check` from the shell, or schedule it
+with cron:
 
 ```shell
 django-admin health_check health_check
 ```
 
 The `endpoint` argument is the `name` of the health check URL pattern defined in your
-`urls.py` (see the [installation guide](install.md)); the command resolves it via
-`reverse()`. The example above runs the checks over HTTP against the running server:
+`urls.py` (see the [installation guide](install.md)). The command looks it up with
+`reverse()` and runs the checks over HTTP against the running server:
 
 ```
 Database                 ... OK
 CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
 
-Pass `--no-http` to run the checks directly without an HTTP server, which is useful for
-container health checks where no web server needs to be running:
+Pass `--no-http` to skip the HTTP server entirely. Handy for container
+health checks that don't run a web server:
 
 ```shell
 django-admin health_check health_check --no-http
 ```
 
-A critical error will cause the command to quit with the exit code `1`.
+A critical error exits the command with the code `1`.
 
 ## Performance tweaks
 
-All checks are executed asynchronously, either via `asyncio` or via a thread pool,
-depending on the implementation of the individual checks.
-This allows for concurrent execution of the IO-bound checks,
-which reduces the response time.
+Every check runs asynchronously, via `asyncio` or a thread pool, depending
+on how each check is implemented.
+IO-bound checks run in parallel, so responses come back faster.
 
-The event loop's default executor is used to run synchronous checks
-(e.g. [Database][health_check.checks.Database], [Mail][health_check.checks.Mail],
-or [Storage][health_check.checks.Storage]) in a thread pool.
-This pool is usually persisted across requests. This may lead to high performance while
-permanently allocating more memory. This may be undesirable for some applications,
-especially with `S3Storage`, which uses thread-local connections.
+Synchronous checks (for example [Database][health_check.checks.Database], [Mail][health_check.checks.Mail],
+or [Storage][health_check.checks.Storage]) run in the event loop's default thread pool.
+That pool usually persists between requests. It keeps things fast, but it can
+grow memory usage. That's a problem for some applications, especially `S3Storage`,
+which uses thread-local connections.
 
-This can be mitigated by using a custom executor that creates a new
-thread pool for each request, which is then cleaned up after the checks
-are completed. This can be achieved by subclassing `HealthCheckView`
-and overriding the `get_executor` method to return a context manager
-providing a new `ThreadPoolExecutor` instance for each request.
+To avoid that, use a custom executor that spins up a fresh thread pool per
+request and tears it down when the checks finish. Subclass `HealthCheckView`
+and override the `get_executor` method to return a context manager with a
+new `ThreadPoolExecutor` each time.
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -180,6 +174,6 @@ class CustomHealthCheckView(HealthCheckView):
         return ThreadPoolExecutor(max_workers=len(self.checks))
 ```
 
-This approach ensures that each request gets a fresh thread pool,
-which can help manage memory usage more effectively
-while still providing the benefits of concurrent execution for synchronous checks.
+This gives every request its own thread pool. You keep the speed of
+concurrent execution for synchronous checks, but the memory stays under
+control.

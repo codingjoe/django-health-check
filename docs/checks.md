@@ -14,7 +14,7 @@
 
 ## System Services
 
-To use the psutil-based checks, you will need to install `psutil` extra:
+To use the psutil-based checks, install the `psutil` extra:
 
 ```shell
 pip install django-health-check[psutil]
@@ -32,7 +32,7 @@ pip install django-health-check[psutil]
 
 ## 3rd Party Services
 
-To use the checks, you will need to install and set up their corresponding dependencies.
+To use these checks, install and configure their corresponding dependencies.
 
 To enable AWS health checks, install the extra for the `contrib` checks:
 
@@ -50,9 +50,9 @@ pip install django-health-check[redis,rabbitmq,celery,kafka]
 
 ## Cloud Provider Status
 
-Monitor cloud provider service health using their public RSS/Atom status feeds or APIs.
+Watch cloud provider health through their public RSS/Atom status feeds or APIs.
 
-Cloud provider health checks require different extras depending on the provider:
+Cloud provider health checks require different extras. The extra depends on the provider:
 
 ```shell
 pip install django-health-check[rss,atlassian]
@@ -86,8 +86,8 @@ pip install django-health-check[rss,atlassian]
 
 ## Custom Status Page Feeds
 
-These classes can be used to write custom status page proxy checks.
-Subclasses need to implement the required attributes as documented.
+Write your own status page proxy checks with these classes.
+Subclasses must implement the documented attributes.
 
 ::: health_check.contrib.rss.Feed
 

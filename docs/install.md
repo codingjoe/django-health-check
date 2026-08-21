@@ -70,15 +70,15 @@ urlpatterns = [
 ```
 
 > [!NOTE]
-> The `name` argument is required so that the `health_check` management command can
-> resolve this endpoint URL via `reverse()`. When using the command, pass this name as
-> the `endpoint` argument, e.g. `django-admin health_check health_check`.
+> The `name` argument is required — the `health_check` command needs it to
+> resolve this endpoint URL via `reverse()`. When you run the command, pass this name as
+> the `endpoint` argument, for example `django-admin health_check health_check`.
 
 ## Security
 
-You can protect the health check endpoint by adding a secure token to your URL.
+You can keep the health check endpoint private by adding a secure token to your URL.
 
-1. Setup HTTPS. Seriously…
+1. Enable HTTPS.
 1. Generate a strong secret token:
    ```shell
    python -c "import secrets; print(secrets.token_urlsafe())"
