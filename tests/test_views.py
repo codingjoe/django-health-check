@@ -127,6 +127,30 @@ class TestHealthCheckView:
         assert b"Super Fail!" in response.content
 
     @pytest.mark.asyncio
+    async def test_head__success(self, health_check_view):
+        """Return 200 with an empty body when all checks pass."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], method="head")
+        assert response.status_code == 200
+        assert response.content == b""
+
+    @pytest.mark.asyncio
+    async def test_head__error(self, health_check_view):
+        """Return 500 with an empty body when a check fails."""
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckException("Super Fail!")
+
+        response = await health_check_view([FailingBackend], method="head")
+        assert response.status_code == 500
+        assert response.content == b""
+
+    @pytest.mark.asyncio
     async def test_get__warning(self, health_check_view):
         """Return 500 when warning is raised (warnings are treated as errors)."""
 

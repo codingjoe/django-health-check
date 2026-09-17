@@ -111,14 +111,18 @@ class HealthCheckView(TemplateView):
         patch_vary_headers(response, ["Accept"])
         return response
 
-    @method_decorator(never_cache)
-    async def get(self, request, *args, **kwargs):
+    async def run_checks(self) -> int:
+        """Run configured checks and return 200 if all pass, else 500."""
         with self.get_executor() as executor:
             self.results = await asyncio.gather(
                 *(check.get_result(executor) for check in self.get_checks())
             )
         has_errors = any(result.error for result in self.results)
-        status_code = 500 if has_errors else 200
+        return 500 if has_errors else 200
+
+    @method_decorator(never_cache)
+    async def get(self, request, *args, **kwargs):
+        status_code = await self.run_checks()
         format_override = request.GET.get("format")
 
         match format_override:
@@ -154,6 +158,11 @@ class HealthCheckView(TemplateView):
             status=406,
             content_type="text/plain",
         )
+
+    @method_decorator(never_cache)
+    async def head(self, request, *args, **kwargs) -> HttpResponse:
+        status_code = await self.run_checks()
+        return HttpResponse(b"", status=status_code)
 
     def get_context_data(self, **kwargs):
         return {
