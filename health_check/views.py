@@ -7,11 +7,10 @@ from concurrent.futures import Executor
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
-from django.utils.cache import patch_vary_headers
+from django.utils.cache import add_never_cache_headers, patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
-from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
 from health_check.base import HealthCheck
@@ -109,9 +108,9 @@ class HealthCheckView(TemplateView):
     async def dispatch(self, request, *args, **kwargs):
         response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
+        add_never_cache_headers(response)
         return response
 
-    @method_decorator(never_cache)
     async def get(self, request, *args, **kwargs):
         with self.get_executor() as executor:
             self.results = await asyncio.gather(
