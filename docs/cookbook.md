@@ -1,9 +1,9 @@
 # Cookbook
 
-This cookbook provides step-by-step examples for setting up multiple health check
-endpoints tailored to different audiences and use cases.
+This cookbook gives step-by-step examples. They show how to set up multiple health check
+endpoints for different audiences and use cases.
 
-A well-designed health check strategy exposes **three tiers** of endpoints:
+A good health check strategy exposes **three tiers** of endpoints:
 
 | Tier                                      | Purpose                 | Consumers                              |
 | ----------------------------------------- | ----------------------- | -------------------------------------- |
@@ -15,9 +15,9 @@ ______________________________________________________________________
 
 ## Node health checks
 
-Node checks verify that the underlying server has sufficient resources to run the
-application. These are suitable for **liveness and readiness probes** in container
-orchestrators such as Kubernetes, Docker, and Podman, or for reverse-proxy health
+Node checks make sure that the underlying server has enough resources to run the
+application. Use these for **liveness and readiness probes** in container
+orchestrators such as Kubernetes, Docker, and Podman. Use them for reverse-proxy health
 checks in HAProxy, nginx, Caddy, and Traefik.
 
 The `psutil` extra provides OS resource checks such as CPU, memory, and disk usage.
@@ -26,7 +26,7 @@ The `psutil` extra provides OS resource checks such as CPU, memory, and disk usa
 pip install "django-health-check[psutil]"
 ```
 
-Add the node endpoint to your URL configuration
+Add the node endpoint to your URL configuration.
 
 ```python
 # urls.py
@@ -59,17 +59,17 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> Protect this endpoint with a secret token so that it is not publicly accessible.
+> Protect this endpoint with a secret token. Do not make it publicly accessible.
 > See the [Security](install.md#security) section of the installation guide.
 
 ### Kubernetes probes
 
-Kubernetes uses liveness and readiness probes to determine whether a pod should be
-restarted. We use an HTTP probe to ensure the operation of our entire HTTP stack.
+Kubernetes uses liveness and readiness probes to decide whether to restart a pod.
+We use an HTTP probe to make sure that the whole HTTP stack works.
 
 > [!NOTE]
-> When using `httpGet` probes, ensure your WSGI/ASGI server binds to `0.0.0.0`
-> (not just `127.0.0.1`) so the kubelet can reach it.
+> When you use `httpGet` probes, make sure that your WSGI/ASGI server binds to `0.0.0.0`
+> (not just `127.0.0.1`). Then the kubelet can reach it.
 
 For our health check endpoint, the setup would look like this:
 
@@ -94,10 +94,10 @@ for more details.
 
 ### Docker / Podman
 
-Compose doesn't have native HTTP probes. Therefore, we use a
-[`health_check` command](usage.md#django-command). This command doesn't require
-CURL to be present in the container image, and can emulate proxy requests to satisfy
-HTTPS requirements.
+Compose has no native HTTP probes. Therefore, we use a
+[`health_check` command](usage.md#django-command). This command does not
+need CURL in the container image. It can emulate proxy requests to
+satisfy HTTPS requirements.
 
 ```yaml
 # compose.yml
@@ -112,8 +112,8 @@ services:
 
 ### Load balancers
 
-Most reverse-proxies provide sophisticated load balancing support.
-If configured, it can ensure that traffic is only routed to healthy instances.
+Most reverse-proxies support load balancing.
+When configured, they route traffic only to healthy instances.
 
 In [Caddy][caddy-active-health-checks], the configuration would look like this:
 
@@ -163,12 +163,13 @@ backend myapp
 
 ## Application health checks
 
-Application checks verify that all production services the application depends on are
-reachable and operational. These are consumed by **uptime monitors** such as Pingdom,
-Better Uptime, or StatusCake to alert on-call engineers when an outage occurs.
+Application checks make sure that all production services the application depends on are
+reachable and operational. **Uptime monitors** such as Pingdom,
+Better Uptime, or StatusCake use these checks. They alert on-call engineers when an
+outage occurs.
 
-You want to monitor your entire application stack, including databases, caches,
-message brokers, email providers, and storage backends. This might require some extra
+Monitor your entire application stack, including databases, caches,
+message brokers, email providers, and storage backends. This can require some extra
 dependencies:
 
 ```shell
@@ -220,23 +221,24 @@ urlpatterns = [
 ```
 
 Point your uptime monitor at `https://example.com/health/<HEALTH_CHECK_SECRET>/application/`.
-The endpoint returns HTTP 200 when all checks pass and HTTP 500 when any check fails,
-which is exactly what uptime monitors expect.
+The endpoint returns HTTP 200 when all checks pass. It returns HTTP 500 when any check
+fails. Uptime monitors expect these codes.
 
 ## Pipeline health checks
 
 Pipeline checks combine all application checks with **upstream provider status** for
-cloud platforms, PaaS providers, and third-party services. These are consumed by your
-development team via RSS/Atom feeds integrated into Slack or Matrix, so that upstream
-outages are surfaced in developer channels before they become support tickets.
+cloud platforms, PaaS providers, and third-party services. Your development team
+consumes these checks through RSS/Atom feeds integrated into Slack or Matrix.
+This surfaces upstream outages in developer channels before they become support
+tickets.
 
-First, let's install more extra dependencies to ingest the feeds from cloud providers:
+First, install more extra dependencies to read the feeds from cloud providers:
 
 ```shell
 pip install "django-health-check[rss,atlassian]"
 ```
 
-Add the pipeline endpoint to your URL configuration
+Add the pipeline endpoint to your URL configuration.
 
 ```python
 # urls.py

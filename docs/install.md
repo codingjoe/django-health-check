@@ -72,7 +72,7 @@ urlpatterns = [
 
 You can protect the health check endpoint by adding a secure token to your URL.
 
-1. Setup HTTPS. Seriously…
+1. Enable HTTPS.
 1. Generate a strong secret token:
    ```shell
    python -c "import secrets; print(secrets.token_urlsafe())"
