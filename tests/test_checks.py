@@ -5,6 +5,7 @@ import logging
 from unittest import mock
 
 import django
+import dns
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
@@ -151,6 +152,27 @@ class TestDNS:
     async def test_run_check__dns_working(self):
         """DNS resolution completes successfully for localhost."""
         check = DNS(hostname="github.com")
+        result = await check.get_result()
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_run_check__custom_nameservers(self):
+        """DNS resolution completes successfully for localhost."""
+        check = DNS(hostname="github.com", nameservers=["9.9.9.9"])
+        result = await check.get_result()
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_run_check__custom_record_type(self):
+        """DNS resolution completes successfully for localhost."""
+        check = DNS(hostname="github.com", record_type=dns.rdatatype.MX)
+        result = await check.get_result()
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_run_check__custom_record_type_str(self):
+        """DNS resolution completes successfully for localhost."""
+        check = DNS(hostname="github.com", record_type="A")
         result = await check.get_result()
         assert result.error is None
 
