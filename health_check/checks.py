@@ -5,6 +5,7 @@ import datetime
 import logging
 import smtplib
 import socket
+import typing
 import uuid
 
 import django
@@ -17,6 +18,7 @@ from django.core.files.storage import InvalidStorageError, storages
 from django.core.files.storage import Storage as DjangoStorage
 from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
+from dns.nameserver import Nameserver
 
 if django.VERSION >= (6, 1):
     from django.core.mail import DEFAULT_MAILER_ALIAS, mailers
@@ -160,7 +162,9 @@ class DNS(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=5), repr=False
     )
-    nameservers: list[str] | None = dataclasses.field(default=None)
+    nameservers: typing.Sequence[str | Nameserver] = dataclasses.field(
+        default_factory=lambda: dns.resolver.get_default_resolver().nameservers
+    )
     record_type: str | dns.rdatatype.RdataType = dataclasses.field(
         default=dns.rdatatype.A
     )
@@ -170,8 +174,7 @@ class DNS(HealthCheck):
 
         resolver = dns.asyncresolver.Resolver()
         resolver.lifetime = self.timeout.total_seconds()
-        if self.nameservers is not None:
-            resolver.nameservers = self.nameservers
+        resolver.nameservers = [*self.nameservers]
 
         try:
             # Perform DNS resolution (A record by default)
