@@ -151,6 +151,8 @@ class DNS(HealthCheck):
     Args:
         hostname: The hostname to resolve.
         timeout: DNS query timeout.
+        nameservers: Optional list of nameservers to use for DNS resolution.
+        record_type: DNS record type to query (default is A record).
 
     """
 
@@ -158,7 +160,10 @@ class DNS(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=5), repr=False
     )
-    nameservers: list[str] | None = dataclasses.field(default=None, repr=False)
+    nameservers: list[str] | None = dataclasses.field(default=None)
+    record_type: str | dns.rdatatype.RdataType = dataclasses.field(
+        default=dns.rdatatype.A
+    )
 
     async def run(self):
         logger.debug("Attempting to resolve hostname: %s", self.hostname)
@@ -170,7 +175,7 @@ class DNS(HealthCheck):
 
         try:
             # Perform DNS resolution (A record by default)
-            answers = await resolver.resolve(self.hostname, "A")
+            answers = await resolver.resolve(self.hostname, self.record_type)
         except dns.resolver.NXDOMAIN as e:
             raise ServiceUnavailable(
                 f"DNS resolution failed: hostname {self.hostname} does not exist"
