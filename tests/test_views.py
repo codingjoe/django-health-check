@@ -1,5 +1,6 @@
 import dataclasses
 import json
+from unittest import mock
 
 import pytest
 
@@ -916,6 +917,32 @@ class TestHealthCheckView:
         lines = content.split("\n")
         status_lines = [line for line in lines if "django_health_check_status{" in line]
         assert len(status_lines) == 2
+
+    @pytest.mark.asyncio
+    async def test_get__openmetrics_excludes_rabbitmq_credentials(
+        self, health_check_view
+    ):
+        """OpenMetrics never expose the RabbitMQ credentials."""
+        pytest.importorskip("aio_pika")
+        with mock.patch(
+            "health_check.contrib.rabbitmq.aio_pika.connect_robust"
+        ) as mock_connect:
+            mock_connect.return_value = mock.AsyncMock()
+            response = await health_check_view(
+                [
+                    (
+                        "health_check.contrib.rabbitmq.RabbitMQ",
+                        {
+                            "amqp_url": "amqps://admin:supersecret@rabbit.example.com:5671//"
+                        },
+                    )
+                ],
+                format_param="openmetrics",
+            )
+        content = response.content.decode("utf-8")
+        assert "supersecret" not in content
+        assert 'host="rabbit.example.com"' in content
+        assert 'port="5671"' in content
 
     @pytest.mark.asyncio
     async def test_get__openmetrics_label_sanitization(self, health_check_view):

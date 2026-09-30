@@ -1,5 +1,6 @@
 """Tests for RabbitMQ health check."""
 
+import logging
 from unittest import mock
 
 import pytest
@@ -83,6 +84,68 @@ class TestRabbitMQ:
             assert result.error is not None
             # Base class catches unexpected exceptions and converts to HealthCheckException
             assert "unknown error" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__debug_log_excludes_credentials(self, caplog):
+        """Debug logs never contain the broker credentials."""
+        with (
+            mock.patch(
+                "health_check.contrib.rabbitmq.aio_pika.connect_robust"
+            ) as mock_connect,
+            caplog.at_level(logging.DEBUG, logger="health_check.contrib.rabbitmq"),
+        ):
+            mock_connect.return_value = mock.AsyncMock()
+            check = RabbitMQHealthCheck(
+                amqp_url="amqps://admin:supersecret@rabbit.example.com:5671//"
+            )
+            await check.get_result()
+        assert "supersecret" not in caplog.text
+        assert "host='rabbit.example.com'" in caplog.text
+
+    def test_rabbitmq__repr_excludes_credentials(self):
+        """Verify repr shows only scheme, host and port."""
+        check = RabbitMQHealthCheck(
+            amqp_url="amqps://admin:supersecret@rabbit.example.com:5671//"
+        )
+        assert (
+            repr(check)
+            == "RabbitMQ(scheme='amqps', host='rabbit.example.com', port=5671)"
+        )
+
+    def test_rabbitmq__labels_exclude_credentials(self):
+        """Verify labels show only scheme, host and port."""
+        check = RabbitMQHealthCheck(
+            amqp_url="amqps://admin:supersecret@rabbit.example.com:5671//"
+        )
+        assert check.labels == {
+            "check": "RabbitMQ",
+            "scheme": "amqps",
+            "host": "rabbit.example.com",
+            "port": "5671",
+        }
+
+    def test_rabbitmq__labels_without_port(self):
+        """Verify labels omit a missing port."""
+        check = RabbitMQHealthCheck(amqp_url="amqp://rabbit.example.com//")
+        assert check.labels == {
+            "check": "RabbitMQ",
+            "scheme": "amqp",
+            "host": "rabbit.example.com",
+        }
+
+    def test_rabbitmq__labels_invalid_url(self):
+        """Verify labels and repr fall back for an unparsable broker URL."""
+        check = RabbitMQHealthCheck(amqp_url="amqp://rabbit.example.com:invalid//")
+        assert check.labels == {"check": "RabbitMQ"}
+        assert repr(check) == "RabbitMQ()"
+
+    def test_rabbitmq__labels_without_scheme(self):
+        """Verify labels never report credentials of a relative URL as scheme."""
+        check = RabbitMQHealthCheck(
+            amqp_url="admin:supersecret@rabbit.example.com:5672//"
+        )
+        assert check.labels == {"check": "RabbitMQ"}
+        assert repr(check) == "RabbitMQ()"
 
     @pytest.mark.integration
     @pytest.mark.asyncio

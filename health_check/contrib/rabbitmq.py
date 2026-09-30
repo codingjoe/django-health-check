@@ -2,6 +2,7 @@
 
 import dataclasses
 import logging
+import urllib.parse
 
 import aio_pika
 
@@ -21,10 +22,32 @@ class RabbitMQ(HealthCheck):
 
     """
 
-    amqp_url: str
+    amqp_url: str = dataclasses.field(repr=False)
+
+    def __repr__(self) -> str:
+        arguments = ", ".join(
+            f"{key}={value!r}" for key, value in self._connection_details().items()
+        )
+        return f"{self.__class__.__name__}({arguments})"
+
+    @property
+    def labels(self) -> dict[str, str]:
+        return super().labels | {
+            key: str(value) for key, value in self._connection_details().items()
+        }
+
+    def _connection_details(self) -> dict[str, str | int]:
+        try:
+            url = urllib.parse.urlsplit(self.amqp_url)
+            details = {"scheme": url.scheme, "host": url.hostname, "port": url.port}
+        except ValueError:
+            return {}
+        if not details["host"]:
+            return {}
+        return {key: value for key, value in details.items() if value}
 
     async def run(self):
-        logger.debug("Attempting to connect to %r...", self.amqp_url)
+        logger.debug("Attempting to connect to %r...", self)
         try:
             # conn is used as a context to release opened resources later
             connection = await aio_pika.connect_robust(self.amqp_url)
