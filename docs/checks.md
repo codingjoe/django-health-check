@@ -37,10 +37,12 @@ To use these checks, install and configure their corresponding dependencies.
 To enable AWS health checks, install the extra for the `contrib` checks:
 
 ```shell
-pip install django-health-check[redis,rabbitmq,celery,kafka]
+pip install django-health-check[redis,rabbitmq,celery,kafka,crontask]
 ```
 
 ::: health_check.contrib.celery.Ping
+
+::: health_check.contrib.crontask.Scheduler
 
 ::: health_check.contrib.kafka.Kafka
 

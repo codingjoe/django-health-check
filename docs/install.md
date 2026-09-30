@@ -41,6 +41,7 @@ urlpatterns = [
                 "health_check.contrib.psutil.Disk",
                 "health_check.contrib.psutil.Memory",
                 "health_check.contrib.celery.Ping",
+                "health_check.contrib.crontask.Scheduler",
                 (
                     "health_check.contrib.kafka.Kafka",
                     {"bootstrap_servers": ["localhost:9092"]},
