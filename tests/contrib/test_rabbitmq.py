@@ -100,7 +100,7 @@ class TestRabbitMQ:
             )
             await check.get_result()
         assert "supersecret" not in caplog.text
-        assert "rabbit.example.com" in caplog.text
+        assert "host='rabbit.example.com'" in caplog.text
 
     def test_rabbitmq__repr_excludes_credentials(self):
         """Verify repr shows only scheme, host and port."""
