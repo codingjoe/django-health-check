@@ -52,7 +52,7 @@ pip install django-health-check[redis,rabbitmq,celery,kafka,crontask]
 
 ### Threadmill
 
-Monitor [threadmill](https://github.com/codingjoe/threadmill), the task backend for [Django's task framework](https://docs.djangoproject.com/en/stable/topics/tasks/), so a growing backlog or a failing queue surfaces before your users notice.
+Monitor [threadmill](https://github.com/codingjoe/threadmill), the task backend for [Django's task framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
 
 ```shell
 pip install django-health-check[threadmill]

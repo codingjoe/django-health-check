@@ -269,7 +269,7 @@ class TestThreadmill:
             check = ThreadmillHealthCheck(timeout=datetime.timedelta(milliseconds=10))
             result = await check.get_result()
         assert isinstance(result.error, ServiceUnavailable)
-        assert result.error.message == "Timed out fetching threadmill queue telemetry"
+        assert result.error.message == "Threadmill queue telemetry timed out"
 
     @pytest.mark.asyncio
     async def test_run__releases_probe_client(self, monkeypatch):
