@@ -32,9 +32,7 @@ pip install django-health-check[psutil]
 
 ## 3rd Party Services
 
-To use these checks, install and configure their corresponding dependencies.
-
-To enable AWS health checks, install the extra for the `contrib` checks:
+To use these checks, install and configure their corresponding dependencies:
 
 ```shell
 pip install django-health-check[redis,rabbitmq,celery,kafka,crontask]
