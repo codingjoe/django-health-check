@@ -51,6 +51,7 @@ rabbitmq = ["aio-pika>=9.0.0"]
 redis = ["redis>=4.2.0"]
 rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
 atlassian = ["httpx>=0.27.0"]
+threadmill = ["threadmill[redis]>=0.7.3"]
 
 [project.urls]
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
@@ -138,3 +139,11 @@ profile="django"
 indent=2
 max_line_length=120
 line_break_after_multiline_tag=true
+
+[tool.uv]
+# Threadmill needs Python >= 3.14. Its extra is left unmarked so an
+# unsupported Python fails the install instead of skipping it, but uv locks
+# every extra against all supported Pythons, which is unsatisfiable below
+# 3.14. The override scopes the dependency to the interpreters that can
+# install it, so `uv lock` and the 3.10-3.13 CI rows keep resolving.
+override-dependencies = ["threadmill[redis]>=0.7.3; python_version >= '3.14'"]

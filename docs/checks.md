@@ -48,6 +48,16 @@ pip install django-health-check[redis,rabbitmq,celery,kafka]
 
 ::: health_check.contrib.redis.Redis
 
+### Threadmill
+
+Monitor [threadmill](https://github.com/codingjoe/threadmill), the task backend for [Django's task framework](https://docs.djangoproject.com/en/stable/topics/tasks/), so a growing backlog or a failing queue surfaces before your users notice.
+
+```shell
+pip install django-health-check[threadmill]
+```
+
+::: health_check.contrib.threadmill.Threadmill
+
 ## Cloud Provider Status
 
 Watch cloud provider health through their public RSS/Atom status feeds or APIs.

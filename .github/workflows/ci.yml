@@ -74,6 +74,10 @@ jobs:
           - "redis"
           - "rss"
           - "atlassian"
+        include:
+          - python-version: "3.14"
+            django-version: "6.1"
+            extra: "threadmill"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
