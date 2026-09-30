@@ -48,7 +48,8 @@ psutil = ["psutil>=7.2.0"]
 celery = ["celery>=5.0.0"]
 kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
-redis = ["redis>=4.2.0"]
+redis = ["redis>=5.0.1"]
+crontask = ["django-crontask[redis]>=2.0.0", "redis>=5.0.1"]
 rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
 atlassian = ["httpx>=0.27.0"]
 
@@ -89,6 +90,10 @@ name = "health_check"
 
 [tool.setuptools_scm]
 write_to = "health_check/_version.py"
+
+[tool.uv]
+# django-crontask allows Python >= 3.12 only, while this project supports >= 3.10
+override-dependencies = ["django-crontask[redis]>=2.0.0; python_version >= '3.12'"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"

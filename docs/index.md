@@ -28,8 +28,9 @@ The following health checks are bundled with this project:
 - [disk][health_check.contrib.psutil.Disk] & [memory][health_check.contrib.psutil.Memory] utilization
 - [DNS][health_check.DNS] & [email][health_check.Mail]
 - [storages][health_check.Storage]
-- [Celery][health_check.contrib.celery.Ping], [Kafka][health_check.contrib.kafka.Kafka],
-  [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] & [Redis][health_check.contrib.redis.Redis]
+- [Celery][health_check.contrib.celery.Ping], [Crontask scheduler][health_check.contrib.crontask.Scheduler],
+  [Kafka][health_check.contrib.kafka.Kafka], [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] &
+  [Redis][health_check.contrib.redis.Redis]
 - [Cloud provider status](checks.md#cloud-provider-status) for numerous cloud and PaaS providers.
 
 The bundled checks cover the common cases. If your stack is different, you can write your own.
