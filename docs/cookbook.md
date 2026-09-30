@@ -172,7 +172,7 @@ To cover the whole stack — databases, caches, message brokers, email, storage 
 you'll need some extra dependencies:
 
 ```shell
-pip install "django-health-check[redis,rabbitmq,celery]"
+pip install "django-health-check[redis,rabbitmq,celery,crontask]"
 ```
 
 ```python
@@ -199,6 +199,7 @@ application_checks = [
         {"amqp_url": "amqp://guest:guest@localhost:5672//"},
     ),
     "health_check.contrib.celery.Ping",
+    "health_check.contrib.crontask.Scheduler",
 ]
 
 urlpatterns = [
@@ -335,6 +336,7 @@ application_checks = [
         {"amqp_url": "amqp://guest:guest@localhost:5672//"},
     ),
     "health_check.contrib.celery.Ping",
+    "health_check.contrib.crontask.Scheduler",
 ]
 
 pipeline_checks = [

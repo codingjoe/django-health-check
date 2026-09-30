@@ -48,7 +48,8 @@ psutil = ["psutil>=7.2.0"]
 celery = ["celery>=5.0.0"]
 kafka = ["confluent-kafka>=2.0.0"]
 rabbitmq = ["aio-pika>=9.0.0"]
-redis = ["redis>=4.2.0"]
+redis = ["redis>=5.0.1"]
+crontask = ["django-crontask[redis]>=2.0.0", "redis>=5.0.1"]
 rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
 atlassian = ["httpx>=0.27.0"]
 threadmill = ["threadmill[redis]>=0.7.3"]
@@ -90,6 +91,14 @@ name = "health_check"
 
 [tool.setuptools_scm]
 write_to = "health_check/_version.py"
+
+[tool.uv]
+# django-crontask allows Python >= 3.12 only, while this project supports >= 3.10
+# threadmill allows Python >= 3.14 only, while this project supports >= 3.10
+override-dependencies = [
+  "django-crontask[redis]>=2.0.0; python_version >= '3.12'",
+  "threadmill[redis]>=0.7.3; python_version >= '3.14'",
+]
 
 [tool.pytest.ini_options]
 addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
@@ -139,11 +148,3 @@ profile="django"
 indent=2
 max_line_length=120
 line_break_after_multiline_tag=true
-
-[tool.uv]
-# Threadmill needs Python >= 3.14. Its extra is left unmarked so an
-# unsupported Python fails the install instead of skipping it, but uv locks
-# every extra against all supported Pythons, which is unsatisfiable below
-# 3.14. The override scopes the dependency to the interpreters that can
-# install it, so `uv lock` and the 3.10-3.13 CI rows keep resolving.
-override-dependencies = ["threadmill[redis]>=0.7.3; python_version >= '3.14'"]
