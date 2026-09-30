@@ -13,6 +13,10 @@ from health_check.contrib.redis import Redis as RedisHealthCheck
 from health_check.exceptions import ServiceUnavailable
 
 
+class UnknownClient:
+    """Redis client stub without connection metadata."""
+
+
 class TestRedis:
     """Test Redis health check."""
 
@@ -216,6 +220,12 @@ class TestRedis:
         assert "node2:7001" in repr(check), (
             "repr should include the second cluster node host:port"
         )
+
+    def test_redis__unknown_client_fallback(self):
+        """Fall back to the base repr and labels for a client without connection metadata."""
+        check = RedisHealthCheck(client_factory=UnknownClient)
+        assert repr(check) == "Redis()"
+        assert check.labels == {"check": "Redis"}
 
     def test_redis__repr_excludes_password(self):
         """Verify repr never leaks passwords for standard Redis clients."""
