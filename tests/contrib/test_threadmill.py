@@ -154,19 +154,6 @@ class TestThreadmill:
         assert result.error is None
 
     @pytest.mark.asyncio
-    async def test_run__pending_tasks_summed_across_queues(self):
-        """Sum the backlog of every queue when no queue is selected."""
-        with stub_tasks(
-            ("default", "emails"),
-            telemetry=build_telemetry(
-                default={"ready": 4, "deferred": 1}, emails={"ready": 3}
-            ),
-        ):
-            result = await ThreadmillHealthCheck(max_pending_tasks=7).get_result()
-        assert isinstance(result.error, ServiceUnavailable)
-        assert result.error.message == "8 pending tasks exceed max_pending_tasks of 7"
-
-    @pytest.mark.asyncio
     async def test_run__failed_tasks_exceed_limit(self):
         """Warn when failed tasks exceed max_failed_tasks."""
         with stub_tasks(telemetry=build_telemetry(default={"failed": 3})):

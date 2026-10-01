@@ -22,6 +22,7 @@ Add a health check view to your URL configuration. For example:
 
 ```python
 # urls.py
+from django.tasks import default_task_backend
 from django.urls import include, path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
@@ -42,6 +43,13 @@ urlpatterns = [
                 "health_check.contrib.psutil.Memory",
                 "health_check.contrib.celery.Ping",
                 "health_check.contrib.crontask.Scheduler",
+                *(
+                    (
+                        "health_check.contrib.threadmill.Threadmill",
+                        {"queue_name": queue_name},
+                    )
+                    for queue_name in default_task_backend.queues
+                ),
                 (
                     "health_check.contrib.kafka.Kafka",
                     {"bootstrap_servers": ["localhost:9092"]},
