@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import json
 from unittest import mock
 
@@ -473,8 +474,6 @@ class TestHealthCheckView:
     @pytest.mark.asyncio
     async def test_get__atom_feed_error_uses_current_time(self, health_check_view):
         """Use current timestamp for failed checks in Atom feed."""
-        import datetime
-
         feedparser = pytest.importorskip("feedparser")
 
         class FailingBackend(HealthCheck):
@@ -513,8 +512,6 @@ class TestHealthCheckView:
     @pytest.mark.asyncio
     async def test_get__rss_feed_error_uses_current_time(self, health_check_view):
         """Use current timestamp for failed checks in RSS feed."""
-        import datetime
-
         feedparser = pytest.importorskip("feedparser")
 
         class FailingBackend(HealthCheck):
@@ -538,8 +535,6 @@ class TestHealthCheckView:
         self, health_check_view
     ):
         """Use exception timestamp in RSS feed when provided."""
-        import datetime
-
         feedparser = pytest.importorskip("feedparser")
 
         source_date = datetime.datetime(
@@ -566,8 +561,6 @@ class TestHealthCheckView:
         self, health_check_view
     ):
         """Use exception timestamp in Atom feed when provided."""
-        import datetime
-
         feedparser = pytest.importorskip("feedparser")
 
         source_date = datetime.datetime(
@@ -594,8 +587,6 @@ class TestHealthCheckView:
         self, health_check_view
     ):
         """Use epoch for healthy and current time for failed checks in the same feed."""
-        import datetime
-
         feedparser = pytest.importorskip("feedparser")
 
         class SuccessBackend(HealthCheck):

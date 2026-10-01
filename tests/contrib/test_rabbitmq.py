@@ -28,6 +28,9 @@ class TestRabbitMQ:
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             result = await check.get_result()
             assert result.error is None
+            mock_connect.assert_awaited_once_with(
+                "amqp://guest:guest@localhost:5672//", timeout=5.0
+            )
             mock_conn.close.assert_awaited_once()
 
     @pytest.mark.asyncio

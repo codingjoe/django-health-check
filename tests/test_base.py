@@ -1,11 +1,12 @@
 import asyncio
 import dataclasses
+import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from health_check.base import HealthCheck, HealthCheckResult
-from health_check.exceptions import HealthCheckException
+from health_check.exceptions import HealthCheckException, ServiceUnavailable
 
 
 class TestHealthCheck:
@@ -36,6 +37,44 @@ class TestHealthCheck:
         assert result.error is not None
         assert isinstance(result.error, HealthCheckException)
         assert str(result.error) == "Unknown Error: unknown error"
+
+    @pytest.mark.asyncio
+    async def test_get_result__propagates_cancellation(self):
+        """Propagate cancellation instead of reporting an unknown error."""
+
+        class SlowCheck(HealthCheck):
+            async def run(self):
+                await asyncio.sleep(60)
+
+        task = asyncio.ensure_future(SlowCheck().get_result())
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    @pytest.mark.asyncio
+    async def test_get_result__timeout(self):
+        """Fail a check that outlives its timeout."""
+
+        @dataclasses.dataclass
+        class SlowCheck(HealthCheck):
+            timeout: datetime.timedelta = datetime.timedelta(seconds=0.01)
+
+            async def run(self):
+                await asyncio.sleep(5)
+
+        result = await SlowCheck().get_result()
+        assert isinstance(result.error, ServiceUnavailable)
+        assert str(result.error) == "Unavailable: Timed out after 0.01 seconds"
+
+    def test_timeout__default(self):
+        """Bound a check that does not declare its own timeout."""
+
+        class PlainCheck(HealthCheck):
+            async def run(self):
+                pass
+
+        assert PlainCheck().timeout == datetime.timedelta(seconds=5)
 
     @pytest.mark.asyncio
     async def test_run__sync_check(self):

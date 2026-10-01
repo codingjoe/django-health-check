@@ -1,6 +1,7 @@
 """RabbitMQ health check."""
 
 import dataclasses
+import datetime
 import logging
 import urllib.parse
 
@@ -19,10 +20,14 @@ class RabbitMQ(HealthCheck):
 
     Args:
         amqp_url (str): The URL of the RabbitMQ broker to connect to, e.g., 'amqp://guest:guest@localhost:5672//'.
+        timeout: Timeout for the connection attempt.
 
     """
 
     amqp_url: str = dataclasses.field(repr=False)
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=5), repr=False
+    )
 
     def __repr__(self) -> str:
         arguments = ", ".join(
@@ -50,7 +55,9 @@ class RabbitMQ(HealthCheck):
         logger.debug("Attempting to connect to %r...", self)
         try:
             # conn is used as a context to release opened resources later
-            connection = await aio_pika.connect_robust(self.amqp_url)
+            connection = await aio_pika.connect_robust(
+                self.amqp_url, timeout=self.timeout.total_seconds()
+            )
             await connection.close()
         except ConnectionRefusedError as e:
             raise ServiceUnavailable(
