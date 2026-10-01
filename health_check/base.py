@@ -31,10 +31,6 @@ class HealthCheck(abc.ABC):
     Subclasses should implement the `run` method to perform the actual health check logic.
     The `run` method can be either synchronous or asynchronous.
 
-    The probe is bounded by `timeout`: a check that overruns it fails as unavailable.
-    The bound releases the request, not a synchronous check's worker thread, which
-    keeps running until its client gives up.
-
     Examples:
         >>> import dataclasses
         >>> from health_check.base import HealthCheck
@@ -55,8 +51,7 @@ class HealthCheck(abc.ABC):
 
     """
 
-    # A dataclass field here would become the first parameter of every check,
-    # so this stays a plain attribute that checks override.
+    # A dataclass field here would become the first parameter of every check.
     timeout = datetime.timedelta(seconds=5)
     """Wall-clock budget for the probe; a check declaring its own timeout overrides it."""
 
@@ -109,7 +104,6 @@ class HealthCheck(abc.ABC):
         except HealthCheckException as e:
             error = e
         except asyncio.TimeoutError:
-            # The budget above, or a check raising its own TimeoutError.
             error = ServiceUnavailable(
                 f"Timed out after {self.timeout.total_seconds():g} seconds"
             )
