@@ -3,12 +3,13 @@ from __future__ import annotations
 import abc
 import asyncio
 import dataclasses
+import datetime
 import inspect
 import logging
 import timeit
 from concurrent.futures import Executor
 
-from health_check.exceptions import HealthCheckException
+from health_check.exceptions import HealthCheckException, ServiceUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class HealthCheck(abc.ABC):
     Subclasses should implement the `run` method to perform the actual health check logic.
     The `run` method can be either synchronous or asynchronous.
 
+    The probe is bounded by `timeout`; a check that overruns it fails as unavailable.
+
     Examples:
         >>> import dataclasses
         >>> from health_check.base import HealthCheck
@@ -49,6 +52,9 @@ class HealthCheck(abc.ABC):
         to avoid leaking sensitive information or credentials.
 
     """
+
+    timeout = datetime.timedelta(seconds=5)
+    """Wall-clock budget for the probe; a check declaring its own timeout overrides it."""
 
     @abc.abstractmethod
     async def run(self) -> None:
@@ -89,11 +95,21 @@ class HealthCheck(abc.ABC):
         loop = asyncio.get_running_loop()
         start = timeit.default_timer()
         try:
-            await self.run() if inspect.iscoroutinefunction(
-                self.run
-            ) else await loop.run_in_executor(executor, self.run)
+            await asyncio.wait_for(
+                self.run()
+                if inspect.iscoroutinefunction(self.run)
+                else loop.run_in_executor(executor, self.run),
+                # Give a check's own client timeout a second to report first.
+                self.timeout.total_seconds() + 1,
+            )
         except HealthCheckException as e:
             error = e
+        except asyncio.TimeoutError:
+            error = ServiceUnavailable(
+                f"Timed out after {self.timeout.total_seconds():g} seconds"
+            )
+        except asyncio.CancelledError:
+            raise
         except BaseException:
             logger.exception("Unexpected exception during health check")
             error = HealthCheckException("unknown error")
