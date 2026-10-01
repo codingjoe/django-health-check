@@ -4,7 +4,11 @@ import asyncio
 import dataclasses
 import datetime
 
-from django.tasks import task_backends
+from django.tasks import (
+    DEFAULT_TASK_BACKEND_ALIAS,
+    DEFAULT_TASK_QUEUE_NAME,
+    task_backends,
+)
 from django.tasks.exceptions import InvalidTaskBackend
 from redis.exceptions import RedisError
 from threadmill.backends.base import ThreadmillTaskBackend
@@ -17,24 +21,27 @@ from health_check.exceptions import ServiceUnavailable, ServiceWarning
 @dataclasses.dataclass
 class Threadmill(HealthCheck):
     """
-    Check threadmill queue telemetry.
+    Monitor [Threadmill], the task backend for [Django's task framework].
 
     The check reports the number of ready and deferred tasks and the number of
-    failed tasks for each queue. If the task broker does not answer, the check
+    failed tasks of a single queue. If the task broker does not answer, the check
     fails. It only reads the telemetry, therefore it cannot tell if a worker is
     alive. If workers stop, the number of ready tasks increases.
 
+    [Threadmill]: https://github.com/codingjoe/threadmill
+    [Django's task framework]: https://docs.djangoproject.com/en/stable/topics/tasks/
+
     Args:
         alias: Alias of the `TASKS` backend.
-        queue_name: Queue for the telemetry, or `None` for every queue of the backend.
+        queue_name: Queue for the telemetry.
         max_pending_tasks: Maximum number of ready and deferred tasks before the check fails, or `None` to disable the limit.
         max_failed_tasks: Maximum number of failed tasks before the check warns, or `None` to disable the limit.
         timeout: Timeout for the telemetry request.
 
     """
 
-    alias: str = "default"
-    queue_name: str | None = None
+    alias: str = DEFAULT_TASK_BACKEND_ALIAS
+    queue_name: str = DEFAULT_TASK_QUEUE_NAME
     max_pending_tasks: int | None = dataclasses.field(default=1000, repr=False)
     max_failed_tasks: int | None = dataclasses.field(default=None, repr=False)
     timeout: datetime.timedelta = dataclasses.field(
@@ -48,7 +55,7 @@ class Threadmill(HealthCheck):
             raise ServiceUnavailable("Task backend alias does not exist") from e
         if not isinstance(backend, ThreadmillTaskBackend):
             raise ServiceUnavailable("Task backend does not support queue telemetry")
-        if self.queue_name is not None and self.queue_name not in backend.queues:
+        if self.queue_name not in backend.queues:
             raise ServiceUnavailable("Task queue does not exist")
         # The handler caches a backend whose async client is bound to the event
         # loop that created it. Build a new backend for each probe, then close it.
@@ -68,13 +75,9 @@ class Threadmill(HealthCheck):
             # threadmill exposes a backend lifecycle hook, use it.
             if isinstance(probe, RedisTaskBackend):
                 await probe.async_client.aclose()
-        queue_counts = [
-            stats.counts
-            for name, stats in telemetry.queues.items()
-            if self.queue_name is None or name == self.queue_name
-        ]
-        pending = sum(counts.ready + counts.deferred for counts in queue_counts)
-        failed = sum(counts.failed for counts in queue_counts)
+        counts = telemetry.queues[self.queue_name].counts
+        pending = counts.ready + counts.deferred
+        failed = counts.failed
         if self.max_pending_tasks is not None and pending > self.max_pending_tasks:
             raise ServiceUnavailable(
                 f"{pending} pending tasks exceed max_pending_tasks of {self.max_pending_tasks}"

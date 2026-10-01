@@ -26,11 +26,13 @@ def create_client_from_settings() -> RedisClient:
 @dataclasses.dataclass
 class Scheduler(HealthCheck):
     """
-    Presence of the django-crontask lock in Redis.
+    Presence of the [django-crontask] scheduler operating.
 
-    django-crontask renews its lock as a dead man's switch while it runs, so a
+    Crontask renews its lock as a dead man's switch while it runs, so a
     missing key means it is dead. Requires `CRONTASK["REDIS_URL"]`, since
-    django-crontask uses a no-op lock without it.
+    crontask uses a no-op lock without it.
+
+    [django-crontask]: https://github.com/codingjoe/django-crontask
 
     Args:
         client_factory: A callable returning a Redis client, defaults to

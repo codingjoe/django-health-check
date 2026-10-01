@@ -35,7 +35,7 @@ pip install django-health-check[psutil]
 To use these checks, install and configure their corresponding dependencies:
 
 ```shell
-pip install django-health-check[redis,rabbitmq,celery,kafka,crontask]
+pip install django-health-check[redis,rabbitmq,celery,kafka,crontask,threadmill]
 ```
 
 ::: health_check.contrib.celery.Ping
@@ -47,14 +47,6 @@ pip install django-health-check[redis,rabbitmq,celery,kafka,crontask]
 ::: health_check.contrib.rabbitmq.RabbitMQ
 
 ::: health_check.contrib.redis.Redis
-
-### Threadmill
-
-Monitor [threadmill](https://github.com/codingjoe/threadmill), the task backend for [Django's task framework](https://docs.djangoproject.com/en/stable/topics/tasks/).
-
-```shell
-pip install django-health-check[threadmill]
-```
 
 ::: health_check.contrib.threadmill.Threadmill
 
