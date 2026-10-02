@@ -66,6 +66,8 @@ pip install django-health-check[rss,atlassian]
 
 ::: health_check.contrib.atlassian.Cloudflare
 
+::: health_check.contrib.atlassian.Codecov
+
 ::: health_check.contrib.atlassian.DigitalOcean
 
 ::: health_check.contrib.atlassian.FlyIo
