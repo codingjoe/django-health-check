@@ -196,9 +196,8 @@ class Npm(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
-        component: Name of a specific component to monitor. Defaults to
-            "Package installation". Pass an empty string to monitor all
-            components.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
 
     """
 
