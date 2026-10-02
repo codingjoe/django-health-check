@@ -78,6 +78,8 @@ pip install django-health-check[rss,atlassian]
 
 ::: health_check.contrib.rss.Hetzner
 
+::: health_check.contrib.atlassian.Npm
+
 ::: health_check.contrib.atlassian.PlatformSh
 
 ::: health_check.contrib.atlassian.Render

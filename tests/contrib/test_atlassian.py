@@ -10,6 +10,7 @@ from health_check.contrib.atlassian import (
     DigitalOcean,
     FlyIo,
     GitHub,
+    Npm,
     PlatformSh,
     Render,
     Sentry,
@@ -538,6 +539,46 @@ class TestGitHub:
             assert result.error is not None
             assert "Actions degraded performance" in str(result.error)
             assert "Pages outage" in str(result.error)
+
+
+class TestNpm:
+    """Tests for npm registry status health check via Atlassian API."""
+
+    @pytest.mark.asyncio
+    async def test_check_status__ok(self):
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [_component("Package installation"), _component("Package publishing")],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = Npm()
+            result = await check.get_result()
+            assert result.error is None
+            assert (
+                mock_context.__aenter__.return_value.get.await_args.args[0]
+                == "https://status.npmjs.org/api/v2/summary.json"
+            )
+
+    def test_base_url_format(self):
+        """Verify correct base URL for npm."""
+        assert Npm().base_url == "https://status.npmjs.org"
+
+    def test_component_default(self):
+        """Monitor the package installation component by default."""
+        assert Npm().component == "Package installation"
 
 
 class TestCloudflare:
