@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import datetime
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -66,6 +67,58 @@ class TestHealthCheck:
         result = await SlowCheck().get_result()
         assert isinstance(result.error, ServiceUnavailable)
         assert str(result.error) == "Unavailable: Timed out after 0.01 seconds"
+
+    @pytest.mark.asyncio
+    async def test_get_result__logs_failure(self, caplog):
+        """Log a failed check at warning level with its error."""
+
+        @dataclasses.dataclass
+        class FailingCheck(HealthCheck):
+            async def run(self):
+                raise ServiceUnavailable("service down")
+
+        check = FailingCheck()
+        with caplog.at_level(logging.WARNING, logger="health_check"):
+            await check.get_result()
+
+        [record] = caplog.records
+        assert record.name == "health_check"
+        assert record.levelno == logging.WARNING
+        assert record.getMessage() == f"Health check {check!r} failed"
+        assert record.exc_info[0] is ServiceUnavailable
+        assert "service down" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_get_result__logs_timeout(self, caplog):
+        """Log a check that outlives its timeout at warning level."""
+
+        @dataclasses.dataclass
+        class SlowCheck(HealthCheck):
+            timeout: datetime.timedelta = datetime.timedelta(seconds=0.01)
+
+            async def run(self):
+                await asyncio.sleep(5)
+
+        with caplog.at_level(logging.WARNING, logger="health_check"):
+            result = await SlowCheck().get_result()
+
+        [record] = caplog.records
+        assert record.levelno == logging.WARNING
+        assert record.getMessage() == f"Health check {result.check!r} failed"
+        assert record.exc_info[0] is asyncio.TimeoutError
+
+    @pytest.mark.asyncio
+    async def test_get_result__no_warning_when_healthy(self, caplog):
+        """Log nothing for a check that passes."""
+
+        class SuccessCheck(HealthCheck):
+            async def run(self):
+                pass
+
+        with caplog.at_level(logging.WARNING, logger="health_check"):
+            await SuccessCheck().get_result()
+
+        assert caplog.records == []
 
     def test_timeout__default(self):
         """Bound a check that does not declare its own timeout."""
