@@ -576,6 +576,10 @@ class TestNpm:
         """Verify correct base URL for npm."""
         assert Npm().base_url == "https://status.npmjs.org"
 
+    def test_component_default(self):
+        """Monitor the package installation component by default."""
+        assert Npm().component == "Package installation"
+
 
 class TestCloudflare:
     """Test Cloudflare platform status health check via Atlassian API."""

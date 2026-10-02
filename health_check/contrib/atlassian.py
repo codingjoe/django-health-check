@@ -196,8 +196,9 @@ class Npm(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
-        component: Name of a specific component to monitor. Monitors all
-            components when empty.
+        component: Name of a specific component to monitor. Defaults to
+            "Package installation". Pass an empty string to monitor all
+            components.
 
     """
 
@@ -207,7 +208,7 @@ class Npm(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.npmjs.org", init=False, repr=False
     )
-    component: str = ""
+    component: str = "Package installation"
 
 
 @dataclasses.dataclass
