@@ -46,22 +46,22 @@ class AtlassianStatusPage(HealthCheck):
     component: str = ""
 
     def _watched_component_names(self, components):
-        """Return the configured component name and the names of its child components."""
+        """Yield the configured component name and the names of its child components."""
+        if not self.component:
+            return
         try:
             watched = next(c for c in components if c["name"] == self.component)
         except StopIteration as e:
             raise ServiceReturnedUnexpectedResult(
                 f"Component {self.component!r} not found"
             ) from e
-        return {
-            self.component,
-            *(
-                c["name"]
-                for c in components
-                if (group_id := watched.get("id")) is not None
-                and c.get("group_id") == group_id
-            ),
-        }
+        yield self.component
+        yield from (
+            c["name"]
+            for c in components
+            if (group_id := watched.get("id")) is not None
+            and c.get("group_id") == group_id
+        )
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
@@ -100,11 +100,7 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        watched_names = (
-            self._watched_component_names(data["components"])
-            if self.component
-            else frozenset()
-        )
+        watched_names = set(self._watched_component_names(data["components"]))
         try:
             for incident in data["incidents"]:
                 if (incident.get("status") not in ("resolved", "postmortem")) and (
