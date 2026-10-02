@@ -542,7 +542,7 @@ class TestGitHub:
 
 
 class TestNpm:
-    """Test npm registry status health check via Atlassian API."""
+    """Tests for npm registry status health check via Atlassian API."""
 
     @pytest.mark.asyncio
     async def test_check_status__ok(self):

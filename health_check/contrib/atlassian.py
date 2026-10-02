@@ -192,7 +192,7 @@ class GitHub(AtlassianStatusPage):
 @dataclasses.dataclass
 class Npm(AtlassianStatusPage):
     """
-    Check npm registry status via Atlassian Status Page API v2.
+    Health check for npm registry status via Atlassian Status Page API v2.
 
     Args:
         timeout: Request timeout duration.
