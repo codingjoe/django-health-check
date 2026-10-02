@@ -228,9 +228,8 @@ class PyPI(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
-        component: Name of a component or component group to monitor. Defaults
-            to the PyPI group, which covers all PyPI services. Monitors all
-            components when empty.
+        component: Name of a component or component group to monitor. Monitors
+            all components when empty.
 
     """
 
