@@ -12,6 +12,7 @@ from health_check.contrib.atlassian import (
     GitHub,
     Npm,
     PlatformSh,
+    PyPI,
     Render,
     Sentry,
     Vercel,
@@ -33,8 +34,22 @@ def _make_response(components, incidents=None):
     }
 
 
-def _component(name, status="operational", updated_at="2024-01-01T00:00:00.000Z"):
-    return {"name": name, "status": status, "updated_at": updated_at}
+def _component(
+    name,
+    status="operational",
+    updated_at="2024-01-01T00:00:00.000Z",
+    component_id=None,
+    group_id=None,
+    group=False,
+):
+    return {
+        "id": component_id,
+        "name": name,
+        "status": status,
+        "updated_at": updated_at,
+        "group_id": group_id,
+        "group": group,
+    }
 
 
 def _incident(
@@ -641,6 +656,113 @@ class TestPlatformSh:
         """Verify correct base URL for Platform.sh."""
         check = PlatformSh()
         assert check.base_url == "https://status.platform.sh"
+
+
+class TestPyPI:
+    """Test PyPI platform status health check via Atlassian API."""
+
+    @pytest.mark.asyncio
+    async def test_check_status__ok(self):
+        """Pass when there are no open incidents."""
+        api_response = _make_response(
+            [
+                _component("PyPI", component_id="pypi", group=True),
+                _component("pypi.org - General", group_id="pypi"),
+            ]
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = PyPI()
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__component_group_incident(self):
+        """Raise StatusPageWarning when an incident affects a PyPI child component."""
+        api_response = _make_response(
+            [
+                _component("PyPI", component_id="pypi", group=True),
+                _component("pypi.org - Backends", group_id="pypi"),
+            ],
+            incidents=[
+                _incident(
+                    "PyPI Backends Partial Availability",
+                    "https://stspg.io/pypi",
+                    components=["pypi.org - Backends"],
+                )
+            ],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = PyPI()
+            result = await check.get_result()
+            assert result.error is not None
+            assert isinstance(result.error, StatusPageWarning)
+            assert "PyPI Backends Partial Availability" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__unrelated_incident(self):
+        """Pass when an incident affects only unrelated components."""
+        api_response = _make_response(
+            [
+                _component("PyPI", component_id="pypi", group=True),
+                _component("pypi.org - General", group_id="pypi"),
+                _component("docs.python.org - Backends", group_id="docs.python.org"),
+            ],
+            incidents=[
+                _incident(
+                    "Multiple services unavailable",
+                    "https://stspg.io/docs",
+                    components=["docs.python.org - Backends"],
+                )
+            ],
+        )
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = PyPI()
+            result = await check.get_result()
+            assert result.error is None
+
+    def test_base_url_format(self):
+        """Verify correct base URL for PyPI."""
+        check = PyPI()
+        assert check.base_url == "https://status.python.org"
 
 
 class TestDigitalOcean:
