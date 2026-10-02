@@ -11,6 +11,7 @@ from health_check.contrib.atlassian import (
     FlyIo,
     GitHub,
     PlatformSh,
+    PyPI,
     Render,
     Sentry,
     Vercel,
@@ -600,6 +601,37 @@ class TestPlatformSh:
         """Verify correct base URL for Platform.sh."""
         check = PlatformSh()
         assert check.base_url == "https://status.platform.sh"
+
+
+class TestPyPI:
+    """Test PyPI platform status health check via Atlassian API."""
+
+    @pytest.mark.asyncio
+    async def test_check_status__ok(self):
+        """Pass when there are no open incidents."""
+        api_response = _make_response([_component("pypi.org - General")])
+
+        with mock.patch(
+            "health_check.contrib.atlassian.httpx.AsyncClient"
+        ) as mock_client:
+            mock_response = mock.MagicMock()
+            mock_response.json.return_value = api_response
+            mock_response.raise_for_status = mock.MagicMock()
+
+            mock_context = mock.AsyncMock()
+            mock_context.__aenter__.return_value.get = mock.AsyncMock(
+                return_value=mock_response
+            )
+            mock_client.return_value = mock_context
+
+            check = PyPI()
+            result = await check.get_result()
+            assert result.error is None
+
+    def test_base_url_format(self):
+        """Verify correct base URL for PyPI."""
+        check = PyPI()
+        assert check.base_url == "https://status.python.org"
 
 
 class TestDigitalOcean:
