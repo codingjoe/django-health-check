@@ -47,21 +47,20 @@ class AtlassianStatusPage(HealthCheck):
 
     def _watched_component_names(self, components):
         """Yield the configured component name and the names of its child components."""
-        if not self.component:
-            return
-        try:
-            watched = next(c for c in components if c["name"] == self.component)
-        except StopIteration as e:
-            raise ServiceReturnedUnexpectedResult(
-                f"Component {self.component!r} not found"
-            ) from e
-        yield self.component
-        yield from (
-            c["name"]
-            for c in components
-            if (group_id := watched.get("id")) is not None
-            and c.get("group_id") == group_id
-        )
+        if self.component:
+            try:
+                watched = next(c for c in components if c["name"] == self.component)
+            except StopIteration as e:
+                raise ServiceReturnedUnexpectedResult(
+                    f"Component {self.component!r} not found"
+                ) from e
+            yield self.component
+            yield from (
+                c["name"]
+                for c in components
+                if (group_id := watched.get("id")) is not None
+                and c.get("group_id") == group_id
+            )
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
