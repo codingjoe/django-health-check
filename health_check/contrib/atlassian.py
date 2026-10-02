@@ -99,7 +99,7 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        watched_names = set(self._watched_component_names(data["components"]))
+        watched_names = set(self._watched_component_names(data.get("components", ())))
         try:
             for incident in data["incidents"]:
                 if (incident.get("status") not in ("resolved", "postmortem")) and (
