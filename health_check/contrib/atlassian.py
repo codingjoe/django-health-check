@@ -53,11 +53,11 @@ class AtlassianStatusPage(HealthCheck):
             raise ServiceReturnedUnexpectedResult(
                 f"Component {self.component!r} not found"
             ) from e
-        group_id = watched.get("id")
         return {self.component} | {
             c["name"]
             for c in components
-            if group_id is not None and c.get("group_id") == group_id
+            if (group_id := watched.get("id")) is not None
+            and c.get("group_id") == group_id
         }
 
     async def run(self):
