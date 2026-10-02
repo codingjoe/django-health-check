@@ -190,6 +190,27 @@ class GitHub(AtlassianStatusPage):
 
 
 @dataclasses.dataclass
+class Npm(AtlassianStatusPage):
+    """
+    Check npm registry status via Atlassian Status Page API v2.
+
+    Args:
+        timeout: Request timeout duration.
+        component: Name of a specific component to monitor. Monitors all
+            components when empty.
+
+    """
+
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+    base_url: str = dataclasses.field(
+        default="https://status.npmjs.org", init=False, repr=False
+    )
+    component: str = ""
+
+
+@dataclasses.dataclass
 class PlatformSh(AtlassianStatusPage):
     """
     Check Platform.sh platform status via Atlassian Status Page API v2.
