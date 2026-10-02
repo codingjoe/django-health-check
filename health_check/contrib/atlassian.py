@@ -27,7 +27,8 @@ class AtlassianStatusPage(HealthCheck):
     and appropriate `timeout` value.
 
     When `component` is non-empty, only incidents affecting that named component are
-    reported. Use separate check instances to monitor multiple components independently.
+    reported. Naming a component group also reports incidents of its child components.
+    Use separate check instances to monitor multiple components independently.
 
     Examples:
         >>> import dataclasses
@@ -43,6 +44,21 @@ class AtlassianStatusPage(HealthCheck):
     base_url: str = NotImplemented
     timeout: datetime.timedelta = NotImplemented
     component: str = ""
+
+    def _watched_component_names(self, components):
+        """Return the configured component name and the names of its child components."""
+        try:
+            watched = next(c for c in components if c["name"] == self.component)
+        except StopIteration as e:
+            raise ServiceReturnedUnexpectedResult(
+                f"Component {self.component!r} not found"
+            ) from e
+        group_id = watched.get("id")
+        return {self.component} | {
+            c["name"]
+            for c in components
+            if group_id is not None and c.get("group_id") == group_id
+        }
 
     async def run(self):
         if incidents := [i async for i in self._fetch_incidents()]:
@@ -81,19 +97,16 @@ class AtlassianStatusPage(HealthCheck):
             except ValueError as e:
                 raise ServiceUnavailable("Failed to parse JSON response") from e
 
-        if self.component:
-            components_by_name = {c["name"]: c for c in data["components"]}
-            try:
-                _ = components_by_name[self.component]
-            except KeyError as e:
-                raise ServiceReturnedUnexpectedResult(
-                    f"Component {self.component!r} not found"
-                ) from e
+        watched_names = (
+            self._watched_component_names(data["components"])
+            if self.component
+            else frozenset()
+        )
         try:
             for incident in data["incidents"]:
                 if (incident.get("status") not in ("resolved", "postmortem")) and (
-                    not self.component
-                    or any(c["name"] == self.component for c in incident["components"])
+                    not watched_names
+                    or any(c["name"] in watched_names for c in incident["components"])
                 ):
                     yield (
                         f"{incident['name']}: {incident['shortlink']}",
@@ -217,7 +230,8 @@ class PyPI(AtlassianStatusPage):
 
     Args:
         timeout: Request timeout duration.
-        component: Name of a specific component to monitor. Monitors all
+        component: Name of a component or component group to monitor. Defaults
+            to the PyPI group, which covers all PyPI services. Monitors all
             components when empty.
 
     """
@@ -228,7 +242,7 @@ class PyPI(AtlassianStatusPage):
     base_url: str = dataclasses.field(
         default="https://status.python.org", init=False, repr=False
     )
-    component: str = ""
+    component: str = "PyPI"
 
 
 @dataclasses.dataclass
