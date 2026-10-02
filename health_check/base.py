@@ -11,7 +11,7 @@ from concurrent.futures import Executor
 
 from health_check.exceptions import HealthCheckException, ServiceUnavailable
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("health_check")
 
 
 @dataclasses.dataclass
@@ -103,10 +103,12 @@ class HealthCheck(abc.ABC):
             )
         except HealthCheckException as e:
             error = e
+            logger.warning("Health check %r failed", self, exc_info=True)
         except asyncio.TimeoutError:
             error = ServiceUnavailable(
                 f"Timed out after {self.timeout.total_seconds():g} seconds"
             )
+            logger.warning("Health check %r failed", self, exc_info=True)
         except asyncio.CancelledError:
             raise
         except BaseException:

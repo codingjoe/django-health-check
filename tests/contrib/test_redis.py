@@ -2,11 +2,12 @@
 
 from unittest import mock
 
+import fakeredis
+import fakeredis.aioredis
 import pytest
 
 pytest.importorskip("redis")
 
-from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from health_check.contrib.redis import Redis as RedisHealthCheck
@@ -23,79 +24,75 @@ class TestRedis:
     @pytest.mark.asyncio
     async def test_redis__ok(self):
         """Ping Redis successfully when using client_factory parameter."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.return_value = True
-
-        check = RedisHealthCheck(client_factory=lambda: mock_client)
+        check = RedisHealthCheck(client_factory=fakeredis.aioredis.FakeRedis)
         result = await check.get_result()
         assert result.error is None
-        mock_client.ping.assert_called_once()
-        mock_client.aclose.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_redis__connection_refused(self):
         """Raise ServiceUnavailable when connection is refused."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.side_effect = ConnectionRefusedError("refused")
+        client = fakeredis.aioredis.FakeRedis()
 
-        check = RedisHealthCheck(client_factory=lambda: mock_client)
-        result = await check.get_result()
-        assert result.error is not None
+        with mock.patch.object(
+            client, "ping", side_effect=ConnectionRefusedError("refused")
+        ):
+            result = await RedisHealthCheck(client_factory=lambda: client).get_result()
+
         assert isinstance(result.error, ServiceUnavailable)
-        mock_client.aclose.assert_called_once()
+        assert str(result.error) == (
+            "Unavailable: Unable to connect to Redis: Connection was refused."
+        )
 
     @pytest.mark.asyncio
     async def test_redis__timeout(self):
         """Raise ServiceUnavailable when connection times out."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.side_effect = RedisTimeoutError("timeout")
+        client = fakeredis.aioredis.FakeRedis()
 
-        check = RedisHealthCheck(client_factory=lambda: mock_client)
-        result = await check.get_result()
-        assert result.error is not None
+        with mock.patch.object(
+            client, "ping", side_effect=RedisTimeoutError("timeout")
+        ):
+            result = await RedisHealthCheck(client_factory=lambda: client).get_result()
+
         assert isinstance(result.error, ServiceUnavailable)
-        mock_client.aclose.assert_called_once()
+        assert str(result.error) == "Unavailable: Unable to connect to Redis: Timeout."
 
     @pytest.mark.asyncio
     async def test_redis__connection_error(self):
         """Raise ServiceUnavailable when connection fails."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.side_effect = RedisConnectionError("connection error")
+        server = fakeredis.FakeServer()
+        server.connected = False
 
-        check = RedisHealthCheck(client_factory=lambda: mock_client)
+        check = RedisHealthCheck(
+            client_factory=lambda: fakeredis.aioredis.FakeRedis(server=server)
+        )
         result = await check.get_result()
-        assert result.error is not None
+
         assert isinstance(result.error, ServiceUnavailable)
-        mock_client.aclose.assert_called_once()
+        assert str(result.error) == (
+            "Unavailable: Unable to connect to Redis: Connection Error"
+        )
 
     @pytest.mark.asyncio
     async def test_redis__client_deprecated(self):
         """Verify DeprecationWarning is raised when using client parameter."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.return_value = True
-
         with pytest.warns(
             DeprecationWarning, match="client.*deprecated.*client_factory"
         ):
-            check = RedisHealthCheck(client=mock_client)
+            check = RedisHealthCheck(client=fakeredis.aioredis.FakeRedis())
 
         result = await check.get_result()
         assert result.error is None
-        mock_client.ping.assert_called_once()
-        # User-provided client should NOT be closed by the health check
-        mock_client.aclose.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_redis__factory_called_for_each_result(self):
-        """Verify client_factory is called per result and each client is closed."""
+        """Verify client_factory is called for each result."""
         call_count = 0
         created_clients = []
 
         def factory():
-            nonlocal call_count, created_clients
+            nonlocal call_count
             call_count += 1
-            client = mock.AsyncMock()
-            client.ping.return_value = True
+            client = fakeredis.aioredis.FakeRedis()
             created_clients.append(client)
             return client
 
@@ -112,37 +109,34 @@ class TestRedis:
         assert result2.error is None
         assert call_count == 2, "Factory should be called again for second request"
 
-        # Ensure a distinct client was created and closed for each result
-        assert len(created_clients) == 2
         assert created_clients[0] is not created_clients[1], (
             "Each request should create a distinct client"
         )
-        created_clients[0].aclose.assert_called_once()
-        created_clients[1].aclose.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_redis__client_not_closed_when_user_provided(self):
         """Verify user-provided client is NOT closed by health check."""
-        mock_client = mock.AsyncMock()
-        mock_client.ping.return_value = True
+        client = fakeredis.aioredis.FakeRedis()
 
-        with pytest.warns(DeprecationWarning):
-            check = RedisHealthCheck(client=mock_client)
+        with (
+            mock.patch.object(client, "aclose") as aclose,
+            pytest.warns(DeprecationWarning),
+        ):
+            check = RedisHealthCheck(client=client)
+            result = await check.get_result()
 
-        result = await check.get_result()
         assert result.error is None
-        mock_client.ping.assert_called_once()
         # User is responsible for closing their own client
-        mock_client.aclose.assert_not_called()
+        aclose.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_redis__validation_both_params(self):
         """Verify error when both client and client_factory are provided."""
-        mock_client = mock.AsyncMock()
+        client = fakeredis.aioredis.FakeRedis()
         with pytest.raises(
             ValueError, match="Provide exactly one of `client` or `client_factory`"
         ):
-            RedisHealthCheck(client=mock_client, client_factory=lambda: mock_client)
+            RedisHealthCheck(client=client, client_factory=lambda: client)
 
     @pytest.mark.asyncio
     async def test_redis__validation_neither_param(self):

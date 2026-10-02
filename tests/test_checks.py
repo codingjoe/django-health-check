@@ -1,7 +1,9 @@
 """Integration tests for health check implementations."""
 
 import datetime
+import importlib.util
 import logging
+import sys
 from unittest import mock
 
 import django
@@ -685,3 +687,17 @@ class TestSelectOneExpression:
         sql, params = expr.as_sql(mock_compiler, mock_connection)
         assert sql == "SELECT 1"
         assert params == []
+
+
+class TestRedisError:
+    """Test the RedisError fallback for environments without redis installed."""
+
+    def test_redis_error__fallback_without_redis(self):
+        """Define a local RedisError when the redis package is unavailable."""
+        with mock.patch.dict(sys.modules, {"redis": None, "redis.exceptions": None}):
+            spec = importlib.util.find_spec("health_check.checks")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+        assert issubclass(module.RedisError, Exception)
+        assert module.RedisError.__module__ == "health_check.checks"
