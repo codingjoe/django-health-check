@@ -112,7 +112,7 @@ class Feed(HealthCheck):
 
     def _is_date_recent(self, date):
         """Check if a timestamp falls within the configured max_age window."""
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         return now >= date > now - self.max_age
 
     def _extract_date(self, entry):
@@ -122,10 +122,8 @@ class Feed(HealthCheck):
             if date_tuple := getattr(entry, date_field, None):
                 try:
                     # Convert struct_time to datetime
-                    return datetime.datetime(
-                        *date_tuple[:6], tzinfo=datetime.timezone.utc
-                    )
-                except (ValueError, TypeError):
+                    return datetime.datetime(*date_tuple[:6], tzinfo=datetime.UTC)
+                except ValueError, TypeError:
                     logger.warning(
                         "Failed to parse date from entry %r for %r",
                         date_tuple,
