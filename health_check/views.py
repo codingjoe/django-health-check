@@ -277,7 +277,7 @@ class HealthCheckView(TemplateView):
             published_at = (
                 result.error.timestamp
                 if result.error
-                else datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+                else datetime.datetime(1970, 1, 1, tzinfo=datetime.UTC)
             )
             feed.add_item(
                 title=repr(result.check),
@@ -298,12 +298,12 @@ class HealthCheckView(TemplateView):
 
     def get_checks(
         self,
-    ) -> typing.Generator[HealthCheck, None, None]:
+    ) -> typing.Generator[HealthCheck]:
         """Yield instantiated health check callables."""
         for check in self.checks:
             try:
                 check, options = check
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 options = {}
             if isinstance(check, str):
                 check = import_string(check)
