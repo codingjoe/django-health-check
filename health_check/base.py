@@ -89,12 +89,6 @@ class HealthCheck(abc.ABC):
         }
 
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
-        """
-        Await the check and report its outcome.
-
-        Failures are reported in the result instead of being raised. Cancellation
-        is always propagated.
-        """
         loop = asyncio.get_running_loop()
         start = timeit.default_timer()
         try:
