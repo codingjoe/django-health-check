@@ -159,7 +159,7 @@ class HealthCheckView(TemplateView):
     async def get_check_result(
         check: HealthCheck, executor: Executor | None
     ) -> HealthCheckResult:
-        """Return one check's result, reporting an escaping exception as a failure."""
+        """Return one check's outcome, reporting an escaping exception as a failure."""
         start = timeit.default_timer()
         try:
             return await check.get_result(executor)

@@ -113,7 +113,7 @@ class HealthCheck(abc.ABC):
 
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
         """
-        Return the result of running the check.
+        Await the check and report its outcome.
 
         Failures are reported in the result instead of being raised. Cancellation
         is always propagated.
