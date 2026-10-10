@@ -88,29 +88,6 @@ class HealthCheck(abc.ABC):
             if field.repr and (value := getattr(self, field.name)) is not None
         }
 
-    def capture_error(self, exception: BaseException) -> HealthCheckException:
-        """
-        Log the given exception and return the health check error it represents.
-
-        A `HealthCheckException` is reported as-is, a timeout is reported against
-        the check's own timeout, and any other exception is reported as a generic
-        error to avoid leaking details.
-        """
-        match exception:
-            case HealthCheckException():
-                logger.warning("Health check %r failed", self, exc_info=exception)
-                return exception
-            case TimeoutError():
-                logger.warning("Health check %r failed", self, exc_info=exception)
-                return ServiceUnavailable(
-                    f"Timed out after {self.timeout.total_seconds():g} seconds"
-                )
-            case _:
-                logger.error(
-                    "Unexpected exception during health check", exc_info=exception
-                )
-                return HealthCheckException("unknown error")
-
     async def get_result(self, executor: Executor | None = None) -> HealthCheckResult:
         """
         Await the check and report its outcome.
@@ -128,10 +105,19 @@ class HealthCheck(abc.ABC):
                 # Give a check's own client timeout a second to report first.
                 self.timeout.total_seconds() + 1,
             )
+        except HealthCheckException as e:
+            error = e
+            logger.warning("Health check %r failed", self, exc_info=True)
+        except TimeoutError:
+            error = ServiceUnavailable(
+                f"Timed out after {self.timeout.total_seconds():g} seconds"
+            )
+            logger.warning("Health check %r failed", self, exc_info=True)
         except asyncio.CancelledError:
             raise
-        except BaseException as exception:
-            error = self.capture_error(exception)
+        except BaseException:
+            logger.exception("Unexpected exception during health check")
+            error = HealthCheckException("unknown error")
         else:
             error = None
         return HealthCheckResult(

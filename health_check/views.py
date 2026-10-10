@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import datetime
+import logging
 import re
 import timeit
 import typing
@@ -15,6 +16,9 @@ from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
 
 from health_check.base import HealthCheck, HealthCheckResult
+from health_check.exceptions import HealthCheckException
+
+logger = logging.getLogger("health_check")
 
 
 class MediaType:
@@ -165,12 +169,17 @@ class HealthCheckView(TemplateView):
             return await check.get_result(executor)
         except asyncio.CancelledError:
             raise
-        except BaseException as exception:
-            return HealthCheckResult(
-                check=check,
-                error=check.capture_error(exception),
-                time_taken=timeit.default_timer() - start,
-            )
+        except HealthCheckException as exception:
+            logger.warning("Health check %r failed", check, exc_info=exception)
+            error = exception
+        except BaseException:
+            logger.exception("Unexpected exception during health check")
+            error = HealthCheckException("unknown error")
+        return HealthCheckResult(
+            check=check,
+            error=error,
+            time_taken=timeit.default_timer() - start,
+        )
 
     def get_context_data(self, **kwargs):
         return {
