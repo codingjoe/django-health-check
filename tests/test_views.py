@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import json
+import logging
 from unittest import mock
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from health_check.base import HealthCheck
 from health_check.exceptions import (
     HealthCheckException,
+    ServiceUnavailable,
     ServiceWarning,
     StatusPageWarning,
 )
@@ -127,6 +129,56 @@ class TestHealthCheckView:
         assert response.status_code == 500
         assert response["content-type"] == "text/html; charset=utf-8"
         assert b"Super Fail!" in response.content
+
+    @pytest.mark.asyncio
+    async def test_get__isolates_raising_get_result_override(
+        self, health_check_view, caplog
+    ):
+        """Report and log one failed check when a get_result override raises."""
+
+        class BrokenBackend(HealthCheck):
+            async def run(self):
+                pass
+
+            async def get_result(self, executor=None):
+                raise RuntimeError("broken override")
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        with caplog.at_level(logging.ERROR, logger="health_check"):
+            response = await health_check_view(
+                [BrokenBackend, SuccessBackend], format_param="json"
+            )
+
+        assert response.status_code == 500
+        assert json.loads(response.content.decode("utf-8")) == {
+            repr(BrokenBackend()): "Unknown Error: unknown error",
+            repr(SuccessBackend()): SuccessBackend().pretty_status(),
+        }
+        [record] = caplog.records
+        assert record.getMessage() == "Unexpected exception during health check"
+        assert record.exc_info[0] is RuntimeError
+
+    @pytest.mark.asyncio
+    async def test_get__keeps_health_check_exception_from_override(
+        self, health_check_view
+    ):
+        """Keep the error message an escaping health check exception carries."""
+
+        class UnavailableBackend(HealthCheck):
+            async def run(self):
+                pass
+
+            async def get_result(self, executor=None):
+                raise ServiceUnavailable("database down")
+
+        response = await health_check_view([UnavailableBackend], format_param="json")
+        assert response.status_code == 500
+        assert json.loads(response.content.decode("utf-8")) == {
+            repr(UnavailableBackend()): "Unavailable: database down"
+        }
 
     @pytest.mark.asyncio
     async def test_get__warning(self, health_check_view):

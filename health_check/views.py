@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
 import datetime
+import logging
 import re
+import timeit
 import typing
 from concurrent.futures import Executor
 
@@ -13,7 +15,10 @@ from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
 
-from health_check.base import HealthCheck
+from health_check.base import HealthCheck, HealthCheckResult
+from health_check.exceptions import HealthCheckException
+
+logger = logging.getLogger("health_check")
 
 
 class MediaType:
@@ -114,7 +119,7 @@ class HealthCheckView(TemplateView):
     async def get(self, request, *args, **kwargs):
         with self.get_executor() as executor:
             self.results = await asyncio.gather(
-                *(check.get_result(executor) for check in self.get_checks())
+                *(self.get_check_result(check, executor) for check in self.get_checks())
             )
         has_errors = any(result.error for result in self.results)
         status_code = 500 if has_errors else 200
@@ -152,6 +157,26 @@ class HealthCheckView(TemplateView):
             "Not Acceptable: Supported content types: text/plain, text/html, application/json, application/atom+xml, application/rss+xml, application/openmetrics-text",
             status=406,
             content_type="text/plain",
+        )
+
+    @staticmethod
+    async def get_check_result(
+        check: HealthCheck, executor: Executor | None
+    ) -> HealthCheckResult:
+        """Return one check's outcome, reporting an escaping exception as a failure."""
+        start = timeit.default_timer()
+        try:
+            return await check.get_result(executor)
+        except HealthCheckException as exception:
+            logger.warning("Health check %r failed", check, exc_info=exception)
+            error = exception
+        except Exception:
+            logger.exception("Unexpected exception during health check")
+            error = HealthCheckException("unknown error")
+        return HealthCheckResult(
+            check=check,
+            error=error,
+            time_taken=timeit.default_timer() - start,
         )
 
     def get_context_data(self, **kwargs):
