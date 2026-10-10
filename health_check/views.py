@@ -167,12 +167,10 @@ class HealthCheckView(TemplateView):
         start = timeit.default_timer()
         try:
             return await check.get_result(executor)
-        except asyncio.CancelledError:
-            raise
         except HealthCheckException as exception:
             logger.warning("Health check %r failed", check, exc_info=exception)
             error = exception
-        except BaseException:
+        except Exception:
             logger.exception("Unexpected exception during health check")
             error = HealthCheckException("unknown error")
         return HealthCheckResult(

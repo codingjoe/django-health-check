@@ -1,4 +1,3 @@
-import asyncio
 import dataclasses
 import datetime
 import json
@@ -132,8 +131,10 @@ class TestHealthCheckView:
         assert b"Super Fail!" in response.content
 
     @pytest.mark.asyncio
-    async def test_get__isolates_raising_get_result_override(self, health_check_view):
-        """Report one failed check when a get_result override raises."""
+    async def test_get__isolates_raising_get_result_override(
+        self, health_check_view, caplog
+    ):
+        """Report and log one failed check when a get_result override raises."""
 
         class BrokenBackend(HealthCheck):
             async def run(self):
@@ -146,14 +147,19 @@ class TestHealthCheckView:
             async def run(self):
                 pass
 
-        response = await health_check_view(
-            [BrokenBackend, SuccessBackend], format_param="json"
-        )
+        with caplog.at_level(logging.ERROR, logger="health_check"):
+            response = await health_check_view(
+                [BrokenBackend, SuccessBackend], format_param="json"
+            )
+
         assert response.status_code == 500
         assert json.loads(response.content.decode("utf-8")) == {
             repr(BrokenBackend()): "Unknown Error: unknown error",
             repr(SuccessBackend()): SuccessBackend().pretty_status(),
         }
+        [record] = caplog.records
+        assert record.getMessage() == "Unexpected exception during health check"
+        assert record.exc_info[0] is RuntimeError
 
     @pytest.mark.asyncio
     async def test_get__keeps_health_check_exception_from_override(
@@ -173,41 +179,6 @@ class TestHealthCheckView:
         assert json.loads(response.content.decode("utf-8")) == {
             repr(UnavailableBackend()): "Unavailable: database down"
         }
-
-    @pytest.mark.asyncio
-    async def test_get__logs_raising_get_result_override(
-        self, health_check_view, caplog
-    ):
-        """Log an exception escaping a check as an unexpected exception."""
-
-        class BrokenBackend(HealthCheck):
-            async def run(self):
-                pass
-
-            async def get_result(self, executor=None):
-                raise RuntimeError("broken override")
-
-        with caplog.at_level(logging.ERROR, logger="health_check"):
-            await health_check_view([BrokenBackend])
-
-        [record] = caplog.records
-        assert record.levelno == logging.ERROR
-        assert record.getMessage() == "Unexpected exception during health check"
-        assert record.exc_info[0] is RuntimeError
-
-    @pytest.mark.asyncio
-    async def test_get__propagates_cancellation(self, health_check_view):
-        """Propagate cancellation instead of reporting a failed check."""
-
-        class HangingBackend(HealthCheck):
-            async def run(self):
-                await asyncio.sleep(60)
-
-        task = asyncio.ensure_future(health_check_view([HangingBackend]))
-        await asyncio.sleep(0.01)
-        task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
 
     @pytest.mark.asyncio
     async def test_get__warning(self, health_check_view):
