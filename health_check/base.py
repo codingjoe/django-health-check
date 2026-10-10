@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 import asyncio
 import dataclasses
@@ -104,7 +102,7 @@ class HealthCheck(abc.ABC):
         except HealthCheckException as e:
             error = e
             logger.warning("Health check %r failed", self, exc_info=True)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             error = ServiceUnavailable(
                 f"Timed out after {self.timeout.total_seconds():g} seconds"
             )

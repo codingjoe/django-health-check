@@ -49,16 +49,14 @@ class TestAWS:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
+                mock_datetime.UTC = datetime.UTC
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
                 assert result.error is not None
@@ -93,15 +91,13 @@ class TestAWS:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
@@ -137,22 +133,20 @@ class TestAWS:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 8, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 8, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
                 assert result.error is not None
                 assert isinstance(result.error, StatusPageWarning)
                 expected_ts = datetime.datetime(
-                    2024, 1, 1, 6, 0, 0, tzinfo=datetime.timezone.utc
+                    2024, 1, 1, 6, 0, 0, tzinfo=datetime.UTC
                 )
                 assert result.error.timestamp == expected_ts, (
                     "StatusPageWarning should carry the most recent incident date as its timestamp"
@@ -366,15 +360,13 @@ class TestAWS:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = AWS(region="us-east-1", service="ec2")
                 result = await check.get_result()
@@ -469,15 +461,13 @@ class TestHeroku:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = Heroku()
                 result = await check.get_result()
@@ -562,15 +552,13 @@ class TestAzure:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = Azure()
                 result = await check.get_result()
@@ -630,15 +618,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -668,15 +654,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -706,15 +690,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -748,15 +730,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -813,15 +793,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -851,15 +829,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()
@@ -888,15 +864,13 @@ class TestGoogleCloud:
             )
             mock_client.return_value = mock_context
 
-            mock_now = datetime.datetime(
-                2024, 1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc
-            )
+            mock_now = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=datetime.UTC)
             with mock.patch(
                 "health_check.contrib.rss.datetime", wraps=datetime
             ) as mock_datetime:
                 mock_datetime.datetime = mock.Mock(wraps=datetime.datetime)
                 mock_datetime.datetime.now = mock.Mock(return_value=mock_now)
-                mock_datetime.timezone = datetime.timezone
+                mock_datetime.UTC = datetime.UTC
 
                 check = GoogleCloud()
                 result = await check.get_result()

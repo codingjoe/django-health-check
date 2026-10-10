@@ -29,7 +29,7 @@ class TestHealthCheckException:
 
     def test_init__store_timestamp(self):
         """Store explicit timestamp passed to constructor."""
-        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
         exc = HealthCheckException("test message", timestamp=ts)
         assert exc.timestamp == ts
 
@@ -134,7 +134,7 @@ class TestStatusPageWarning:
 
     def test_init__store_timestamp(self):
         """Store timestamp passed to constructor."""
-        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
         exc = StatusPageWarning("incident detected", timestamp=ts)
         assert exc.timestamp == ts
 

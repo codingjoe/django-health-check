@@ -484,9 +484,9 @@ class TestHealthCheckView:
         feed = feedparser.parse(response.content.decode("utf-8"))
         assert len(feed.entries) == 1
         entry = feed.entries[0]
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         published_at = datetime.datetime(
-            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+            *entry.published_parsed[:6], tzinfo=datetime.UTC
         )
         assert (now - published_at).total_seconds() < 60, (
             "Failed check should use current timestamp (within last 60 seconds)"
@@ -522,9 +522,9 @@ class TestHealthCheckView:
         feed = feedparser.parse(response.content.decode("utf-8"))
         assert len(feed.entries) == 1
         entry = feed.entries[0]
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         published_at = datetime.datetime(
-            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+            *entry.published_parsed[:6], tzinfo=datetime.UTC
         )
         assert (now - published_at).total_seconds() < 60, (
             "Failed check should use current timestamp (within last 60 seconds)"
@@ -537,9 +537,7 @@ class TestHealthCheckView:
         """Use exception timestamp in RSS feed when provided."""
         feedparser = pytest.importorskip("feedparser")
 
-        source_date = datetime.datetime(
-            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.UTC)
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
@@ -550,7 +548,7 @@ class TestHealthCheckView:
         assert len(feed.entries) == 1
         entry = feed.entries[0]
         published_at = datetime.datetime(
-            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+            *entry.published_parsed[:6], tzinfo=datetime.UTC
         )
         assert published_at == source_date, (
             "Feed item should use the exception's timestamp, not current time"
@@ -563,9 +561,7 @@ class TestHealthCheckView:
         """Use exception timestamp in Atom feed when provided."""
         feedparser = pytest.importorskip("feedparser")
 
-        source_date = datetime.datetime(
-            2024, 6, 15, 12, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        source_date = datetime.datetime(2024, 6, 15, 12, 0, 0, tzinfo=datetime.UTC)
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
@@ -576,7 +572,7 @@ class TestHealthCheckView:
         assert len(feed.entries) == 1
         entry = feed.entries[0]
         published_at = datetime.datetime(
-            *entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+            *entry.published_parsed[:6], tzinfo=datetime.UTC
         )
         assert published_at == source_date, (
             "Feed item should use the exception's timestamp, not current time"
@@ -610,9 +606,9 @@ class TestHealthCheckView:
             "Healthy check should use epoch (1970-01-01) in mixed feed"
         )
 
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         published_at = datetime.datetime(
-            *failed_entry.published_parsed[:6], tzinfo=datetime.timezone.utc
+            *failed_entry.published_parsed[:6], tzinfo=datetime.UTC
         )
         assert (now - published_at).total_seconds() < 60, (
             "Failed check should use current timestamp in mixed feed"
