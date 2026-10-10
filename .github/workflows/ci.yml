@@ -23,6 +23,9 @@ jobs:
       - run: uv run mkdocs build --strict
   pytest:
     name: pytest
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,10 +43,13 @@ jobs:
       - run: uv run --no-dev --group=test --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}
   pytest-contrib:
     name: pytest
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -73,5 +79,5 @@ jobs:
       - run: uv run --no-dev --group=test --extra=${{ matrix.extra }} --with Django~=${{ matrix.django-version }}.0 pytest
       - uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           flags: python-${{ matrix.python-version }}-django-${{ matrix.django-version }}-${{ matrix.extra }}
