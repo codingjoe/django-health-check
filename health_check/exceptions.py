@@ -1,7 +1,9 @@
 from django.utils import timezone
 
 
-class HealthCheckException(Exception):
+class HealthCheckError(Exception):
+    """Base class for all health check errors."""
+
     message_type: str = "Unknown Error"
 
     def __init__(self, message, *, timestamp=None):
@@ -10,6 +12,11 @@ class HealthCheckException(Exception):
 
     def __str__(self):
         return f"{self.message_type}: {self.message}"
+
+
+# Alias kept for backwards compatibility. The concrete exceptions inherit from
+# it, so their long-established public names stay unchanged.
+HealthCheckException = HealthCheckError
 
 
 class ServiceWarning(HealthCheckException):

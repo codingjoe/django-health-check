@@ -91,14 +91,14 @@ class Redis(HealthCheck):
     def __post_init__(self):
         # Validate that exactly one of client or client_factory is provided
         if self.client is not None and self.client_factory is not None:
-            raise ValueError(
-                "Provide exactly one of `client` or `client_factory`, not both."
-            )
+            msg = "Provide exactly one of `client` or `client_factory`, not both."
+            raise ValueError(msg)
         if self.client is None and self.client_factory is None:
-            raise ValueError(
+            msg = (
                 "You must provide either `client` (deprecated) or `client_factory` "
                 "when instantiating `Redis`."
             )
+            raise ValueError(msg)
 
         # Emit deprecation warning if using the old client parameter
         if self.client is not None:
@@ -123,15 +123,14 @@ class Redis(HealthCheck):
         try:
             await client.ping()
         except ConnectionRefusedError as e:
-            raise ServiceUnavailable(
-                "Unable to connect to Redis: Connection was refused."
-            ) from e
+            msg = "Unable to connect to Redis: Connection was refused."
+            raise ServiceUnavailable(msg) from e
         except exceptions.TimeoutError as e:
-            raise ServiceUnavailable("Unable to connect to Redis: Timeout.") from e
+            msg = "Unable to connect to Redis: Timeout."
+            raise ServiceUnavailable(msg) from e
         except exceptions.ConnectionError as e:
-            raise ServiceUnavailable(
-                "Unable to connect to Redis: Connection Error"
-            ) from e
+            msg = "Unable to connect to Redis: Connection Error"
+            raise ServiceUnavailable(msg) from e
         else:
             logger.debug("Connection established. Redis is healthy.")
         finally:

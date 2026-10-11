@@ -118,11 +118,11 @@ class TestRedis:
         """Verify user-provided client is NOT closed by health check."""
         client = fakeredis.aioredis.FakeRedis()
 
-        with (
-            mock.patch.object(client, "aclose") as aclose,
-            pytest.warns(DeprecationWarning),
+        with pytest.warns(
+            DeprecationWarning, match="The `client` argument is deprecated"
         ):
             check = RedisHealthCheck(client=client)
+        with mock.patch.object(client, "aclose") as aclose:
             result = await check.get_result()
 
         assert result.error is None
@@ -174,7 +174,9 @@ class TestRedis:
         """Verify repr includes host and db when using deprecated client parameter."""
         from redis.asyncio import Redis as RedisClient
 
-        with pytest.warns(DeprecationWarning):
+        with pytest.warns(
+            DeprecationWarning, match="The `client` argument is deprecated"
+        ):
             check = RedisHealthCheck(
                 client=RedisClient(host="oldhost", port=6379, db=5)
             )
@@ -230,7 +232,7 @@ class TestRedis:
                 host="myhost",
                 port=6379,
                 db=0,
-                password="supersecret",  # noqa: S106
+                password="supersecret",
             )
         )
         assert "supersecret" not in repr(check), (
@@ -262,7 +264,7 @@ class TestRedis:
         check = RedisHealthCheck(
             client_factory=lambda: RedisCluster(
                 startup_nodes=[ClusterNode("node1", 7000)],
-                password="clusterpass",  # noqa: S106
+                password="clusterpass",
                 username="clusteruser",
             )
         )
@@ -325,7 +327,7 @@ class TestRedis:
                 host="myhost",
                 port=6379,
                 db=0,
-                password="supersecret",  # noqa: S106
+                password="supersecret",
             )
         )
         assert "supersecret" not in str(check.labels)

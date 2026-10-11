@@ -1,7 +1,8 @@
-import os.path
+import os
 import uuid
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).resolve().parent
 DEBUG = True
 
 DATABASES = {
@@ -33,7 +34,7 @@ MIDDLEWARE_CLASSES = (
 
 STATIC_URL = "/static/"
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR / "media"
 
 SITE_ID = 1
 ROOT_URLCONF = "tests.testapp.urls"

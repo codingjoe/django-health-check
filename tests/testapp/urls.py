@@ -2,7 +2,7 @@ from django.conf import settings
 from django.urls import path
 
 from health_check.base import HealthCheck
-from health_check.exceptions import HealthCheckException
+from health_check.exceptions import HealthCheckError
 from health_check.views import HealthCheckView
 
 
@@ -10,7 +10,8 @@ class AlwaysFailingCheck(HealthCheck):
     """Health check that always fails for testing purposes."""
 
     async def run(self):
-        raise HealthCheckException("Test failure")
+        msg = "Test failure"
+        raise HealthCheckError(msg)
 
 
 urlpatterns = [

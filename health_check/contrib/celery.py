@@ -40,21 +40,20 @@ class Ping(HealthCheck):
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         except NotImplementedError as e:
-            raise ServiceUnavailable(
-                "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
-            ) from e
+            msg = "NotImplementedError: Make sure CELERY_RESULT_BACKEND is set"
+            raise ServiceUnavailable(msg) from e
         else:
             if not ping_result:
-                raise ServiceUnavailable("Celery workers unavailable")
+                msg = "Celery workers unavailable"
+                raise ServiceUnavailable(msg)
             self.check_active_queues(*self.active_workers(ping_result))
 
     def active_workers(self, ping_result):
         for result in ping_result:
             worker, response = list(result.items())[0]
             if response != self.CORRECT_PING_RESPONSE:
-                raise ServiceUnavailable(
-                    f"Celery worker {worker} response was incorrect"
-                )
+                msg = f"Celery worker {worker} response was incorrect"
+                raise ServiceUnavailable(msg)
             yield worker
 
     def check_active_queues(self, *active_workers):
@@ -72,4 +71,5 @@ class Ping(HealthCheck):
         }
 
         for queue in defined_queues - active_queues:
-            raise ServiceUnavailable(f"No worker for Celery task queue {queue}")
+            msg = f"No worker for Celery task queue {queue}"
+            raise ServiceUnavailable(msg)

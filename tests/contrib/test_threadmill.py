@@ -273,7 +273,8 @@ class TestThreadmill:
             result = await ThreadmillHealthCheck(alias=alias).get_result()
         assert isinstance(result.error, ServiceUnavailable)
         assert result.error.message == BROKER_ERROR
-        assert closed and closed[0] is not cached.async_client
+        assert closed
+        assert closed[0] is not cached.async_client
 
     def test_labels__alias_and_queue(self):
         """Label the backend alias and queue, but never the limits."""

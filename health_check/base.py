@@ -7,7 +7,7 @@ import logging
 import timeit
 from concurrent.futures import Executor
 
-from health_check.exceptions import HealthCheckException, ServiceUnavailable
+from health_check.exceptions import HealthCheckError, ServiceUnavailable
 
 logger = logging.getLogger("health_check")
 
@@ -17,7 +17,7 @@ class HealthCheckResult:
     """Result of a health check execution."""
 
     check: HealthCheck
-    error: HealthCheckException | None
+    error: HealthCheckError | None
     time_taken: float
 
 
@@ -99,7 +99,7 @@ class HealthCheck(abc.ABC):
                 # Give a check's own client timeout a second to report first.
                 self.timeout.total_seconds() + 1,
             )
-        except HealthCheckException as e:
+        except HealthCheckError as e:
             error = e
             logger.warning("Health check %r failed", self, exc_info=True)
         except TimeoutError:
@@ -111,7 +111,7 @@ class HealthCheck(abc.ABC):
             raise
         except BaseException:
             logger.exception("Unexpected exception during health check")
-            error = HealthCheckException("unknown error")
+            error = HealthCheckError("unknown error")
         else:
             error = None
         return HealthCheckResult(

@@ -33,7 +33,8 @@ class Battery(HealthCheck):
         try:
             battery = psutil.sensors_battery()
         except AttributeError as e:
-            raise ServiceUnavailable("Battery information not available") from e
+            msg = "Battery information not available"
+            raise ServiceUnavailable(msg) from e
         except ValueError as e:
             raise ServiceReturnedUnexpectedResult("ValueError") from e
         else:
@@ -41,11 +42,11 @@ class Battery(HealthCheck):
                 self.min_percent_available
                 and battery.percent <= self.min_percent_available
             ):
-                raise ServiceWarning(f"Battery {battery.percent:.1f}\u202f%")
+                msg = f"Battery {battery.percent:.1f}\u202f%"
+                raise ServiceWarning(msg)
             if self.power_plugged and not battery.power_plugged:
-                raise ServiceWarning(
-                    f"Power unplugged with battery at {battery.percent:.1f}\u202f%"
-                )
+                msg = f"Power unplugged with battery at {battery.percent:.1f}\u202f%"
+                raise ServiceWarning(msg)
 
 
 @dataclasses.dataclass
@@ -105,7 +106,8 @@ class Disk(HealthCheck):
                 self.max_disk_usage_percent
                 and du.percent >= self.max_disk_usage_percent
             ):
-                raise ServiceWarning(f"{du.percent}\u202f% disk usage")
+                msg = f"{du.percent}\u202f% disk usage"
+                raise ServiceWarning(msg)
         except ValueError as e:
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
@@ -166,29 +168,29 @@ class Temperature(HealthCheck):
         try:
             temperatures = psutil.sensors_temperatures()
         except AttributeError as e:
-            raise ServiceUnavailable("Temperature information not available") from e
+            msg = "Temperature information not available"
+            raise ServiceUnavailable(msg) from e
+        if self.device:
+            self._check_device(temperatures)
         else:
-            if self.device:
-                try:
-                    sensors = temperatures[self.device]
-                except KeyError:
-                    raise ServiceUnavailable(
-                        f"Sensor {self.device!r} not found"
-                    ) from None
-                else:
-                    for sensor in sensors:
-                        if sensor.current >= (
-                            self.max_temperature_celsius or sensor.high
-                        ):
-                            raise ServiceWarning(
-                                f"{sensor.label} {sensor.current:.1f}\u202f°C"
-                            )
-            else:
-                for device, sensors in temperatures.items():
-                    for sensor in sensors:
-                        if sensor.current >= (
-                            self.max_temperature_celsius or sensor.high
-                        ):
-                            raise ServiceWarning(
-                                f"{device} {sensor.label} {sensor.current:.1f}\u202f°C"
-                            )
+            for device, sensors in temperatures.items():
+                for sensor in sensors:
+                    self._check_temperature(sensor, device)
+
+    def _check_device(self, temperatures):
+        """Warn about every overheating sensor of the configured device."""
+        try:
+            sensors = temperatures[self.device]
+        except KeyError:
+            msg = f"Sensor {self.device!r} not found"
+            raise ServiceUnavailable(msg) from None
+        for sensor in sensors:
+            self._check_temperature(sensor)
+
+    def _check_temperature(self, sensor, device=None):
+        """Warn when a sensor reaches the configured or built-in high threshold."""
+        if sensor.current < (self.max_temperature_celsius or sensor.high):
+            return
+        location = f"{device} " if device else ""
+        msg = f"{location}{sensor.label} {sensor.current:.1f}\u202f°C"
+        raise ServiceWarning(msg)

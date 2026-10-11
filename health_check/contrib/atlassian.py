@@ -51,9 +51,8 @@ class AtlassianStatusPage(HealthCheck):
             try:
                 watched = next(c for c in components if c["name"] == self.component)
             except StopIteration as e:
-                raise ServiceReturnedUnexpectedResult(
-                    f"Component {self.component!r} not found"
-                ) from e
+                msg = f"Component {self.component!r} not found"
+                raise ServiceReturnedUnexpectedResult(msg) from e
             yield self.component
             yield from (
                 c["name"]
@@ -83,21 +82,25 @@ class AtlassianStatusPage(HealthCheck):
                     follow_redirects=True,
                 )
             except httpx.TimeoutException as e:
-                raise ServiceUnavailable("API request timed out") from e
+                msg = "API request timed out"
+                raise ServiceUnavailable(msg) from e
             except httpx.RequestError as e:
-                raise ServiceUnavailable(f"Failed to fetch API: {e}") from e
+                msg = f"Failed to fetch API: {e}"
+                raise ServiceUnavailable(msg) from e
 
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
-                raise ServiceUnavailable(
+                msg = (
                     f"HTTP error {e.response.status_code} fetching API from {api_url!r}"
-                ) from e
+                )
+                raise ServiceUnavailable(msg) from e
 
             try:
                 data = response.json()
             except ValueError as e:
-                raise ServiceUnavailable("Failed to parse JSON response") from e
+                msg = "Failed to parse JSON response"
+                raise ServiceUnavailable(msg) from e
 
         watched_names = set(self._watched_component_names(data.get("components", ())))
         try:
@@ -108,14 +111,11 @@ class AtlassianStatusPage(HealthCheck):
                 ):
                     yield (
                         f"{incident['name']}: {incident['shortlink']}",
-                        datetime.datetime.fromisoformat(
-                            incident["updated_at"].replace("Z", "+00:00")
-                        ),
+                        datetime.datetime.fromisoformat(incident["updated_at"]),
                     )
         except KeyError as e:
-            raise ServiceReturnedUnexpectedResult(
-                "Unexpected API response structure"
-            ) from e
+            msg = "Unexpected API response structure"
+            raise ServiceReturnedUnexpectedResult(msg) from e
 
 
 @dataclasses.dataclass
