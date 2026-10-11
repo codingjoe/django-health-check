@@ -1,16 +1,13 @@
 [build-system]
-requires = ["flit_core>=3.2", "flit_scm", "wheel"]
 build-backend = "flit_scm:buildapi"
+requires = [ "flit-core>=3.2", "flit-scm", "wheel" ]
 
 [project]
 name = "django-health-check"
 readme = { file = "README.md", content-type = "text/markdown" }
+keywords = [ "django", "postgresql" ]
 license = { file = "LICENSE" }
-authors = [
-  { name = "Kristian Ollegaard", email = "kristian@oellegaard.com" },
-  { name = "Johannes Maron", email = "johannes@maron.family" }
-]
-keywords = ["django", "postgresql"]
+requires-python = ">=3.14"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: Django",
@@ -21,45 +18,48 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "Topic :: Software Development :: Quality Assurance",
   "Topic :: System :: Logging",
   "Topic :: System :: Monitoring",
-  "Topic :: Utilities"
+  "Topic :: Utilities",
 ]
-requires-python = ">=3.14"
 dynamic = [
-  "version",
   "description",
+  "version",
 ]
 dependencies = [
-  "Django>=5.2",
-  "dnspython>=2.0.0",
+  "django>=5.2",
+  "dnspython>=2",
 ]
+[[project.authors]]
+name = "Kristian Ollegaard"
+email = "kristian@oellegaard.com"
 
+[[project.authors]]
+name = "Johannes Maron"
+email = "johannes@maron.family"
 [project.optional-dependencies]
-psutil = ["psutil>=7.2.0"]
-celery = ["celery>=5.0.0"]
-kafka = ["confluent-kafka>=2.0.0"]
-rabbitmq = ["aio-pika>=9.0.0"]
-redis = ["redis>=5.0.1"]
-crontask = ["django-crontask[redis]>=2.0.0", "redis>=5.0.1"]
-rss = ["httpx>=0.27.0", "feedparser>=6.0.0"]
-atlassian = ["httpx>=0.27.0"]
-threadmill = ["threadmill[redis]>=0.7.3"]
-
+atlassian = [ "httpx>=0.27" ]
+celery = [ "celery>=5" ]
+crontask = [ "django-crontask[redis]>=2", "redis>=5.0.1" ]
+kafka = [ "confluent-kafka>=2" ]
+psutil = [ "psutil>=7.2" ]
+rabbitmq = [ "aio-pika>=9" ]
+redis = [ "redis>=5.0.1" ]
+rss = [ "feedparser>=6", "httpx>=0.27" ]
+threadmill = [ "threadmill[redis]>=0.7.3" ]
 [project.urls]
+Changelog = "https://github.com/codingjoe/django-health-check/releases"
+Documentation = "https://codingjoe.dev/django-health-check/"
+Funding = "https://github.com/sponsors/codingjoe"
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
 Homepage = "https://github.com/codingjoe/django-health-check"
-Changelog = "https://github.com/codingjoe/django-health-check/releases"
-Source = "https://github.com/codingjoe/django-health-check"
-Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
-Documentation = "https://codingjoe.dev/django-health-check/"
 Issues = "https://github.com/codingjoe/django-health-check/issues"
-Funding = "https://github.com/sponsors/codingjoe"
+Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
+Source = "https://github.com/codingjoe/django-health-check"
 
 [dependency-groups]
 dev = [
@@ -67,28 +67,29 @@ dev = [
   { include-group = "docs" },
 ]
 test = [
-  "pytest",
-  "pytest-cov",
-  "pytest-asyncio",
-  "pytest-django",
-  "django-storages",
   "boto3",
-  "testcontainers",
+  "django-storages",
   "fakeredis",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "pytest-django",
+  "testcontainers",
 ]
 docs = [
-  "mkdocs",
-  "mkdocstrings[python]>=0.18",
-  "mkdocs-material",
   "markdown-callouts",
-  "Pygments",
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]>=0.18",
+  "pygments",
 ]
-
-[tool.flit.module]
-name = "health_check"
 
 [tool.setuptools_scm]
 write_to = "health_check/_version.py"
+
+[tool.flit]
+[tool.flit.module]
+name = "health_check"
 
 [tool.uv]
 # Always install the redis extras, even when another package requires the base distribution
@@ -97,51 +98,47 @@ override-dependencies = [
   "threadmill[redis]>=0.7.3",
 ]
 
-[tool.pytest.ini_options]
-addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
-testpaths = [
-  "tests",
-]
-DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
-norecursedirs = ".git"
-python_files = "test_*.py"
-xfail_strict = true
-markers = [
-  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-]
-
-[tool.coverage.run]
-source = ["health_check"]
-
-[tool.coverage.report]
-show_missing = true
-skip_covered = true
+[tool.djlint]
+profile = "django"
+indent = 2
+max_line_length = 120
+line_break_after_multiline_tag = true
 
 [tool.ruff]
 line-length = 88
-
 [tool.ruff.lint]
 select = [
-    "D", # pydocstyle
-    "E", # pycodestyle errors
-    "EXE", # flake8-executable
-    "F", # pyflakes
-    "I", # isort
-    "S", # flake8-bandit
-    "SIM", # flake8-simplify
-    "UP", # pyupgrade
-    "W", # pycodestyle warnings
+  "D",   # pydocstyle
+  "E",   # pycodestyle errors
+  "EXE", # flake8-executable
+  "F",   # pyflakes
+  "I",   # isort
+  "S",   # flake8-bandit
+  "SIM", # flake8-simplify
+  "UP",  # pyupgrade
+  "W",   # pycodestyle warnings
 ]
-ignore = ["D1", "D203", "D212", "E501"]
+ignore = [ "D1", "D203", "D212", "E501" ]
+per-file-ignores."tests/*.py" = [ "PLR2004", "S101", "S105" ]
+isort.known-first-party = [ "measurement", "tests" ]
 
-[tool.ruff.lint.per-file-ignores]
-"tests/*.py" = ["S101", "S105", "PLR2004"]
+[tool.pytest]
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+]
+norecursedirs = ".git"
+python_files = "test_*.py"
+addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
+markers = [
+  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+xfail_strict = true
+DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
 
-[tool.ruff.lint.isort]
-known-first-party = ["measurement", "tests"]
-
-[tool.djlint]
-profile="django"
-indent=2
-max_line_length=120
-line_break_after_multiline_tag=true
+[tool.coverage]
+[tool.coverage.run]
+source = [ "health_check" ]
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
