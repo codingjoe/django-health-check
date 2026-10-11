@@ -46,8 +46,7 @@ class Ping(HealthCheck):
         else:
             if not ping_result:
                 raise ServiceUnavailable("Celery workers unavailable")
-            else:
-                self.check_active_queues(*self.active_workers(ping_result))
+            self.check_active_queues(*self.active_workers(ping_result))
 
     def active_workers(self, ping_result):
         for result in ping_result:
