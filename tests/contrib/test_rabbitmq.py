@@ -85,7 +85,7 @@ class TestRabbitMQ:
             check = RabbitMQHealthCheck(amqp_url="amqp://guest:guest@localhost:5672//")
             result = await check.get_result()
             assert result.error is not None
-            # Base class catches unexpected exceptions and converts to HealthCheckException
+            # Base class catches unexpected exceptions and converts to HealthCheckError
             assert "unknown error" in str(result.error)
 
     @pytest.mark.asyncio

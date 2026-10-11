@@ -52,11 +52,14 @@ class Threadmill(HealthCheck):
         try:
             backend = task_backends[self.alias]
         except InvalidTaskBackend as e:
-            raise ServiceUnavailable("Task backend alias does not exist") from e
+            msg = "Task backend alias does not exist"
+            raise ServiceUnavailable(msg) from e
         if not isinstance(backend, ThreadmillTaskBackend):
-            raise ServiceUnavailable("Task backend does not support queue telemetry")
+            msg = "Task backend does not support queue telemetry"
+            raise ServiceUnavailable(msg)
         if self.queue_name not in backend.queues:
-            raise ServiceUnavailable("Task queue does not exist")
+            msg = "Task queue does not exist"
+            raise ServiceUnavailable(msg)
         # The handler caches a backend whose async client is bound to the event
         # loop that created it. Build a new backend for each probe, then close it.
         probe = task_backends.create_connection(self.alias)
@@ -65,11 +68,11 @@ class Threadmill(HealthCheck):
                 probe.queue_stats(), timeout=self.timeout.total_seconds()
             )
         except TimeoutError as e:
-            raise ServiceUnavailable("Threadmill queue telemetry timed out") from e
+            msg = "Threadmill queue telemetry timed out"
+            raise ServiceUnavailable(msg) from e
         except (RedisError, OSError) as e:
-            raise ServiceUnavailable(
-                "Unable to connect to threadmill task broker"
-            ) from e
+            msg = "Unable to connect to threadmill task broker"
+            raise ServiceUnavailable(msg) from e
         finally:
             # RedisTaskBackend is the only backend that ships a client. When
             # threadmill exposes a backend lifecycle hook, use it.
@@ -79,10 +82,8 @@ class Threadmill(HealthCheck):
         pending = counts.ready + counts.deferred
         failed = counts.failed
         if self.max_pending_tasks is not None and pending > self.max_pending_tasks:
-            raise ServiceUnavailable(
-                f"{pending} pending tasks exceed max_pending_tasks of {self.max_pending_tasks}"
-            )
+            msg = f"{pending} pending tasks exceed max_pending_tasks of {self.max_pending_tasks}"
+            raise ServiceUnavailable(msg)
         if self.max_failed_tasks is not None and failed > self.max_failed_tasks:
-            raise ServiceWarning(
-                f"{failed} failed tasks exceed max_failed_tasks of {self.max_failed_tasks}"
-            )
+            msg = f"{failed} failed tasks exceed max_failed_tasks of {self.max_failed_tasks}"
+            raise ServiceWarning(msg)

@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 
 from health_check.exceptions import (
-    HealthCheckException,
+    HealthCheckError,
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
@@ -14,39 +14,40 @@ from health_check.exceptions import (
 )
 
 
-class TestHealthCheckException:
+class TestHealthCheckError:
     def test_init__store_message(self):
         """Store message passed to constructor."""
-        exc = HealthCheckException("test message")
+        exc = HealthCheckError("test message")
         assert exc.message == "test message"
 
     def test_init__timestamp_defaults_to_now(self):
         """Default timestamp to current time when not provided."""
         before = timezone.now()
-        exc = HealthCheckException("test message")
+        exc = HealthCheckError("test message")
         after = timezone.now()
         assert before <= exc.timestamp <= after
 
     def test_init__store_timestamp(self):
         """Store explicit timestamp passed to constructor."""
         ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
-        exc = HealthCheckException("test message", timestamp=ts)
+        exc = HealthCheckError("test message", timestamp=ts)
         assert exc.timestamp == ts
 
     def test_str__format_with_type(self):
         """Format string with message type and message."""
-        exc = HealthCheckException("foo")
+        exc = HealthCheckError("foo")
         assert str(exc) == "Unknown Error: foo"
 
     def test_inherits_from_exception(self):
         """Inherit from Exception base class."""
-        exc = HealthCheckException("test")
+        exc = HealthCheckError("test")
         assert isinstance(exc, Exception)
 
     def test_can_raise_and_catch(self):
         """Can be raised and caught."""
-        with pytest.raises(HealthCheckException) as exc_info:
-            raise HealthCheckException("error message")
+        error = HealthCheckError("error message")
+        with pytest.raises(HealthCheckError) as exc_info:
+            raise error
         assert exc_info.value.message == "error message"
 
 
@@ -57,20 +58,22 @@ class TestServiceWarning:
         assert str(exc) == "Warning: unstable"
 
     def test_inherits_from_health_check_exception(self):
-        """Inherit from HealthCheckException."""
+        """Inherit from HealthCheckError."""
         exc = ServiceWarning("test")
-        assert isinstance(exc, HealthCheckException)
+        assert isinstance(exc, HealthCheckError)
         assert isinstance(exc, Exception)
 
     def test_can_raise_and_catch_as_exception(self):
-        """Can be caught as HealthCheckException."""
-        with pytest.raises(HealthCheckException):
-            raise ServiceWarning("warning message")
+        """Can be caught as HealthCheckError."""
+        error = ServiceWarning("warning message")
+        with pytest.raises(HealthCheckError):
+            raise error
 
     def test_can_raise_and_catch_as_specific_type(self):
         """Can be caught as ServiceWarning specifically."""
+        error = ServiceWarning("warning message")
         with pytest.raises(ServiceWarning):
-            raise ServiceWarning("warning message")
+            raise error
 
 
 class TestServiceUnavailable:
@@ -80,20 +83,22 @@ class TestServiceUnavailable:
         assert str(exc) == "Unavailable: database down"
 
     def test_inherits_from_health_check_exception(self):
-        """Inherit from HealthCheckException."""
+        """Inherit from HealthCheckError."""
         exc = ServiceUnavailable("test")
-        assert isinstance(exc, HealthCheckException)
+        assert isinstance(exc, HealthCheckError)
         assert isinstance(exc, Exception)
 
     def test_can_raise_and_catch_as_exception(self):
-        """Can be caught as HealthCheckException."""
-        with pytest.raises(HealthCheckException):
-            raise ServiceUnavailable("unavailable message")
+        """Can be caught as HealthCheckError."""
+        error = ServiceUnavailable("unavailable message")
+        with pytest.raises(HealthCheckError):
+            raise error
 
     def test_can_raise_and_catch_as_specific_type(self):
         """Can be caught as ServiceUnavailable specifically."""
+        error = ServiceUnavailable("unavailable message")
         with pytest.raises(ServiceUnavailable):
-            raise ServiceUnavailable("unavailable message")
+            raise error
 
 
 class TestServiceReturnedUnexpectedResult:
@@ -103,20 +108,22 @@ class TestServiceReturnedUnexpectedResult:
         assert str(exc) == "Unexpected Result: wrong format"
 
     def test_inherits_from_health_check_exception(self):
-        """Inherit from HealthCheckException."""
+        """Inherit from HealthCheckError."""
         exc = ServiceReturnedUnexpectedResult("test")
-        assert isinstance(exc, HealthCheckException)
+        assert isinstance(exc, HealthCheckError)
         assert isinstance(exc, Exception)
 
     def test_can_raise_and_catch_as_exception(self):
-        """Can be caught as HealthCheckException."""
-        with pytest.raises(HealthCheckException):
-            raise ServiceReturnedUnexpectedResult("unexpected result message")
+        """Can be caught as HealthCheckError."""
+        error = ServiceReturnedUnexpectedResult("unexpected result message")
+        with pytest.raises(HealthCheckError):
+            raise error
 
     def test_can_raise_and_catch_as_specific_type(self):
         """Can be caught as ServiceReturnedUnexpectedResult specifically."""
+        error = ServiceReturnedUnexpectedResult("unexpected result message")
         with pytest.raises(ServiceReturnedUnexpectedResult):
-            raise ServiceReturnedUnexpectedResult("unexpected result message")
+            raise error
 
 
 class TestStatusPageWarning:
@@ -147,7 +154,7 @@ class TestStatusPageWarning:
         """Inherit from ServiceWarning."""
         exc = StatusPageWarning("incident")
         assert isinstance(exc, ServiceWarning)
-        assert isinstance(exc, HealthCheckException)
+        assert isinstance(exc, HealthCheckError)
 
     def test_can_raise_and_catch_as_service_warning(self):
         """Can be caught as ServiceWarning."""

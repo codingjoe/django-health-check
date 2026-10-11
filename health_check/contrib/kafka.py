@@ -56,10 +56,12 @@ class Kafka(HealthCheck):
                 )
                 and cluster_metadata.topics
             ):
-                raise ServiceUnavailable("Failed to retrieve Kafka topics.")
+                msg = "Failed to retrieve Kafka topics."
+                raise ServiceUnavailable(msg)
 
         except KafkaException as e:
-            raise ServiceUnavailable("Unable to connect") from e
+            msg = "Unable to connect"
+            raise ServiceUnavailable(msg) from e
         else:
             logger.debug(
                 "Connection established. Kafka is healthy. Found %d topics.",

@@ -14,10 +14,11 @@ from health_check.exceptions import ServiceUnavailable
 def create_client_from_settings() -> RedisClient:
     url = (getattr(settings, "CRONTASK", None) or {}).get("REDIS_URL")
     if not url:
-        raise ServiceUnavailable(
+        msg = (
             "CRONTASK['REDIS_URL'] is not configured. Set it to the Redis URL of "
             "the crontask scheduler's lock, or pass a client_factory."
         )
+        raise ServiceUnavailable(msg)
     # A fixed 1 s connect and read budget stops an unreachable Redis from
     # stalling the health endpoint; supply your own client_factory for longer.
     return RedisClient.from_url(url, socket_timeout=1, socket_connect_timeout=1)
@@ -49,8 +50,10 @@ class Scheduler(HealthCheck):
         try:
             # django-crontask hardcodes this key with no setting; update if renamed
             if not await client.exists("crontask-lock"):
-                raise ServiceUnavailable("No django-crontask scheduler is running.")
+                msg = "No django-crontask scheduler is running."
+                raise ServiceUnavailable(msg)
         except exceptions.RedisError as e:
-            raise ServiceUnavailable("Unable to query the crontask lock.") from e
+            msg = "Unable to query the crontask lock."
+            raise ServiceUnavailable(msg) from e
         finally:
             await client.aclose()

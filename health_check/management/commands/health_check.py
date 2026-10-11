@@ -85,7 +85,18 @@ class Command(BaseCommand):
         if not options.get("use_http"):
             asyncio.run(self._run_checks_directly(path))
 
-        addrport = options.get("addrport")
+        url = self._build_url(path, options.get("addrport"))
+        headers = self._build_headers(options)
+
+        if options.get("verbosity", 1) >= 2:
+            self.stdout.write(
+                f"Checking health endpoint at {url!r} with headers: {headers}"
+            )
+
+        self.stdout.write(self._fetch(url, headers, options))
+
+    @staticmethod
+    def _build_url(path, addrport):
         # Use HTTPS only when SSL redirect is enabled without forwarded headers (direct HTTPS required).
         # Otherwise, use HTTP (typical for containers with X-Forwarded-Proto header support).
         proto = (
@@ -93,23 +104,23 @@ class Command(BaseCommand):
             if settings.SECURE_SSL_REDIRECT and not settings.USE_X_FORWARDED_HOST
             else "http"
         )
-        url = f"{proto}://{addrport}{path}"
+        return f"{proto}://{addrport}{path}"
 
+    @staticmethod
+    def _build_headers(options):
         headers = {"Accept": "text/plain"}
-
         # Add X-Forwarded-Host header
         if forwarded_host := options.get("forwarded_host"):
             headers["X-Forwarded-Host"] = forwarded_host
-
         # Add X-Forwarded-Proto header
         if forwarded_proto := options.get("forwarded_proto"):
             headers["X-Forwarded-Proto"] = forwarded_proto
+        return headers
 
-        if options.get("verbosity", 1) >= 2:
-            self.stdout.write(
-                f"Checking health endpoint at {url!r} with headers: {headers}"
-            )
-
+    def _fetch(self, url, headers, options):
+        """Return the body of the health check endpoint response."""
+        endpoint = options.get("endpoint")
+        addrport = options.get("addrport")
         request = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
             response = urllib.request.urlopen(request, timeout=options["timeout"])  # noqa: S310
@@ -139,8 +150,7 @@ class Command(BaseCommand):
         except TimeoutError as e:
             self.stderr.write(f"Timeout when trying to reach {url!r}: {e}")
             sys.exit(2)
-        else:
-            self.stdout.write(response.read().decode("utf-8"))
+        return response.read().decode("utf-8")
 
     async def _run_checks_directly(self, path):
         """Run health checks directly without HTTP server."""

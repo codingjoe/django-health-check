@@ -16,7 +16,7 @@ from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
 
 from health_check.base import HealthCheck, HealthCheckResult
-from health_check.exceptions import HealthCheckException
+from health_check.exceptions import HealthCheckError
 
 logger = logging.getLogger("health_check")
 
@@ -65,7 +65,8 @@ class MediaType:
         """Return single instance parsed from the given Accept-header string."""
         match = cls.pattern.search(value)
         if match is None:
-            raise ValueError(f'"{value}" is not a valid media type')
+            msg = f'"{value}" is not a valid media type'
+            raise ValueError(msg)
         return cls(match.group("mime_type"), float(match.group("weight") or 1))
 
     @classmethod
@@ -123,8 +124,16 @@ class HealthCheckView(TemplateView):
             )
         has_errors = any(result.error for result in self.results)
         status_code = 500 if has_errors else 200
-        format_override = request.GET.get("format")
 
+        response = self.render_for_format(request.GET.get("format"), status_code)
+        if response is None:
+            response = self.render_for_accept_header(
+                request.headers.get("accept", "*/*"), status_code, **kwargs
+            )
+        return response
+
+    def render_for_format(self, format_override, status_code):
+        """Return the response for an explicit format override, if supported."""
         match format_override:
             case "json":
                 return self.render_to_response_json(status_code)
@@ -136,8 +145,10 @@ class HealthCheckView(TemplateView):
                 return self.render_to_response_rss()
             case "openmetrics":
                 return self.render_to_response_openmetrics()
+        return None
 
-        accept_header = request.headers.get("accept", "*/*")
+    def render_for_accept_header(self, accept_header, status_code, **kwargs):
+        """Return the response matching the Accept header, defaulting to 406."""
         for media in MediaType.parse_header(accept_header):
             match media.mime_type:
                 case "text/plain":
@@ -167,12 +178,12 @@ class HealthCheckView(TemplateView):
         start = timeit.default_timer()
         try:
             return await check.get_result(executor)
-        except HealthCheckException as exception:
+        except HealthCheckError as exception:
             logger.warning("Health check %r failed", check, exc_info=exception)
             error = exception
         except Exception:
             logger.exception("Unexpected exception during health check")
-            error = HealthCheckException("unknown error")
+            error = HealthCheckError("unknown error")
         return HealthCheckResult(
             check=check,
             error=error,
@@ -314,12 +325,11 @@ class HealthCheckView(TemplateView):
                 categories=["error", "unhealthy"] if result.error else ["healthy"],
             )
 
-        response = HttpResponse(
+        return HttpResponse(
             feed.writeString("utf-8"),
             content_type=feed.content_type,
             status=200,  # Feed readers expect 200 even if checks fail
         )
-        return response
 
     def get_checks(
         self,

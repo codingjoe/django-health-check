@@ -2,13 +2,14 @@ import dataclasses
 import datetime
 import json
 import logging
+import re
 from unittest import mock
 
 import pytest
 
 from health_check.base import HealthCheck
 from health_check.exceptions import (
-    HealthCheckException,
+    HealthCheckError,
     ServiceUnavailable,
     ServiceWarning,
     StatusPageWarning,
@@ -64,7 +65,7 @@ class TestMediaType:
         ("*/*; q=0.5; v=b3", MediaType("*/*", 0.5)),
     ]
 
-    @pytest.mark.parametrize("type, expected", valid_strings)
+    @pytest.mark.parametrize(("type", "expected"), valid_strings)
     def test_from_string__valid(self, type, expected):
         """Parse valid media type strings."""
         assert MediaType.from_string(type) == expected
@@ -80,9 +81,9 @@ class TestMediaType:
     )
     def test_from_string__invalid(self, mime_type):
         """Raise ValueError for invalid media type strings."""
-        with pytest.raises(ValueError) as e:
-            MediaType.from_string(mime_type)
         expected_error = f'"{mime_type}" is not a valid media type'
+        with pytest.raises(ValueError, match=re.escape(expected_error)) as e:
+            MediaType.from_string(mime_type)
         assert expected_error in str(e.value)
 
     def test_parse_header__default(self):
@@ -123,7 +124,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Super Fail!")
+                msg = "Super Fail!"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend])
         assert response.status_code == 500
@@ -141,7 +143,8 @@ class TestHealthCheckView:
                 pass
 
             async def get_result(self, executor=None):
-                raise RuntimeError("broken override")
+                msg = "broken override"
+                raise RuntimeError(msg)
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -172,7 +175,8 @@ class TestHealthCheckView:
                 pass
 
             async def get_result(self, executor=None):
-                raise ServiceUnavailable("database down")
+                msg = "database down"
+                raise ServiceUnavailable(msg)
 
         response = await health_check_view([UnavailableBackend], format_param="json")
         assert response.status_code == 500
@@ -186,7 +190,8 @@ class TestHealthCheckView:
 
         class WarningBackend(HealthCheck):
             async def run(self):
-                raise ServiceWarning("so so")
+                msg = "so so"
+                raise ServiceWarning(msg)
 
         response = await health_check_view([WarningBackend])
         assert response.status_code == 500
@@ -198,7 +203,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Super Fail!")
+                msg = "Super Fail!"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend])
         assert response.status_code == 500
@@ -343,7 +349,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("JSON Error")
+                msg = "JSON Error"
+                raise HealthCheckError(msg)
 
         response = await health_check_view(
             [FailingBackend], accept_header="application/json"
@@ -378,7 +385,8 @@ class TestHealthCheckView:
         @dataclasses.dataclass
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("JSON Error")
+                msg = "JSON Error"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="json")
         assert response.status_code == 500
@@ -451,7 +459,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="atom")
         assert response.status_code == 200
@@ -465,7 +474,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="rss")
         assert response.status_code == 200
@@ -479,7 +489,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view(
             [FailingBackend], accept_header="application/atom+xml"
@@ -494,7 +505,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view(
             [FailingBackend], accept_header="application/rss+xml"
@@ -530,7 +542,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="atom")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -568,7 +581,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="rss")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -593,7 +607,8 @@ class TestHealthCheckView:
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
-                raise StatusPageWarning("Check failed", timestamp=source_date)
+                msg = "Check failed"
+                raise StatusPageWarning(msg, timestamp=source_date)
 
         response = await health_check_view([TimestampedBackend], format_param="rss")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -617,7 +632,8 @@ class TestHealthCheckView:
 
         class TimestampedBackend(HealthCheck):
             async def run(self):
-                raise StatusPageWarning("Check failed", timestamp=source_date)
+                msg = "Check failed"
+                raise StatusPageWarning(msg, timestamp=source_date)
 
         response = await health_check_view([TimestampedBackend], format_param="atom")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -643,7 +659,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view(
             [SuccessBackend, FailingBackend], format_param="atom"
@@ -673,7 +690,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Something went wrong")
+                msg = "Something went wrong"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="rss")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -724,7 +742,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Database unreachable")
+                msg = "Database unreachable"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="atom")
         feed = feedparser.parse(response.content.decode("utf-8"))
@@ -776,7 +795,8 @@ class TestHealthCheckView:
 
             async def run(self):
                 if self.value < 0:
-                    raise HealthCheckException("Invalid value")
+                    msg = "Invalid value"
+                    raise HealthCheckError(msg)
 
         from django.test import AsyncRequestFactory
 
@@ -908,7 +928,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="openmetrics")
         content = response.content.decode("utf-8")
@@ -943,7 +964,7 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Failed")
+                raise HealthCheckError("Failed")
 
         response = await health_check_view(
             [SuccessBackend, FailingBackend], format_param="openmetrics"
@@ -1088,7 +1109,8 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Check failed")
+                msg = "Check failed"
+                raise HealthCheckError(msg)
 
         response = await health_check_view([FailingBackend], format_param="text")
         assert response.status_code == 500
@@ -1106,7 +1128,7 @@ class TestHealthCheckView:
 
         class FailingBackend(HealthCheck):
             async def run(self):
-                raise HealthCheckException("Failed")
+                raise HealthCheckError("Failed")
 
         response = await health_check_view(
             [SuccessBackend, FailingBackend], format_param="text"

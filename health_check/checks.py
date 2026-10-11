@@ -75,24 +75,28 @@ class Cache(HealthCheck):
         try:
             cache = caches[self.alias]
         except InvalidCacheBackendError as e:
-            raise ServiceUnavailable("Cache alias does not exist") from e
+            msg = "Cache alias does not exist"
+            raise ServiceUnavailable(msg) from e
         # Use an isolated key per probe run to avoid cross-process write races.
         cache_key = f"{self.key_prefix}:{uuid.uuid4().hex}"
-        cache_value = f"itworks-{datetime.datetime.now().timestamp()}"
+        cache_value = f"itworks-{datetime.datetime.now(tz=datetime.UTC).timestamp()}"
         try:
             await cache.aset(
                 cache_key,
                 cache_value,
                 timeout=self.timeout.total_seconds(),
             )
-            if not await cache.aget(cache_key) == cache_value:
-                raise ServiceUnavailable(f"Cache key {cache_key} does not match")
+            if await cache.aget(cache_key) != cache_value:
+                msg = f"Cache key {cache_key} does not match"
+                raise ServiceUnavailable(msg)
         except CacheKeyWarning as e:
-            raise ServiceReturnedUnexpectedResult("Cache key warning") from e
+            msg = "Cache key warning"
+            raise ServiceReturnedUnexpectedResult(msg) from e
         except ValueError as e:
             raise ServiceReturnedUnexpectedResult("ValueError") from e
         except (ConnectionError, RedisError) as e:
-            raise ServiceReturnedUnexpectedResult("Connection Error") from e
+            msg = "Connection Error"
+            raise ServiceReturnedUnexpectedResult(msg) from e
 
 
 class _SelectOne(Expression):
@@ -125,7 +129,8 @@ class Database(HealthCheck):
         try:
             connection = connections[self.alias]
         except ConnectionDoesNotExist as e:
-            raise ServiceUnavailable("Database alias does not exist") from e
+            msg = "Database alias does not exist"
+            raise ServiceUnavailable(msg) from e
         try:
             compiler = connection.ops.compiler("SQLCompiler")(
                 _SelectOne(), connection, None
@@ -137,9 +142,8 @@ class Database(HealthCheck):
             raise ServiceUnavailable(str(e).rsplit(":")[0]) from e
         else:
             if result != (1,):
-                raise ServiceUnavailable(
-                    "Health Check query did not return the expected result."
-                )
+                msg = "Health Check query did not return the expected result."
+                raise ServiceUnavailable(msg)
 
 
 @dataclasses.dataclass
@@ -180,23 +184,20 @@ class DNS(HealthCheck):
             # Perform DNS resolution (A record by default)
             answers = await resolver.resolve(self.hostname, self.record_type)
         except dns.resolver.NXDOMAIN as e:
-            raise ServiceUnavailable(
-                f"DNS resolution failed: hostname {self.hostname} does not exist"
-            ) from e
+            msg = f"DNS resolution failed: hostname {self.hostname} does not exist"
+            raise ServiceUnavailable(msg) from e
         except dns.resolver.NoAnswer as e:
-            raise ServiceUnavailable(
-                f"DNS resolution failed: no answer for {self.hostname}"
-            ) from e
+            msg = f"DNS resolution failed: no answer for {self.hostname}"
+            raise ServiceUnavailable(msg) from e
         except dns.resolver.Timeout as e:
-            raise ServiceUnavailable(
-                f"DNS resolution failed: timeout resolving {self.hostname}"
-            ) from e
+            msg = f"DNS resolution failed: timeout resolving {self.hostname}"
+            raise ServiceUnavailable(msg) from e
         except dns.resolver.NoNameservers as e:
-            raise ServiceUnavailable(
-                "DNS resolution failed: no nameservers available"
-            ) from e
+            msg = "DNS resolution failed: no nameservers available"
+            raise ServiceUnavailable(msg) from e
         except dns.exception.DNSException as e:
-            raise ServiceUnavailable(f"DNS resolution failed: {e}") from e
+            msg = f"DNS resolution failed: {e}"
+            raise ServiceUnavailable(msg) from e
         else:
             logger.debug(
                 "Successfully resolved %s to %s",
@@ -235,11 +236,11 @@ class Mail(HealthCheck):
         try:
             connection.open()
         except smtplib.SMTPException as e:
-            raise ServiceUnavailable(
-                "Failed to open connection with SMTP server"
-            ) from e
+            msg = "Failed to open connection with SMTP server"
+            raise ServiceUnavailable(msg) from e
         except ConnectionRefusedError as e:
-            raise ServiceUnavailable("Connection refused error") from e
+            msg = "Connection refused error"
+            raise ServiceUnavailable(msg) from e
         finally:
             connection.close()
         logger.debug("Connection established. Mail backend %r is healthy.", connection)
@@ -264,30 +265,34 @@ class Storage(HealthCheck):
         try:
             return storages[self.alias]
         except InvalidStorageError as e:
-            raise ServiceUnavailable("Storage alias does not exist") from e
+            msg = "Storage alias does not exist"
+            raise ServiceUnavailable(msg) from e
 
     def get_file_name(self):
         return f"health_check_storage_test/test-{uuid.uuid4()}.txt"
 
     def get_file_content(self):
-        return f"# generated by health_check.Storage at {datetime.datetime.now().timestamp()}".encode()
+        return f"# generated by health_check.Storage at {datetime.datetime.now(tz=datetime.UTC).timestamp()}".encode()
 
     def check_save(self, file_name, file_content):
         # save the file
         file_name = self.storage.save(file_name, ContentFile(content=file_content))
         # read the file and compare
         if not self.storage.exists(file_name):
-            raise ServiceUnavailable("File does not exist")
+            msg = "File does not exist"
+            raise ServiceUnavailable(msg)
         with self.storage.open(file_name) as f:
-            if not f.read() == file_content:
-                raise ServiceUnavailable("File content does not match")
+            if f.read() != file_content:
+                msg = "File content does not match"
+                raise ServiceUnavailable(msg)
         return file_name
 
     def check_delete(self, file_name):
         # delete the file and make sure it is gone
         self.storage.delete(file_name)
         if self.storage.exists(file_name):
-            raise ServiceUnavailable("File was not deleted")
+            msg = "File was not deleted"
+            raise ServiceUnavailable(msg)
 
     def run(self):
         # write the file to the storage backend

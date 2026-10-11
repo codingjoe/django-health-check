@@ -60,13 +60,11 @@ class RabbitMQ(HealthCheck):
             )
             await connection.close()
         except ConnectionRefusedError as e:
-            raise ServiceUnavailable(
-                "Unable to connect to RabbitMQ: Connection was refused."
-            ) from e
+            msg = "Unable to connect to RabbitMQ: Connection was refused."
+            raise ServiceUnavailable(msg) from e
         except aio_pika.exceptions.ProbableAuthenticationError as e:
-            raise ServiceUnavailable(
-                "Unable to connect to RabbitMQ: Authentication error."
-            ) from e
+            msg = "Unable to connect to RabbitMQ: Authentication error."
+            raise ServiceUnavailable(msg) from e
         except OSError as e:
             raise ServiceUnavailable("IOError") from e
         else:

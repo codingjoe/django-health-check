@@ -66,16 +66,17 @@ class Feed(HealthCheck):
                     follow_redirects=True,
                 )
             except httpx.TimeoutException as e:
-                raise ServiceUnavailable("Feed request timed out") from e
+                msg = "Feed request timed out"
+                raise ServiceUnavailable(msg) from e
             except httpx.RequestError as e:
-                raise ServiceUnavailable(f"Failed to fetch feed: {e}") from e
+                msg = f"Failed to fetch feed: {e}"
+                raise ServiceUnavailable(msg) from e
 
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
-                raise ServiceUnavailable(
-                    f"HTTP error {e.response.status_code} fetching feed from {self.feed_url!r}"
-                ) from e
+                msg = f"HTTP error {e.response.status_code} fetching feed from {self.feed_url!r}"
+                raise ServiceUnavailable(msg) from e
 
             content = response.text
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from health_check.base import HealthCheck, HealthCheckResult
-from health_check.exceptions import HealthCheckException, ServiceUnavailable
+from health_check.exceptions import HealthCheckError, ServiceUnavailable
 
 
 class TestHealthCheck:
@@ -27,16 +27,17 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_run__unexpected_exception_handled(self):
-        """Catch unexpected exceptions and convert to HealthCheckException."""
+        """Catch unexpected exceptions and convert to HealthCheckError."""
 
         class UnexpectedErrorCheck(HealthCheck):
             async def run(self):
-                raise RuntimeError("Unexpected error")
+                msg = "Unexpected error"
+                raise RuntimeError(msg)
 
         check = UnexpectedErrorCheck()
         result = await check.get_result()
         assert result.error is not None
-        assert isinstance(result.error, HealthCheckException)
+        assert isinstance(result.error, HealthCheckError)
         assert str(result.error) == "Unknown Error: unknown error"
 
     @pytest.mark.asyncio
@@ -75,7 +76,8 @@ class TestHealthCheck:
         @dataclasses.dataclass
         class FailingCheck(HealthCheck):
             async def run(self):
-                raise ServiceUnavailable("service down")
+                msg = "service down"
+                raise ServiceUnavailable(msg)
 
         check = FailingCheck()
         with caplog.at_level(logging.WARNING, logger="health_check"):

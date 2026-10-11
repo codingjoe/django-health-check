@@ -128,7 +128,7 @@ extend-select = [
   "W",
 ]
 ignore = [ "D1", "D203", "D212", "E501", "RUF01" ]
-per-file-ignores."tests/*.py" = [ "PLR2004", "S101", "S105" ]
+per-file-ignores."tests/**" = [ "DJ006", "DJ007", "DJ008", "PLR2004", "S101", "S105", "S106", "S311", "S603", "S607" ]
 isort.known-first-party = [ "measurement", "tests" ]
 
 [tool.pytest]
