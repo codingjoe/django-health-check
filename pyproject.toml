@@ -107,18 +107,27 @@ line_break_after_multiline_tag = true
 [tool.ruff]
 line-length = 88
 [tool.ruff.lint]
-select = [
-  "D",   # pydocstyle
-  "E",   # pycodestyle errors
-  "EXE", # flake8-executable
-  "F",   # pyflakes
-  "I",   # isort
-  "S",   # flake8-bandit
-  "SIM", # flake8-simplify
-  "UP",  # pyupgrade
-  "W",   # pycodestyle warnings
+extend-select = [
+  "C90",
+  "D",
+  "D213",
+  "DJ",
+  "E",
+  "G",
+  "N",
+  "PERF",
+  "PT",
+  "PTH",
+  "RET",
+  "S",
+  "SIM",
+  "SLOT",
+  "T20",
+  "TRY",
+  "UP",
+  "W",
 ]
-ignore = [ "D1", "D203", "D212", "E501" ]
+ignore = [ "D1", "D203", "D212", "E501", "RUF01" ]
 per-file-ignores."tests/*.py" = [ "PLR2004", "S101", "S105" ]
 isort.known-first-party = [ "measurement", "tests" ]
 
