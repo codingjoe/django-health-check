@@ -7,10 +7,6 @@ name = "django-health-check"
 readme = { file = "README.md", content-type = "text/markdown" }
 keywords = [ "django", "postgresql" ]
 license = { file = "LICENSE" }
-authors = [
-  { name = "Kristian Ollegaard", email = "kristian@oellegaard.com" },
-  { name = "Johannes Maron", email = "johannes@maron.family" }
-]
 requires-python = ">=3.14"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -38,23 +34,32 @@ dependencies = [
   "django>=5.2",
   "dnspython>=2",
 ]
-optional-dependencies.atlassian = [ "httpx>=0.27" ]
-optional-dependencies.celery = [ "celery>=5" ]
-optional-dependencies.crontask = [ "django-crontask[redis]>=2", "redis>=5.0.1" ]
-optional-dependencies.kafka = [ "confluent-kafka>=2" ]
-optional-dependencies.psutil = [ "psutil>=7.2" ]
-optional-dependencies.rabbitmq = [ "aio-pika>=9" ]
-optional-dependencies.redis = [ "redis>=5.0.1" ]
-optional-dependencies.rss = [ "feedparser>=6", "httpx>=0.27" ]
-optional-dependencies.threadmill = [ "threadmill[redis]>=0.7.3" ]
-urls.Changelog = "https://github.com/codingjoe/django-health-check/releases"
-urls.Documentation = "https://codingjoe.dev/django-health-check/"
-urls.Funding = "https://github.com/sponsors/codingjoe"
+[[project.authors]]
+name = "Kristian Ollegaard"
+email = "kristian@oellegaard.com"
+
+[[project.authors]]
+name = "Johannes Maron"
+email = "johannes@maron.family"
+[project.optional-dependencies]
+atlassian = [ "httpx>=0.27" ]
+celery = [ "celery>=5" ]
+crontask = [ "django-crontask[redis]>=2", "redis>=5.0.1" ]
+kafka = [ "confluent-kafka>=2" ]
+psutil = [ "psutil>=7.2" ]
+rabbitmq = [ "aio-pika>=9" ]
+redis = [ "redis>=5.0.1" ]
+rss = [ "feedparser>=6", "httpx>=0.27" ]
+threadmill = [ "threadmill[redis]>=0.7.3" ]
+[project.urls]
+Changelog = "https://github.com/codingjoe/django-health-check/releases"
+Documentation = "https://codingjoe.dev/django-health-check/"
+Funding = "https://github.com/sponsors/codingjoe"
 # https://packaging.python.org/en/latest/specifications/well-known-project-urls/#well-known-labels
-urls.Homepage = "https://github.com/codingjoe/django-health-check"
-urls.Issues = "https://github.com/codingjoe/django-health-check/issues"
-urls.Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
-urls.Source = "https://github.com/codingjoe/django-health-check"
+Homepage = "https://github.com/codingjoe/django-health-check"
+Issues = "https://github.com/codingjoe/django-health-check/issues"
+Releasenotes = "https://github.com/codingjoe/django-health-check/releases/latest"
+Source = "https://github.com/codingjoe/django-health-check"
 
 [dependency-groups]
 dev = [
@@ -83,7 +88,8 @@ docs = [
 write_to = "health_check/_version.py"
 
 [tool.flit]
-module.name = "health_check"
+[tool.flit.module]
+name = "health_check"
 
 [tool.uv]
 # Always install the redis extras, even when another package requires the base distribution
@@ -100,7 +106,8 @@ line_break_after_multiline_tag = true
 
 [tool.ruff]
 line-length = 88
-lint.select = [
+[tool.ruff.lint]
+select = [
   "D",   # pydocstyle
   "E",   # pycodestyle errors
   "EXE", # flake8-executable
@@ -111,24 +118,27 @@ lint.select = [
   "UP",  # pyupgrade
   "W",   # pycodestyle warnings
 ]
-lint.ignore = [ "D1", "D203", "D212", "E501" ]
-lint.per-file-ignores."tests/*.py" = [ "PLR2004", "S101", "S105" ]
-lint.isort.known-first-party = [ "measurement", "tests" ]
+ignore = [ "D1", "D203", "D212", "E501" ]
+per-file-ignores."tests/*.py" = [ "PLR2004", "S101", "S105" ]
+isort.known-first-party = [ "measurement", "tests" ]
 
 [tool.pytest]
-ini_options.testpaths = [
+[tool.pytest.ini_options]
+testpaths = [
   "tests",
 ]
-ini_options.norecursedirs = ".git"
-ini_options.python_files = "test_*.py"
-ini_options.addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
-ini_options.markers = [
+norecursedirs = ".git"
+python_files = "test_*.py"
+addopts = "--cov --strict-markers --cov-report=xml --cov-report=term --doctest-modules"
+markers = [
   "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
 ]
-ini_options.xfail_strict = true
-ini_options.DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
+xfail_strict = true
+DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
 
 [tool.coverage]
-run.source = [ "health_check" ]
-report.skip_covered = true
-report.show_missing = true
+[tool.coverage.run]
+source = [ "health_check" ]
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
