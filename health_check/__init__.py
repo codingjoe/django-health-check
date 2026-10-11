@@ -8,12 +8,12 @@ __version__ = _version.__version__
 VERSION = _version.__version_tuple__
 
 __all__ = [
-    "__version__",
-    "VERSION",
-    "HealthCheck",
-    "Cache",
     "DNS",
+    "VERSION",
+    "Cache",
     "Database",
+    "HealthCheck",
     "Mail",
     "Storage",
+    "__version__",
 ]
