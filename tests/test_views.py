@@ -1175,6 +1175,46 @@ class TestHealthCheckView:
             response.render()
         assert response.status_code == 200
 
+    @pytest.mark.asyncio
+    async def test_get__content_security_policy_nonce(self):
+        """Render the nonce that the Content-Security-Policy header permits."""
+        csp = pytest.importorskip(
+            "django.middleware.csp", reason="Django<6.0 has no built-in CSP support"
+        )
+        from django.test import AsyncClient, override_settings
+
+        with override_settings(
+            MIDDLEWARE=["django.middleware.csp.ContentSecurityPolicyMiddleware"],
+            SECURE_CSP={"style-src": [csp.CSP.SELF, csp.CSP.NONCE]},
+            TEMPLATES=[
+                {
+                    "BACKEND": "django.template.backends.django.DjangoTemplates",
+                    "APP_DIRS": True,
+                    "OPTIONS": {
+                        "context_processors": [
+                            "django.template.context_processors.csp"
+                        ],
+                    },
+                },
+            ],
+        ):
+            response = await AsyncClient().get("/health/fail/")
+
+        nonce = re.search(rb'<style nonce="([^"]+)">', response.content).group(1)
+        assert f"'nonce-{nonce.decode()}'" in response["Content-Security-Policy"]
+
+    @pytest.mark.asyncio
+    async def test_get__content_security_policy_nonce_unset(self, health_check_view):
+        """Render an empty nonce attribute when no nonce reaches the template."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        assert (
+            b'<style nonce="">' in (await health_check_view([SuccessBackend])).content
+        )
+
     def test_abnf_escape(self):
         assert HealthCheckView.abnf_escape("simple") == "simple"
         assert (
