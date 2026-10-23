@@ -996,8 +996,34 @@ class TestHealthCheckView:
         assert conditional_response["ETag"] != response["ETag"]
 
     @pytest.mark.asyncio
-    async def test_get__invalid_auth_token_uses_cache(self, health_check_view):
-        """Keep caching when the bearer token is not the configured secret."""
+    @pytest.mark.parametrize("authorization", ["Bearer wrong", "Basic abc"])
+    async def test_get__invalid_auth_token_returns_forbidden(
+        self, health_check_view, authorization
+    ):
+        """Reject a wrong cache refresh token without running checks."""
+
+        class CountingBackend(HealthCheck):
+            runs = 0
+
+            async def run(self):
+                CountingBackend.runs += 1
+
+        response = await health_check_view(
+            [CountingBackend],
+            cache_timeout=datetime.timedelta(seconds=60),
+            auth_token="secret",
+            headers={"Authorization": authorization},
+        )
+        assert response.status_code == 403
+        assert CountingBackend.runs == 0
+        assert b"Invalid cache refresh token" in response.content
+        assert "no-store" in response["Cache-Control"]
+        assert "Authorization" in response["Vary"]
+        assert "ETag" not in response
+
+    @pytest.mark.asyncio
+    async def test_get__auth_header_without_auth_token(self, health_check_view):
+        """Ignore Authorization headers when no refresh token is configured."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -1006,11 +1032,27 @@ class TestHealthCheckView:
         response = await health_check_view(
             [SuccessBackend],
             cache_timeout=datetime.timedelta(seconds=60),
+            headers={"Authorization": "Bearer anything"},
+        )
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "public, max-age=60"
+        assert "Authorization" not in response["Vary"]
+
+    @pytest.mark.asyncio
+    async def test_get__auth_token_without_cache_timeout(self, health_check_view):
+        """Ignore a wrong token when caching is disabled."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend],
             auth_token="secret",
             headers={"Authorization": "Bearer wrong"},
         )
-        assert response["Cache-Control"] == "public, max-age=60"
-        assert "Authorization" in response["Vary"]
+        assert response.status_code == 200
+        assert "no-store" in response["Cache-Control"]
 
     @pytest.mark.asyncio
     async def test_get__cache_vary_without_auth_token(self, health_check_view):

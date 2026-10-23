@@ -34,7 +34,9 @@ urlpatterns = [
 
 The view sends `Cache-Control: public, max-age=30` and a stable `ETag`. The
 ETag changes only when a check result changes. A cache that revalidates an
-unchanged result receives HTTP 304.
+unchanged result receives HTTP 304. When `auth_token` is configured, the view
+also sends `Vary: Authorization`, so a compliant shared cache keeps the
+unauthenticated response separate from requests with an Authorization header.
 
 > [!WARNING]
 > Only enable caching on endpoints without a secret in the URL. The view
@@ -58,14 +60,23 @@ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" https://example.com/hea
 ```
 
 A valid token gives every response a unique ETag. The response is not cached.
-Normal visitors keep receiving the cached result until it expires. Requests
-without a valid token cannot refresh the cache. Ensure your CDN forwards the
-`Authorization` header to the origin. Sentry uptime monitors and other
-services can send this header as a request header.
+Normal visitors keep receiving the cached result until it expires.
+
+Any other `Authorization` header value returns HTTP 403 before checks run.
+This prevents random tokens from forcing fresh checks or creating cache
+variants. Ensure your CDN honors `Vary: Authorization` and forwards the
+header to the origin. Sentry uptime monitors and other services can send this
+header as a request header.
 
 > [!NOTE]
-> `auth_token` only controls cache refreshes. It does not restrict access to
-> the endpoint.
+> `auth_token` only applies together with `cache_timeout`. It controls cache
+> refreshes and does not restrict access to the endpoint. When `auth_token`
+> is set, the `Authorization` header is reserved for it.
+
+> [!NOTE]
+> A client can still ask a shared cache to revalidate with
+> `Cache-Control: no-cache`. Configure your CDN to ignore client cache
+> directives if unauthenticated clients must never trigger checks.
 
 ## Getting machine-readable reports
 
