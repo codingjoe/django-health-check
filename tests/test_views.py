@@ -855,6 +855,177 @@ class TestHealthCheckView:
         assert "Accept" in rss_response.get("Vary", "")
 
     @pytest.mark.asyncio
+    async def test_get__default_cache_headers(self, health_check_view):
+        """Disable shared caching by default."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend])
+        assert "no-store" in response["Cache-Control"]
+        assert "ETag" not in response
+
+    @pytest.mark.asyncio
+    async def test_get__cache_timeout(self, health_check_view):
+        """Allow shared caches to reuse the response for the configured time."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend], cache_timeout=datetime.timedelta(seconds=60)
+        )
+        assert response["Cache-Control"] == "public, max-age=60"
+        assert response["ETag"].startswith('W/"')
+
+    @pytest.mark.asyncio
+    async def test_get__etag_stable_for_same_results(self, health_check_view):
+        """Keep the entity tag stable while the check results do not change."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        first = await health_check_view([SuccessBackend], cache_timeout=cache_timeout)
+        second = await health_check_view([SuccessBackend], cache_timeout=cache_timeout)
+        assert first["ETag"] == second["ETag"]
+
+    @pytest.mark.asyncio
+    async def test_get__etag_changes_with_results(self, health_check_view):
+        """Change the entity tag when a check result changes."""
+
+        class FlakyBackend(HealthCheck):
+            failed = False
+
+            async def run(self):
+                if self.failed:
+                    raise HealthCheckError("Failed")
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        success = await health_check_view([FlakyBackend], cache_timeout=cache_timeout)
+        FlakyBackend.failed = True
+        failure = await health_check_view([FlakyBackend], cache_timeout=cache_timeout)
+        assert success["ETag"] != failure["ETag"]
+
+    @pytest.mark.asyncio
+    async def test_get__etag_differs_by_format(self, health_check_view):
+        """Create separate entity tags for separate representations."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        html_response = await health_check_view(
+            [SuccessBackend], accept_header="text/html", cache_timeout=cache_timeout
+        )
+        json_response = await health_check_view(
+            [SuccessBackend],
+            accept_header="application/json",
+            cache_timeout=cache_timeout,
+        )
+        assert html_response["ETag"] != json_response["ETag"]
+
+    @pytest.mark.asyncio
+    async def test_get__conditional_request(self, health_check_view):
+        """Answer a matching If-None-Match with 304 and cache headers."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        first = await health_check_view([SuccessBackend], cache_timeout=cache_timeout)
+        response = await health_check_view(
+            [SuccessBackend],
+            cache_timeout=cache_timeout,
+            headers={"If-None-Match": first["ETag"]},
+        )
+        assert response.status_code == 304
+        assert response["ETag"] == first["ETag"]
+        assert response["Cache-Control"] == "public, max-age=60"
+
+    @pytest.mark.asyncio
+    async def test_get__failed_check_returns_error(self, health_check_view):
+        """Return a fresh error response even when If-None-Match matches."""
+
+        class FailingBackend(HealthCheck):
+            async def run(self):
+                raise HealthCheckError("Failed")
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        first = await health_check_view([FailingBackend], cache_timeout=cache_timeout)
+        response = await health_check_view(
+            [FailingBackend],
+            cache_timeout=cache_timeout,
+            headers={"If-None-Match": first["ETag"]},
+        )
+        assert response.status_code == 500
+        assert b"Failed" in response.content
+
+    @pytest.mark.asyncio
+    async def test_get__auth_token_refreshes_cache(self, health_check_view):
+        """Return a fresh response when the secret bearer token is valid."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        cache_timeout = datetime.timedelta(seconds=60)
+        response = await health_check_view(
+            [SuccessBackend],
+            cache_timeout=cache_timeout,
+            auth_token="secret",
+            headers={"Authorization": "Bearer secret"},
+        )
+        conditional_response = await health_check_view(
+            [SuccessBackend],
+            cache_timeout=cache_timeout,
+            auth_token="secret",
+            headers={
+                "Authorization": "Bearer secret",
+                "If-None-Match": response["ETag"],
+            },
+        )
+        assert response["Cache-Control"] == "no-store"
+        assert "Authorization" in response["Vary"]
+        assert conditional_response.status_code == 200
+        assert conditional_response["ETag"] != response["ETag"]
+
+    @pytest.mark.asyncio
+    async def test_get__invalid_auth_token_uses_cache(self, health_check_view):
+        """Keep caching when the bearer token is not the configured secret."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend],
+            cache_timeout=datetime.timedelta(seconds=60),
+            auth_token="secret",
+            headers={"Authorization": "Bearer wrong"},
+        )
+        assert response["Cache-Control"] == "public, max-age=60"
+        assert "Authorization" in response["Vary"]
+
+    @pytest.mark.asyncio
+    async def test_get__cache_vary_without_auth_token(self, health_check_view):
+        """Vary only on Accept when no refresh token is configured."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend], cache_timeout=datetime.timedelta(seconds=60)
+        )
+        assert "Authorization" not in response["Vary"]
+
+    @pytest.mark.asyncio
     async def test_get__openmetrics_format_parameter(self, health_check_view):
         """Return OpenMetrics when format=openmetrics."""
 

@@ -10,6 +10,63 @@ For step-by-step examples of multi-tier endpoint setups, including uptime
 monitoring, container probes, reverse-proxy configuration, and RSS/Atom
 integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
+## Caching responses
+
+Responses are never cached by default. To let a CDN or reverse proxy cache the
+health status for a short time, set `cache_timeout`:
+
+```python
+import datetime
+import os
+
+from django.urls import path
+from health_check.views import HealthCheckView
+
+urlpatterns = [
+    path(
+        "health/",
+        HealthCheckView.as_view(
+            cache_timeout=datetime.timedelta(seconds=30),
+        ),
+    ),
+]
+```
+
+The view sends `Cache-Control: public, max-age=30` and a stable `ETag`. The
+ETag changes only when a check result changes. A cache that revalidates an
+unchanged result receives HTTP 304.
+
+> [!WARNING]
+> Only enable caching on endpoints without a secret in the URL. The view
+> cannot detect URL secrets. Leave `cache_timeout` unset when the endpoint
+> uses a token in the path.
+
+To force a fresh check from an uptime monitor, configure a secret bearer
+token:
+
+```python
+HealthCheckView.as_view(
+    cache_timeout=datetime.timedelta(seconds=30),
+    auth_token=os.environ["HEALTH_CHECK_AUTH_TOKEN"],
+)
+```
+
+Send the token in the `Authorization` header:
+
+```shell
+curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" https://example.com/health/
+```
+
+A valid token gives every response a unique ETag. The response is not cached.
+Normal visitors keep receiving the cached result until it expires. Requests
+without a valid token cannot refresh the cache. Ensure your CDN forwards the
+`Authorization` header to the origin. Sentry uptime monitors and other
+services can send this header as a request header.
+
+> [!NOTE]
+> `auth_token` only controls cache refreshes. It does not restrict access to
+> the endpoint.
+
 ## Getting machine-readable reports
 
 ### Plain text

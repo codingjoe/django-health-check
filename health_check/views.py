@@ -1,17 +1,25 @@
 import asyncio
 import contextlib
 import datetime
+import hashlib
+import hmac
 import logging
 import re
 import timeit
 import typing
+import uuid
 from concurrent.futures import Executor
 
 from django.db import transaction
-from django.http import HttpResponse, JsonResponse
-from django.utils.cache import add_never_cache_headers, patch_vary_headers
+from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
+from django.utils.cache import (
+    add_never_cache_headers,
+    get_conditional_response,
+    patch_vary_headers,
+)
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
+from django.utils.http import quote_etag
 from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
 
@@ -95,10 +103,21 @@ class MediaType:
 
 
 class HealthCheckView(TemplateView):
-    """Perform health checks and return results in various formats."""
+    """
+    Perform health checks and return results in various formats.
+
+    Set `cache_timeout` to allow shared caches to reuse responses.
+    Set `auth_token` to let a secret bearer token force a cache refresh.
+    """
 
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
+
+    cache_timeout: datetime.timedelta | None = None
+    """Time a shared cache may reuse a response. Caching is disabled by default."""
+
+    auth_token: str | None = None
+    """Secret bearer token that marks a request as a cache refresh."""
 
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
@@ -114,8 +133,50 @@ class HealthCheckView(TemplateView):
     async def dispatch(self, request, *args, **kwargs):
         response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
-        add_never_cache_headers(response)
-        return response
+        if not self.cache_timeout:
+            add_never_cache_headers(response)
+            return response
+        if self.auth_token:
+            patch_vary_headers(response, ["Authorization"])
+        return self.patch_cache_headers(request, response)
+
+    def patch_cache_headers(
+        self, request: HttpRequest, response: HttpResponseBase
+    ) -> HttpResponseBase:
+        """Set shared cache headers and answer matching entity tags with 304."""
+        is_refresh = self.has_cache_refresh_token(request)
+        etag = self.calculate_etag(response, uuid.uuid4().bytes if is_refresh else b"")
+        response["ETag"] = quote_etag(f'W/"{etag}"')
+        if is_refresh:
+            response["Cache-Control"] = "no-store"
+            return response
+        max_age_secs = int(self.cache_timeout.total_seconds())
+        response["Cache-Control"] = f"public, max-age={max_age_secs}"
+        return get_conditional_response(
+            request, etag=response["ETag"], response=response
+        )
+
+    def calculate_etag(self, response: HttpResponseBase, salt: bytes = b"") -> str:
+        """Return an entity tag for the current check results."""
+        digest = hashlib.sha256(salt)
+        digest.update(str(response.status_code).encode())
+        digest.update(response.get("Content-Type", "").encode())
+        digest.update(
+            b"".join(
+                repr(result.check).encode() + b"\0" + str(result.error).encode() + b"\0"
+                for result in self.results
+            )
+        )
+        return digest.hexdigest()
+
+    def has_cache_refresh_token(self, request: HttpRequest) -> bool:
+        """Return whether the request carries the secret cache refresh token."""
+        if not self.auth_token:
+            return False
+        scheme, _, token = request.headers.get("Authorization", "").partition(" ")
+        return scheme.lower() == "bearer" and hmac.compare_digest(
+            token.encode(), self.auth_token.encode()
+        )
 
     async def get(self, request, *args, **kwargs):
         with self.get_executor() as executor:
