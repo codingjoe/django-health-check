@@ -8,12 +8,6 @@ when a check fails.
 
 For multi-tier examples, see the [Cookbook](cookbook.md).
 
-To let a CDN cache successful responses, set
-[`cache_timeout`](#health_check.views.HealthCheckView.cache_timeout) to
-`timedelta(seconds=30)` on `HealthCheckView`. A failing check returns HTTP 500,
-which is never cached. A request with a valid bearer token skips the
-cache and runs the checks.
-
 ::: health_check.views.HealthCheckView
     options:
       members:
@@ -188,3 +182,9 @@ class CustomHealthCheckView(HealthCheckView):
 This gives every request its own thread pool. You keep the speed of
 concurrent execution for synchronous checks, but the memory stays under
 control.
+
+To let a CDN cache successful responses, set
+[`cache_timeout`](#health_check.views.HealthCheckView.cache_timeout) to
+`timedelta(seconds=30)` on `HealthCheckView`. A failing check returns HTTP 500,
+which is never cached. A request with a valid bearer token skips the
+cache and runs the checks.
