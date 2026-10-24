@@ -139,10 +139,10 @@ class HealthCheckView(TemplateView):
             patch_vary_headers(response, ["Accept"])
             if self.authentication_token:
                 patch_vary_headers(response, ["Authorization"])
-            if not self.cache_timeout or request.method not in ("GET", "HEAD"):
-                add_never_cache_headers(response)
-                return response
-            return self.patch_cache_headers(request, response)
+            if self.cache_timeout and request.method in ("GET", "HEAD"):
+                return self.patch_cache_headers(request, response)
+            add_never_cache_headers(response)
+            return response
         return self.render_forbidden_response(request)
 
     def render_forbidden_response(self, request: HttpRequest) -> HttpResponse:
