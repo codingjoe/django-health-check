@@ -160,10 +160,12 @@ class HealthCheckView(TemplateView):
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set shared cache headers and answer matching entity tags with 304."""
-        is_refresh = self.should_bypass_cache(request)
-        etag = self.calculate_etag(response, uuid.uuid4().bytes if is_refresh else b"")
+        is_authenticated = self.has_valid_authentication_token(request)
+        etag = self.calculate_etag(
+            response, uuid.uuid4().bytes if is_authenticated else b""
+        )
         response["ETag"] = quote_etag(f'W/"{etag}"')
-        if is_refresh:
+        if is_authenticated:
             response["Cache-Control"] = "no-store"
             return response
         max_age_secs = int(self.cache_timeout.total_seconds())
@@ -192,10 +194,6 @@ class HealthCheckView(TemplateView):
         ):
             return True
         return self.allow_anonymous and "Authorization" not in request.headers
-
-    def should_bypass_cache(self, request: HttpRequest) -> bool:
-        """Return whether the request must run fresh checks and skip shared caches."""
-        return self.has_valid_authentication_token(request)
 
     def has_valid_authentication_token(self, request: HttpRequest) -> bool:
         """Return whether the request carries the configured bearer token."""

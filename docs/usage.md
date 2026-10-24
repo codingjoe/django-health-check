@@ -95,8 +95,7 @@ checks run. Random tokens cannot create cache variants or trigger checks.
 
 ### Custom policies
 
-Override `is_authorized` to implement another permission model. Override
-`should_bypass_cache` to change when a request skips the cache.
+Override `is_authorized` to implement another permission model.
 
 ```python
 import os
@@ -107,15 +106,12 @@ from health_check.views import HealthCheckView
 class TeamHealthCheckView(HealthCheckView):
     def is_authorized(self, request):
         return request.headers.get("X-Team-Token") == os.environ["TEAM_TOKEN"]
-
-    def should_bypass_cache(self, request):
-        return self.is_authorized(request)
 ```
 
 > [!WARNING]
-> When caching is enabled and you use another credential, return `True` from
-> `should_bypass_cache` for authenticated requests. Otherwise a shared cache
-> can serve the response to another client.
+> Cache exemption is tied to `authentication_token`. When you implement
+> another credential and enable caching, leave `cache_timeout` unset.
+> Otherwise a shared cache can serve the response to another client.
 
 ## Getting machine-readable reports
 

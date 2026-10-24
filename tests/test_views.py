@@ -1134,27 +1134,6 @@ class TestHealthCheckView:
         assert allowed.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_get__custom_should_bypass_cache(self, health_check_view):
-        """Use a custom cache bypass policy."""
-
-        class SuccessBackend(HealthCheck):
-            async def run(self):
-                pass
-
-        class CustomHealthCheckView(HealthCheckView):
-            def should_bypass_cache(self, request):
-                return False
-
-        response = await health_check_view(
-            [SuccessBackend],
-            view_class=CustomHealthCheckView,
-            cache_timeout=datetime.timedelta(seconds=60),
-            authentication_token="secret",
-            headers={"Authorization": "Bearer secret"},
-        )
-        assert response["Cache-Control"] == "public, max-age=60"
-
-    @pytest.mark.asyncio
     async def test_get__options_with_cache_timeout(self, health_check_view):
         """Answer OPTIONS without computing an entity tag."""
 
