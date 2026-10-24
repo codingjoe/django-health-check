@@ -239,7 +239,7 @@ class TestMail:
         mock_connection = mock.MagicMock()
 
         with (
-            mock.patch("health_check.checks.django.VERSION", (5, 2)),
+            mock.patch("health_check.checks.django.VERSION", (6, 0)),
             mock.patch(
                 "health_check.checks.get_connection", return_value=mock_connection
             ) as mock_get_conn,
