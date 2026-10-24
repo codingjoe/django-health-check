@@ -9,11 +9,14 @@ when a check fails.
 For multi-tier examples, see the [Cookbook](cookbook.md).
 
 To let a CDN cache successful responses, set
-`cache_timeout=timedelta(seconds=30)` on `HealthCheckView`. A failing check
-returns HTTP 500, which is never cached. A request with a valid bearer token
-skips the cache and runs the checks. To serve the cached response to requests
-without a token, set `allow_anonymous=True`. See
-[Security](install.md#security) to create the token.
+`cache_timeout=timedelta(seconds=30)` on
+[HealthCheckView][health_check.views.HealthCheckView]. A failing check returns
+HTTP 500, which is never cached. A request with a valid bearer token skips the
+cache and runs the checks. To serve the cached response to requests without a
+token, set `allow_anonymous=True`. See [Security](install.md#security) to
+create the token.
+
+::: health_check.views.HealthCheckView
 
 ## Getting machine-readable reports
 
