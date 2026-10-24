@@ -298,9 +298,8 @@ class RemoteCheck(HealthCheck):
             "Accept": "application/json",
             "User-Agent": "django-health-check",
         }
-        match self.auth_token:
-            case str(token) if token:
-                headers["Authorization"] = f"Bearer {token}"
+        if token := self.auth_token:
+            headers["Authorization"] = f"Bearer {token}"
 
         async with httpx.AsyncClient(
             headers=headers,
