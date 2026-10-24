@@ -1,4 +1,4 @@
-"""Health check implementations for Django built-in services."""
+"""Health check implementations and deployment checks."""
 
 import dataclasses
 import datetime
@@ -11,8 +11,10 @@ import uuid
 import django
 import dns.asyncresolver
 from django import db
+from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
 from django.core.cache.backends.base import InvalidCacheBackendError
+from django.core.checks import Error, Tags, register
 from django.core.files.base import ContentFile
 from django.core.files.storage import InvalidStorageError, storages
 from django.core.files.storage import Storage as DjangoStorage
@@ -49,6 +51,21 @@ except ModuleNotFoundError:
 
 
 logger = logging.getLogger(__name__)
+
+
+@register(Tags.security, deploy=True)
+def check_auth_token(app_configs, **kwargs) -> typing.Iterator[Error]:
+    """Yield an error when the auth token setting is empty or invalid."""
+    try:
+        auth_token = settings.HEALTH_CHECK_AUTH_TOKEN
+    except AttributeError:
+        return
+    if not isinstance(auth_token, str) or not auth_token.strip():
+        yield Error(
+            "HEALTH_CHECK_AUTH_TOKEN must be a non-empty string.",
+            hint="Set a non-empty string or remove the setting to disable authentication.",
+            id="health_check.E001",
+        )
 
 
 @dataclasses.dataclass

@@ -110,6 +110,9 @@ Protect the health check endpoint with a bearer token.
 The view and the `health_check` command read this setting. Requests without
 the token receive HTTP 403.
 
+Run `python manage.py check --deploy` to verify the setup. It reports
+`health_check.E001` when the setting is present but empty.
+
 To keep the endpoint public, set `allow_anonymous=True`. This admits only
 requests with no `Authorization` header. A request with a wrong or malformed
 token still receives HTTP 403. A request with a valid token still skips the
