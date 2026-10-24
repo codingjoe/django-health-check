@@ -11,7 +11,13 @@ import uuid
 from concurrent.futures import Executor
 
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBase,
+    HttpResponseForbidden,
+    JsonResponse,
+)
 from django.utils.cache import (
     add_never_cache_headers,
     get_conditional_response,
@@ -143,17 +149,14 @@ class HealthCheckView(TemplateView):
                 return self.patch_cache_headers(request, response)
             add_never_cache_headers(response)
             return response
-        return self.render_forbidden_response(request)
+        return self.render_forbidden_response()
 
-    def render_forbidden_response(self, request: HttpRequest) -> HttpResponse:
+    def render_forbidden_response(self) -> HttpResponseForbidden:
         """Return 403 without running health checks."""
-        response = HttpResponse(
-            "" if request.method == "HEAD" else "Authentication failed",
-            status=403,
-            content_type="text/plain; charset=utf-8",
+        response = HttpResponseForbidden(
+            "Authentication failed", content_type="text/plain; charset=utf-8"
         )
-        patch_vary_headers(response, ["Accept", "Authorization"])
-        add_never_cache_headers(response)
+        patch_vary_headers(response, ["Authorization"])
         return response
 
     def patch_cache_headers(
