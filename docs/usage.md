@@ -1,12 +1,14 @@
 # Usage
 
-## Setting up monitoring
+## Set up monitoring
 
-You can point an uptime monitor such as Pingdom or StatusCake at your service.
-The `/health/` endpoint returns HTTP 200 when every check passes, and HTTP 500
-when a check fails.
+You can point an uptime monitor at your service. Examples are Pingdom and
+StatusCake. The `/health/` endpoint returns HTTP 200 when every check passes.
+It returns HTTP 500 when a check fails.
 
-For multi-tier examples, see the [Cookbook](cookbook.md).
+The [Cookbook](cookbook.md) gives examples of multi-tier endpoint setups.
+It includes uptime monitoring, container probes, reverse-proxy configuration,
+and RSS/Atom integration into Slack or Matrix.
 
 ::: health_check.views.HealthCheckView
     options:
@@ -15,13 +17,15 @@ For multi-tier examples, see the [Cookbook](cookbook.md).
         - auth_token
         - allow_anonymous
 
-## Getting machine-readable reports
+## Get machine-readable reports
 
 ### Plain text
 
-For simple monitoring and scripting, ask for plain text. Set the `Accept` HTTP header to `text/plain`, or pass `format=text` as a query parameter.
+For simple monitoring and scripting, request plain text. Set the `Accept` HTTP
+header to `text/plain`. Or pass `format=text` as a query parameter.
 
-When everything passes, you get a plain text response with HTTP 200. When a check fails, you get HTTP 500:
+When every check passes, the endpoint returns plain text with HTTP 200. When a
+check fails, the endpoint returns HTTP 500:
 
 ```shell
 $ curl -v -X GET -H "Accept: text/plain" http://www.example.com/health/
@@ -50,12 +54,13 @@ DatabaseBackend: OK
 S3BotoStorageHealthCheck: OK
 ```
 
-This format is handy for command-line tools and simple scripts that don't want to parse JSON.
+This format is useful for command-line tools and simple scripts. These tools
+do not parse JSON.
 
 ### JSON
 
-Want machine-readable results? Set the `Accept` HTTP header to
-`application/json`, or pass `format=json` as a query parameter.
+Set the `Accept` HTTP header to `application/json`. Or pass `format=json` as a
+query parameter.
 
 The endpoint returns a JSON response:
 
@@ -116,27 +121,29 @@ $ curl -H "Accept: application/rss+xml" http://www.example.com/health/
 $ curl -H "Accept: application/atom+xml" http://www.example.com/health/
 ```
 
-These endpoints always answer with HTTP 200. The feed lists each check, and failed checks show up as categories and item descriptions.
+These endpoints always return HTTP 200. The feed lists each check. Failed checks
+appear as categories and item descriptions.
 
-## Writing a custom health check
+## Write a custom health check
 
-You can write your own checks too. Inherit from
+You can also write your own checks. Inherit from
 [HealthCheck][health_check.HealthCheck] and implement the `run` method.
 
 ::: health_check.HealthCheck
 
 ## Django command
 
-Run the Django command `health_check` from the shell, or schedule it
+Run the Django command `health_check` from the shell. You can also schedule it
 with cron:
 
 ```shell
 django-admin health_check health_check
 ```
 
-The `endpoint` argument is the `name` of the health check URL pattern defined in your
-`urls.py` (see the [installation guide](install.md)). The command looks it up with
-`reverse()` and runs the checks over HTTP against the running server:
+The `endpoint` argument is the `name` of the health check URL pattern in your
+`urls.py`. See the [installation guide](install.md). The command resolves the
+name with `reverse()`. Then it runs the checks over HTTP against the running
+server:
 
 ```
 Database                 ... OK
@@ -152,8 +159,8 @@ django-admin health_check health_check --auth-token "$HEALTH_CHECK_AUTH_TOKEN"
 The command reads `HEALTH_CHECK_AUTH_TOKEN` from the environment when you omit
 `--auth-token`.
 
-Pass `--no-http` to skip the HTTP server entirely. Handy for container
-health checks that don't run a web server:
+Pass `--no-http` to skip the HTTP server. This option is useful for container
+health checks that do not run a web server:
 
 ```shell
 django-admin health_check health_check --no-http
@@ -163,20 +170,21 @@ A critical error exits the command with the code `1`.
 
 ## Performance tweaks
 
-Every check runs asynchronously, via `asyncio` or a thread pool, depending
-on how each check is implemented.
-IO-bound checks run in parallel, so responses come back faster.
+Every check runs asynchronously. It uses `asyncio` or a thread pool, based on
+its implementation. IO-bound checks run in parallel. As a result, responses
+return faster.
 
-Synchronous checks (for example [Database][health_check.checks.Database], [Mail][health_check.checks.Mail],
-or [Storage][health_check.checks.Storage]) run in the event loop's default thread pool.
-That pool usually persists between requests. It keeps things fast, but it can
-grow memory usage. That's a problem for some applications, especially `S3Storage`,
-which uses thread-local connections.
+Synchronous checks (for example [Database][health_check.checks.Database],
+[Mail][health_check.checks.Mail], or [Storage][health_check.checks.Storage])
+run in the default thread pool of the event loop. That pool usually persists
+between requests. It is fast, but it can increase memory use. This is a problem
+for some applications, for example `S3Storage`. `S3Storage` uses thread-local
+connections.
 
-To avoid that, use a custom executor that spins up a fresh thread pool per
-request and tears it down when the checks finish. Subclass `HealthCheckView`
-and override the `get_executor` method to return a context manager with a
-new `ThreadPoolExecutor` each time.
+To prevent this problem, use a custom executor. The executor starts a new
+thread pool for each request and stops it when the checks finish. Subclass
+`HealthCheckView` and override the `get_executor` method. Return a context
+manager with a new `ThreadPoolExecutor` for each request.
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -188,9 +196,8 @@ class CustomHealthCheckView(HealthCheckView):
         return ThreadPoolExecutor(max_workers=len(self.checks))
 ```
 
-This gives every request its own thread pool. You keep the speed of
-concurrent execution for synchronous checks, but the memory stays under
-control.
+Then every request has its own thread pool. You keep the speed of concurrent
+execution for synchronous checks. Memory use stays under control.
 
 To let a CDN cache successful responses, set
 [`max_age`](#health_check.views.HealthCheckView.max_age) to

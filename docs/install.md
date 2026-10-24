@@ -8,7 +8,7 @@ uv add django-health-check
 pip install django-health-check
 ```
 
-Add `health_check` and any desired plugins to your `INSTALLED_APPS` in `settings.py`:
+Add `health_check` and the plugins that you want to `INSTALLED_APPS` in `settings.py`:
 
 ```python
 # settings.py
@@ -79,9 +79,9 @@ urlpatterns = [
 ```
 
 > [!NOTE]
-> The `name` argument is required — the `health_check` command needs it to
-> resolve this endpoint URL via `reverse()`. When you run the command, pass this name as
-> the `endpoint` argument, for example `django-admin health_check health_check`.
+> The `name` argument is required. The `health_check` command uses it to resolve
+> this endpoint URL with `reverse()`. When you run the command, pass this name as
+> the `endpoint` argument. For example, `django-admin health_check health_check`.
 
 ## Security
 
@@ -89,16 +89,17 @@ Protect the health check endpoint with a bearer token.
 
 1. Enable HTTPS.
 
-2. Generate a token with `get_random_string`:
+2. Generate a strong secret token:
 
     ```shell
-    python -c "from django.utils.crypto import get_random_string; print(get_random_string(64))"
+    python -c "import secrets; print(secrets.token_urlsafe())"
     ```
 
     > [!WARNING]
-    > Do NOT use Django's `SECRET_KEY` setting!
+    > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
+    > to sign other data.
 
-3. Pass the token to the view:
+3. Add the token to your URL configuration:
 
     ```python
     # urls.py
@@ -108,6 +109,7 @@ Protect the health check endpoint with a bearer token.
     from health_check.views import HealthCheckView
 
     urlpatterns = [
+        # …
         path(
             "health/",
             HealthCheckView.as_view(auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN")),
@@ -116,7 +118,13 @@ Protect the health check endpoint with a bearer token.
     ]
     ```
 
-4. Send the token as `Authorization: Bearer <token>`. Requests without the token receive HTTP 403.
+4. Send the token in the request:
+
+    ```shell
+    $ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" http://www.example.com/health/
+    ```
+
+    Requests without the token receive HTTP 403.
 
 To keep the endpoint public, set `allow_anonymous=True`. This admits only
 requests with no `Authorization` header. A request with a wrong or malformed
