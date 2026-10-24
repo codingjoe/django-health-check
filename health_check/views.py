@@ -157,7 +157,7 @@ class HealthCheckView(TemplateView):
         is_shareable = (
             max_age > 0
             and request.method in ("GET", "HEAD")
-            and not self.has_valid_authentication_token(request)
+            and "Authorization" not in request.headers
         )
         response["Cache-Control"] = (
             f"public, max-age={max_age}" if is_shareable else "no-store, max-age=0"
@@ -166,19 +166,14 @@ class HealthCheckView(TemplateView):
 
     def is_authorized(self, request: HttpRequest) -> bool:
         """Return whether the request may access the view."""
-        if self.authentication_token is None or self.has_valid_authentication_token(
-            request
-        ):
+        if self.authentication_token is None:
             return True
-        return self.allow_anonymous and "Authorization" not in request.headers
-
-    def has_valid_authentication_token(self, request: HttpRequest) -> bool:
-        """Return whether the request carries the configured bearer token."""
-        if not self.authentication_token:
-            return False
         scheme, _, token = request.headers.get("Authorization", "").partition(" ")
-        return scheme.lower() == "bearer" and constant_time_compare(
+        has_valid_token = scheme.lower() == "bearer" and constant_time_compare(
             token, self.authentication_token
+        )
+        return has_valid_token or (
+            self.allow_anonymous and "Authorization" not in request.headers
         )
 
     async def get(self, request, *args, **kwargs):
