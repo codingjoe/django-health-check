@@ -42,6 +42,7 @@ email = "kristian@oellegaard.com"
 name = "Johannes Maron"
 email = "johannes@maron.family"
 [project.optional-dependencies]
+atlassian = []
 celery = [ "celery>=5" ]
 crontask = [ "django-crontask[redis]>=2", "redis>=5.0.1" ]
 kafka = [ "confluent-kafka>=2" ]
