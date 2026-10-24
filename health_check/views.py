@@ -134,16 +134,16 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(transaction.non_atomic_requests)
     async def dispatch(self, request, *args, **kwargs):
-        if not self.is_authorized(request):
-            return self.render_forbidden_response(request)
-        response = await super().dispatch(request, *args, **kwargs)
-        patch_vary_headers(response, ["Accept"])
-        if self.authentication_token:
-            patch_vary_headers(response, ["Authorization"])
-        if not self.cache_timeout or request.method not in ("GET", "HEAD"):
-            add_never_cache_headers(response)
-            return response
-        return self.patch_cache_headers(request, response)
+        if self.is_authorized(request):
+            response = await super().dispatch(request, *args, **kwargs)
+            patch_vary_headers(response, ["Accept"])
+            if self.authentication_token:
+                patch_vary_headers(response, ["Authorization"])
+            if not self.cache_timeout or request.method not in ("GET", "HEAD"):
+                add_never_cache_headers(response)
+                return response
+            return self.patch_cache_headers(request, response)
+        return self.render_forbidden_response(request)
 
     def render_forbidden_response(self, request: HttpRequest) -> HttpResponse:
         """Return 403 without running health checks."""
