@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import datetime
-import hmac
 import logging
 import re
 import timeit
@@ -17,6 +16,7 @@ from django.http import (
     JsonResponse,
 )
 from django.utils.cache import patch_vary_headers
+from django.utils.crypto import constant_time_compare
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
@@ -177,8 +177,8 @@ class HealthCheckView(TemplateView):
         if not self.authentication_token:
             return False
         scheme, _, token = request.headers.get("Authorization", "").partition(" ")
-        return scheme.lower() == "bearer" and hmac.compare_digest(
-            token.encode(), self.authentication_token.encode()
+        return scheme.lower() == "bearer" and constant_time_compare(
+            token, self.authentication_token
         )
 
     async def get(self, request, *args, **kwargs):
