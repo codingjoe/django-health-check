@@ -228,9 +228,8 @@ check fails. Uptime monitors expect these codes.
 
 Anonymous requests can share a cached response for 30 seconds. Send
 `Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN` to bypass the cache. The view
-runs every check. The monitor always sees a fresh result. The cache does not
-store a failed response. See [Security](install.md#security) to create the
-token.
+runs every check. The monitor always sees a fresh result. See
+[Security](install.md#security) to create the token.
 
 ## Pipeline health checks
 

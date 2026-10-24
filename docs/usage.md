@@ -201,9 +201,7 @@ execution for synchronous checks. Memory use stays under control.
 
 Set [`max_age`](#health_check.views.HealthCheckView.max_age) to
 `timedelta(seconds=30)` on `HealthCheckView`. A shared cache can then reuse a
-successful response for 30 seconds. The shared cache can be a CDN, a reverse
-proxy, or Django's cache middleware. Text, HTML, and JSON responses return
-HTTP 500 when a check fails, so the cache does not store them. Atom, RSS, and
-OpenMetrics responses always return HTTP 200. A short `max_age` limits how long
-a failed result stays in the cache for these formats. A request with a valid
-bearer token skips the cache and runs the checks.
+response for 30 seconds. The shared cache can be a CDN, a reverse proxy, or
+Django's cache middleware. A short `max_age` limits how long a failed result
+stays in the cache. A request with a valid bearer token skips the cache and
+runs the checks.
