@@ -119,7 +119,5 @@ Keep the health check endpoint private with a bearer token.
    ```
 1. Send the token as `Authorization: Bearer <token>`. Requests without it get HTTP 403.
 
-Set `allow_anonymous=True` to keep the endpoint public. Requests with a valid
-token still bypass the cache. See
-[Caching and authentication](usage.md#caching-and-authentication) for that
-combination.
+Set `allow_anonymous=True` to keep the endpoint public. Valid token requests
+still bypass the cache.
