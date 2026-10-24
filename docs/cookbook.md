@@ -291,9 +291,9 @@ Subscribe to the RSS feed in Slack:
 
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
 2. In your `#ops` or `#incidents` channel, run:
-   ```
-   /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
-   ```
+    ```
+    /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
+    ```
 
 Or subscribe in Matrix:
 
