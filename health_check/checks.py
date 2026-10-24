@@ -1,11 +1,14 @@
-"""Health check implementations for Django built-in services."""
+"""Health check implementations for Django built-in services and remote endpoints."""
 
 import dataclasses
 import datetime
+import json
 import logging
 import smtplib
 import socket
 import typing
+import urllib.error
+import urllib.request
 import uuid
 
 import django
@@ -244,6 +247,90 @@ class Mail(HealthCheck):
         finally:
             connection.close()
         logger.debug("Connection established. Mail backend %r is healthy.", connection)
+
+
+@dataclasses.dataclass
+class Page(HealthCheck):
+    """
+    Check a remote django-health-check endpoint.
+
+    Report every non-OK result as a single error.
+
+    Args:
+        endpoint: Absolute URL of the health check endpoint.
+        label: Label that replaces the endpoint URL in the check representation.
+        timeout: Request timeout.
+
+    """
+
+    endpoint: str = dataclasses.field(repr=False)
+    label: str | None = None
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+
+    def __repr__(self) -> str:
+        match self.label:
+            case None:
+                return f"{type(self).__name__}(endpoint={self.endpoint!r})"
+            case label:
+                return f"{type(self).__name__}(label={label!r})"
+
+    def _request(self) -> tuple[int, bytes]:
+        """Return the HTTP status and body from the endpoint."""
+        request = urllib.request.Request(  # noqa: S310
+            self.endpoint,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "django-health-check",
+            },
+        )
+        try:
+            with urllib.request.urlopen(  # noqa: S310
+                request, timeout=self.timeout.total_seconds()
+            ) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as e:
+            with e:
+                return e.code, e.read()
+        except urllib.error.URLError as e:
+            msg = f"Failed to reach endpoint: {e.reason}"
+            raise ServiceUnavailable(msg) from e
+        except TimeoutError as e:
+            msg = "Request timed out"
+            raise ServiceUnavailable(msg) from e
+
+    def _parse(self, status: int, body: bytes) -> dict[str, typing.Any]:
+        """Return the JSON object from a successful or failed health check response."""
+        match status:
+            case 200 | 500:
+                try:
+                    results = json.loads(body)
+                except ValueError as e:
+                    msg = "Response is not valid JSON"
+                    raise ServiceReturnedUnexpectedResult(msg) from e
+            case _:
+                msg = f"Unexpected HTTP status {status}"
+                raise ServiceUnavailable(msg)
+        match results:
+            case dict():
+                return results
+            case _:
+                msg = "Response is not a JSON object"
+                raise ServiceReturnedUnexpectedResult(msg)
+
+    def run(self) -> None:
+        """Report all failed checks of the remote endpoint as one error."""
+        status, body = self._request()
+        results = self._parse(status, body)
+        errors = [
+            f"{check}: {result}" for check, result in results.items() if result != "OK"
+        ]
+        match errors:
+            case []:
+                return
+            case _:
+                raise ServiceUnavailable("\n".join(errors))
 
 
 @dataclasses.dataclass

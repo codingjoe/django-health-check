@@ -2,8 +2,10 @@
 
 import datetime
 import importlib.util
+import io
 import logging
 import sys
+import urllib.error
 from unittest import mock
 
 import django
@@ -14,7 +16,7 @@ from django.core.cache import CacheKeyWarning
 from django.test import override_settings
 
 from health_check import Storage
-from health_check.checks import DNS, Cache, Database, Mail
+from health_check.checks import DNS, Cache, Database, Mail, Page
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -268,6 +270,147 @@ class TestMail:
             check = Mail()
             result = await check.get_result()
             assert result.error is None
+
+
+class TestPage:
+    """Test the Page health check."""
+
+    @staticmethod
+    def _response(status, body):
+        response = mock.MagicMock()
+        response.status = status
+        response.read.return_value = body
+        response.__enter__.return_value = response
+        return response
+
+    @pytest.mark.asyncio
+    async def test_run_check__all_ok(self):
+        """Report no error when every remote check is OK."""
+        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.return_value = self._response(
+                200, b'{"Database": "OK", "Cache": "OK"}'
+            )
+            check = Page(endpoint="https://example.com/health/")
+            result = await check.get_result()
+
+        assert result.error is None
+        request = mock_urlopen.call_args.args[0]
+        assert request.full_url == "https://example.com/health/"
+        assert request.get_header("Accept") == "application/json"
+        assert mock_urlopen.call_args.kwargs["timeout"] == 10.0
+
+    @pytest.mark.asyncio
+    async def test_run_check__multiple_errors(self):
+        """Report all remote failures as one error."""
+        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.return_value = self._response(
+                500,
+                b'{"Database": "Unavailable: down", "Cache": "OK", '
+                b'"Mail": "Unexpected Result: bad"}',
+            )
+            check = Page(endpoint="https://example.com/health/")
+            result = await check.get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert str(result.error) == (
+            "Unavailable: Database: Unavailable: down\nMail: Unexpected Result: bad"
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_check__http_error_with_json(self):
+        """Read a JSON body from an HTTP error response."""
+        error = urllib.error.HTTPError(
+            "https://example.com/health/",
+            500,
+            "Internal Server Error",
+            {},
+            io.BytesIO(b'{"Database": "Unavailable: down"}'),
+        )
+        with mock.patch(
+            "health_check.checks.urllib.request.urlopen", side_effect=error
+        ):
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Database: Unavailable: down" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__unexpected_http_status(self):
+        """Raise ServiceUnavailable for an unexpected HTTP status."""
+        error = urllib.error.HTTPError(
+            "https://example.com/health/", 404, "Not Found", {}, io.BytesIO(b"")
+        )
+        with mock.patch(
+            "health_check.checks.urllib.request.urlopen", side_effect=error
+        ):
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Unexpected HTTP status 404" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__invalid_json(self):
+        """Raise ServiceReturnedUnexpectedResult for malformed JSON."""
+        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.return_value = self._response(200, b"not json")
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not valid JSON" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__unexpected_json(self):
+        """Raise ServiceReturnedUnexpectedResult for a non-object JSON body."""
+        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.return_value = self._response(200, b'["OK"]')
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not a JSON object" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__connection_error(self):
+        """Raise ServiceUnavailable when the endpoint is unreachable."""
+        error = urllib.error.URLError("Connection refused")
+        with mock.patch(
+            "health_check.checks.urllib.request.urlopen", side_effect=error
+        ):
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Failed to reach endpoint: Connection refused" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__timeout(self):
+        """Raise ServiceUnavailable when the request times out."""
+        with mock.patch(
+            "health_check.checks.urllib.request.urlopen", side_effect=TimeoutError
+        ):
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Request timed out" in str(result.error)
+
+    def test_repr__endpoint(self):
+        """Show the endpoint URL when no label is set."""
+        check = Page(endpoint="https://example.com/health/")
+        assert repr(check) == "Page(endpoint='https://example.com/health/')"
+
+    def test_repr__label(self):
+        """Show the label instead of the endpoint URL."""
+        check = Page(endpoint="https://example.com/health/", label="example")
+        assert repr(check) == "Page(label='example')"
+        assert check.endpoint not in repr(check)
+
+    def test_labels__endpoint(self):
+        """Exclude the endpoint URL from labels."""
+        check = Page(endpoint="https://example.com/health/")
+        assert check.labels == {"check": "Page"}
+
+    def test_labels__label(self):
+        """Include the label in labels."""
+        check = Page(endpoint="https://example.com/health/", label="example")
+        assert check.labels == {"check": "Page", "label": "example"}
 
 
 class TestStorage:

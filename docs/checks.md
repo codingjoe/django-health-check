@@ -12,6 +12,12 @@
 
 ::: health_check.Storage
 
+## Remote Health Check Endpoints
+
+Monitor another django-health-check instance and report all its failures as one error.
+
+::: health_check.Page
+
 ## System Services
 
 To use the psutil-based checks, install the `psutil` extra:
