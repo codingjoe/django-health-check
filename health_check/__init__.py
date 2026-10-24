@@ -2,7 +2,7 @@
 
 from . import _version  # noqa
 from .base import HealthCheck
-from .checks import Cache, DNS, Database, Mail, Page, Storage
+from .checks import Cache, DNS, Database, Mail, RemoteCheck, Storage
 
 __version__ = _version.__version__
 VERSION = _version.__version_tuple__
@@ -14,7 +14,7 @@ __all__ = [
     "Database",
     "HealthCheck",
     "Mail",
-    "Page",
+    "RemoteCheck",
     "Storage",
     "__version__",
 ]

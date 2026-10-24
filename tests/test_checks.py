@@ -16,7 +16,14 @@ from django.core.checks.registry import registry
 from django.test import override_settings
 
 from health_check import Storage
-from health_check.checks import DNS, Cache, Database, Mail, Page, check_auth_token
+from health_check.checks import (
+    DNS,
+    Cache,
+    Database,
+    Mail,
+    RemoteCheck,
+    check_auth_token,
+)
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -272,8 +279,8 @@ class TestMail:
             assert result.error is None
 
 
-class TestPage:
-    """Test the Page health check."""
+class TestRemoteCheck:
+    """Test the RemoteCheck health check."""
 
     @staticmethod
     def _response(status, body=None):
@@ -296,7 +303,7 @@ class TestPage:
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             client = self._client(response)
             mock_client.return_value = client
-            check = Page(endpoint="https://example.com/health/")
+            check = RemoteCheck(url="https://example.com/health/")
             result = await check.get_result()
 
         assert result.error is None
@@ -321,7 +328,7 @@ class TestPage:
         )
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
-            check = Page(endpoint="https://example.com/health/")
+            check = RemoteCheck(url="https://example.com/health/")
             result = await check.get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
@@ -336,7 +343,7 @@ class TestPage:
         response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceReturnedUnexpectedResult)
         assert "Response is not valid JSON (HTTP 404)" in str(result.error)
@@ -347,7 +354,7 @@ class TestPage:
         response = self._response(404, {"detail": "Not found"})
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
         assert str(result.error) == "Unavailable: detail: Not found"
@@ -359,7 +366,7 @@ class TestPage:
         response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceReturnedUnexpectedResult)
         assert "Response is not valid JSON" in str(result.error)
@@ -369,21 +376,21 @@ class TestPage:
         """Raise ServiceReturnedUnexpectedResult for a non-object JSON body."""
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(self._response(200, ["OK"]))
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceReturnedUnexpectedResult)
         assert "Response is not a JSON object" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_run_check__connection_error(self):
-        """Raise ServiceUnavailable when the endpoint is unreachable."""
+        """Raise ServiceUnavailable when the URL is unreachable."""
         client = self._client(None)
         client.get.side_effect = httpx.ConnectError("Connection refused")
         with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
-        assert "Failed to reach endpoint: Connection refused" in str(result.error)
+        assert "Failed to reach URL: Connection refused" in str(result.error)
 
     @pytest.mark.asyncio
     async def test_run_check__timeout(self):
@@ -391,31 +398,31 @@ class TestPage:
         client = self._client(None)
         client.get.side_effect = httpx.TimeoutException("Timed out")
         with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
-            result = await Page(endpoint="https://example.com/health/").get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
         assert "Request timed out" in str(result.error)
 
-    def test_repr__endpoint(self):
-        """Show the endpoint URL when no label is set."""
-        check = Page(endpoint="https://example.com/health/")
-        assert repr(check) == "Page(endpoint='https://example.com/health/')"
+    def test_repr__url(self):
+        """Show the URL when no label is set."""
+        check = RemoteCheck(url="https://example.com/health/")
+        assert repr(check) == "RemoteCheck(url='https://example.com/health/')"
 
     def test_repr__label(self):
-        """Show the label instead of the endpoint URL."""
-        check = Page(endpoint="https://example.com/health/", label="example")
-        assert repr(check) == "Page(label='example')"
-        assert check.endpoint not in repr(check)
+        """Show the label instead of the URL."""
+        check = RemoteCheck(url="https://example.com/health/", label="example")
+        assert repr(check) == "RemoteCheck(label='example')"
+        assert check.url not in repr(check)
 
-    def test_labels__endpoint(self):
-        """Exclude the endpoint URL from labels."""
-        check = Page(endpoint="https://example.com/health/")
-        assert check.labels == {"check": "Page"}
+    def test_labels__url(self):
+        """Exclude the URL from labels."""
+        check = RemoteCheck(url="https://example.com/health/")
+        assert check.labels == {"check": "RemoteCheck"}
 
     def test_labels__label(self):
         """Include the label in labels."""
-        check = Page(endpoint="https://example.com/health/", label="example")
-        assert check.labels == {"check": "Page", "label": "example"}
+        check = RemoteCheck(url="https://example.com/health/", label="example")
+        assert check.labels == {"check": "RemoteCheck", "label": "example"}
 
 
 class TestStorage:

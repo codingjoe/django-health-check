@@ -10,7 +10,7 @@
 
 ::: health_check.Mail
 
-::: health_check.Page
+::: health_check.RemoteCheck
 
 ::: health_check.Storage
 
