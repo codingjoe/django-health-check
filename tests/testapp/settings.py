@@ -26,12 +26,6 @@ INSTALLED_APPS = [
 ]
 
 
-MIDDLEWARE_CLASSES = (
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-)
-
 STATIC_URL = "/static/"
 
 MEDIA_ROOT = BASE_DIR / "media"
