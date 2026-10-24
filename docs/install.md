@@ -85,7 +85,7 @@ urlpatterns = [
 
 ## Security
 
-You can keep the health check endpoint private by requiring a bearer token.
+You can keep the health check endpoint private by adding a secure token to your URL.
 
 1. Enable HTTPS.
 1. Generate a strong secret token:
@@ -94,31 +94,18 @@ You can keep the health check endpoint private by requiring a bearer token.
    ```
    > [!WARNING]
    > Do NOT use Django's `SECRET_KEY` setting!
-1. Set `authentication_token` in your URL configuration:
+1. Add it to your URL configuration:
    ```python
    #  urls.py
-   import os
-
-   from django.urls import path
+   from django.urls import include, path
    from health_check.views import HealthCheckView
 
    urlpatterns = [
        # …
        path(
-           "health/",
-           HealthCheckView.as_view(
-               authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
-           ),
+           "health/super_secret_token/",
+           HealthCheckView.as_view(),
            name="health_check",
        ),
    ]
    ```
-1. Send the token in the `Authorization` header:
-   ```shell
-   curl -H "Authorization: Bearer $HEALTH_CHECK_AUTHENTICATION_TOKEN" https://example.com/health/
-   ```
-
-Requests without a valid token receive HTTP 403 before any check runs.
-`allow_anonymous` defaults to `False`, so the endpoint is private as soon as
-a token is set. See [Caching and authentication](usage.md#caching-and-authentication)
-for cache busting and custom policies.
