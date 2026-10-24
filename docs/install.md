@@ -89,7 +89,7 @@ Protect the health check endpoint with a bearer token.
 
 1. Enable HTTPS.
 
-1. Generate a token with `get_random_string`:
+2. Generate a token with `get_random_string`:
 
     ```shell
     python -c "from django.utils.crypto import get_random_string; print(get_random_string(64))"
@@ -98,7 +98,7 @@ Protect the health check endpoint with a bearer token.
     > [!WARNING]
     > Do NOT use Django's `SECRET_KEY` setting!
 
-1. Pass the token to the view:
+3. Pass the token to the view:
 
     ```python
     # urls.py
@@ -116,7 +116,7 @@ Protect the health check endpoint with a bearer token.
     ]
     ```
 
-1. Send the token as `Authorization: Bearer <token>`. Requests without the token receive HTTP 403.
+4. Send the token as `Authorization: Bearer <token>`. Requests without the token receive HTTP 403.
 
 To keep the endpoint public, set `allow_anonymous=True`. This admits only
 requests with no `Authorization` header. A request with a wrong or malformed
