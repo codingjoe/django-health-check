@@ -12,9 +12,7 @@ To let a CDN cache successful responses, set
 [`cache_timeout`](#health_check.views.HealthCheckView.cache_timeout) to
 `timedelta(seconds=30)` on `HealthCheckView`. A failing check returns HTTP 500,
 which is never cached. A request with a valid bearer token skips the
-cache and runs the checks. To serve the cached response to requests without a
-token, set `allow_anonymous=True`. See [Security](install.md#security) to
-create the token.
+cache and runs the checks.
 
 ::: health_check.views.HealthCheckView
     options:
