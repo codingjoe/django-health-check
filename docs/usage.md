@@ -10,6 +10,25 @@ For step-by-step examples of multi-tier endpoint setups, including uptime
 monitoring, container probes, reverse-proxy configuration, and RSS/Atom
 integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
+## Caching and authentication
+
+`HealthCheckView` takes three arguments for caching and access.
+
+| Argument               | Default | Effect                                                                |
+| ---------------------- | ------- | --------------------------------------------------------------------- |
+| `cache_timeout`        | `0s`    | Serve a `Cache-Control: public, max-age` header for this `timedelta`. |
+| `authentication_token` | `None`  | Bearer token. Requests with it skip the cache.                        |
+| `allow_anonymous`      | `False` | Allow requests without the token.                                     |
+
+A positive `cache_timeout` lets a CDN serve `GET` and `HEAD` responses for that
+long. Only requests without an `Authorization` header are cached. Authenticated
+ones send `Cache-Control: no-store` and run the checks.
+
+With `authentication_token` set, a request must send
+`Authorization: Bearer <token>`, or it gets HTTP 403. Combine it with
+`allow_anonymous=True` and `cache_timeout` to keep the endpoint public while
+monitors read fresh results.
+
 ## Getting machine-readable reports
 
 ### Plain text
