@@ -89,24 +89,24 @@ Add a secure token to your URL to keep the health check endpoint private.
 
 1. Enable HTTPS.
 2. Generate a strong secret token:
-   ```shell
-   python -c "import secrets; print(secrets.token_urlsafe())"
-   ```
-   > [!WARNING]
-   > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
-   > to sign other data.
+    ```shell
+    python -c "import secrets; print(secrets.token_urlsafe())"
+    ```
+    > [!WARNING]
+    > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
+    > to sign other data.
 3. Add the token to your URL configuration:
-   ```python
-   #  urls.py
-   from django.urls import include, path
-   from health_check.views import HealthCheckView
+    ```python
+    #  urls.py
+    from django.urls import include, path
+    from health_check.views import HealthCheckView
 
-   urlpatterns = [
-       # …
-       path(
-           "health/super_secret_token/",
-           HealthCheckView.as_view(),
-           name="health_check",
-       ),
-   ]
-   ```
+    urlpatterns = [
+        # …
+        path(
+            "health/super_secret_token/",
+            HealthCheckView.as_view(),
+            name="health_check",
+        ),
+    ]
+    ```

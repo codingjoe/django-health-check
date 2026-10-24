@@ -38,9 +38,8 @@ repos:
       - id: mdformat
         args: [--number]
         additional_dependencies:
+          - mdformat-mkdocs
           - mdformat-ruff
-          - mdformat-footnote
-          - mdformat-gfm
           - mdformat-gfm-alerts
         exclude: '.github/agents/'
   - repo: https://github.com/astral-sh/ruff-pre-commit
