@@ -1350,7 +1350,7 @@ class TestHealthCheckViewAuthentication:
     def test_is_authorized(self, token, allow_anonymous, headers, expected):
         """Authorize only a matching bearer token unless anonymity is admitted."""
         view = HealthCheckView()
-        view.authentication_token = token
+        view.auth_token = token
         view.allow_anonymous = allow_anonymous
         request = AsyncRequestFactory().get("/", headers=headers)
         assert view.is_authorized(request) is expected
@@ -1360,7 +1360,7 @@ class TestHealthCheckViewAuthentication:
         """Return 403 and vary on Authorization when no token is sent."""
         response = await health_check_view(
             [SuccessBackend],
-            authentication_token="secret",
+            auth_token="secret",
             max_age=datetime.timedelta(seconds=30),
         )
         assert response.status_code == 403
@@ -1374,7 +1374,7 @@ class TestHealthCheckViewAuthentication:
         response = await health_check_view(
             [SuccessBackend],
             headers={"Authorization": "Bearer secret"},
-            authentication_token="secret",
+            auth_token="secret",
             max_age=datetime.timedelta(seconds=30),
         )
         assert response.status_code == 200
@@ -1386,7 +1386,7 @@ class TestHealthCheckViewAuthentication:
         """Serve an anonymous request when the view allows it."""
         response = await health_check_view(
             [SuccessBackend],
-            authentication_token="secret",
+            auth_token="secret",
             allow_anonymous=True,
             max_age=datetime.timedelta(seconds=30),
         )
@@ -1399,7 +1399,7 @@ class TestHealthCheckViewAuthentication:
         response = await health_check_view(
             [SuccessBackend],
             headers={"Authorization": "Bearer wrong"},
-            authentication_token="secret",
+            auth_token="secret",
             allow_anonymous=True,
         )
         assert response.status_code == 403

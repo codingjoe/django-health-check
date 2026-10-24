@@ -113,7 +113,7 @@ class HealthCheckView(TemplateView):
     Sent as `max-age`. Zero disables caching.
     """
 
-    authentication_token: str | None = None
+    auth_token: str | None = None
     """Secret bearer token that authenticates a request and skips the cache."""
 
     allow_anonymous: bool = False
@@ -142,7 +142,7 @@ class HealthCheckView(TemplateView):
             return response
         response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
-        if self.authentication_token:
+        if self.auth_token:
             patch_vary_headers(response, ["Authorization"])
         return self.patch_cache_headers(request, response)
 
@@ -164,11 +164,11 @@ class HealthCheckView(TemplateView):
 
     def is_authorized(self, request: HttpRequest) -> bool:
         """Return whether the request may access the view."""
-        if self.authentication_token:
+        if self.auth_token:
             scheme, _, token = request.headers.get("Authorization", "").partition(" ")
             return (
                 scheme.lower() == "bearer"
-                and constant_time_compare(token, self.authentication_token)
+                and constant_time_compare(token, self.auth_token)
             ) or (self.allow_anonymous and "Authorization" not in request.headers)
         return True
 

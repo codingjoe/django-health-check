@@ -217,7 +217,7 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         max_age=timedelta(seconds=30),
-                        authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
+                        auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",
@@ -293,7 +293,7 @@ urlpatterns = [
 ```
 
 The pipeline endpoint is public because Slack and Matrix cannot send an
-`Authorization` header. Leave `authentication_token` unset here.
+`Authorization` header. Leave `auth_token` unset here.
 
 ### Slack or Matrix
 
@@ -386,7 +386,7 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         max_age=timedelta(seconds=30),
-                        authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
+                        auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",

@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 import pytest
 from django.core.management import call_command
 
+from health_check.management.commands.health_check import Command
+
 
 class TestHealthCheckCommand:
     """Test health_check management command."""
@@ -167,6 +169,7 @@ class TestHealthCheckCommand:
             "health_check",
             "health_check_test",
             addrport,
+            auth_token="test-token",
             verbosity=2,
             stdout=stdout,
             stderr=stderr,
@@ -175,6 +178,7 @@ class TestHealthCheckCommand:
         # At verbosity 2, should show debug info about the request
         assert "Checking health endpoint" in output
         assert "with headers:" in output
+        assert "test-token" not in output
 
     def test_handle__http_400_error(self, live_server):
         """Return exit code 2 and helpful message for HTTP 400 errors."""
@@ -371,3 +375,86 @@ class TestHealthCheckCommand:
             mock_urlopen.assert_called_once()
             output = stdout.getvalue()
             assert "OK" in output or "working" in output
+
+    def test_handle__token_authenticates(self, live_server):
+        """Send a bearer token when --auth-token is provided."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        call_command(
+            "health_check",
+            "health_check_auth",
+            addrport,
+            auth_token="test-token",
+            stdout=stdout,
+            stderr=stderr,
+        )
+        output = stdout.getvalue()
+        assert "Database" in output or "Cache" in output
+        assert "OK" in output or "working" in output
+
+    def test_handle__missing_token_exits_2(self, live_server):
+        """Return exit code 2 and an auth hint when the token is missing."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        with (
+            patch.dict(os.environ, {"HEALTH_CHECK_AUTH_TOKEN": ""}),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            call_command(
+                "health_check",
+                "health_check_auth",
+                addrport,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        assert exc_info.value.code == 2
+        error_output = stderr.getvalue()
+        assert "requires authentication" in error_output
+        assert "--auth-token" in error_output
+        assert "HEALTH_CHECK_AUTH_TOKEN" in error_output
+
+    def test_handle__token_from_environment(self, live_server):
+        """Use HEALTH_CHECK_AUTH_TOKEN from the environment as the default token."""
+        parsed = urlparse(live_server.url)
+        addrport = f"{parsed.hostname}:{parsed.port}"
+
+        stdout = StringIO()
+        stderr = StringIO()
+        with patch.dict(os.environ, {"HEALTH_CHECK_AUTH_TOKEN": "test-token"}):
+            call_command(
+                "health_check",
+                "health_check_auth",
+                addrport,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        output = stdout.getvalue()
+        assert "OK" in output or "working" in output
+
+    def test_build_headers__auth_token(self):
+        """Set the Authorization header only when a token is provided."""
+        headers = Command._build_headers({"auth_token": "test-token"})
+        assert headers["Authorization"] == "Bearer test-token"
+
+        assert "Authorization" not in Command._build_headers({"auth_token": None})
+        assert "Authorization" not in Command._build_headers({"auth_token": ""})
+
+    def test_redact_headers(self):
+        """Mask the Authorization value without mutating the input headers."""
+        headers = {"Accept": "text/plain", "Authorization": "Bearer test-token"}
+        redacted = Command._redact_headers(headers)
+        assert redacted == {
+            "Accept": "text/plain",
+            "Authorization": "Bearer ******",
+        }
+        assert redacted is not headers
+        assert headers["Authorization"] == "Bearer test-token"
+
+        public_headers = {"Accept": "text/plain"}
+        assert Command._redact_headers(public_headers) is public_headers

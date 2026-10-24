@@ -12,7 +12,7 @@ For multi-tier examples, see the [Cookbook](cookbook.md).
     options:
       members:
         - max_age
-        - authentication_token
+        - auth_token
         - allow_anonymous
 
 ## Getting machine-readable reports
@@ -142,6 +142,15 @@ The `endpoint` argument is the `name` of the health check URL pattern defined in
 Database                 ... OK
 CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
+
+If the view sets `auth_token`, pass a bearer token:
+
+```shell
+django-admin health_check health_check --auth-token "$HEALTH_CHECK_AUTH_TOKEN"
+```
+
+The command reads `HEALTH_CHECK_AUTH_TOKEN` from the environment when you omit
+`--auth-token`.
 
 Pass `--no-http` to skip the HTTP server entirely. Handy for container
 health checks that don't run a web server:

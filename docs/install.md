@@ -110,7 +110,7 @@ Protect the health check endpoint with a bearer token.
     urlpatterns = [
         path(
             "health/",
-            HealthCheckView.as_view(authentication_token=os.getenv("HEALTH_CHECK_TOKEN")),
+            HealthCheckView.as_view(auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN")),
             name="health_check",
         ),
     ]

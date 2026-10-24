@@ -27,6 +27,18 @@ urlpatterns = [
         ),
         name="health_check_test",
     ),
+    # Token-protected endpoint for testing authentication
+    path(
+        "health/authenticated/",
+        HealthCheckView.as_view(
+            checks=[
+                "health_check.checks.Database",
+                "health_check.checks.Cache",
+            ],
+            auth_token="test-token",
+        ),
+        name="health_check_auth",
+    ),
     # Failing endpoint for testing error handling
     path(
         "health/fail/",
