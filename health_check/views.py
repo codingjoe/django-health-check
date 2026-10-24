@@ -153,15 +153,14 @@ class HealthCheckView(TemplateView):
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set cache headers for a shared cache."""
-        max_age = int(self.cache_timeout.total_seconds())
+        max_age = max(0, int(self.cache_timeout.total_seconds()))
         is_shareable = (
             max_age > 0
             and request.method in ("GET", "HEAD")
             and "Authorization" not in request.headers
         )
-        response["Cache-Control"] = (
-            f"public, max-age={max_age}" if is_shareable else "no-store, max-age=0"
-        )
+        visibility = "public" if is_shareable else "no-store"
+        response["Cache-Control"] = f"{visibility}, max-age={max_age}"
         return response
 
     def is_authorized(self, request: HttpRequest) -> bool:
