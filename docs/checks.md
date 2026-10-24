@@ -96,8 +96,5 @@ Write your own status page proxy checks with these classes.
 Subclasses must implement the documented attributes.
 
 ::: health_check.contrib.rss.Feed
-    options:
-      docstring_options:
-        warn_unknown_params: false
 
 ::: health_check.contrib.atlassian.AtlassianStatusPage

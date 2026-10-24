@@ -29,10 +29,6 @@ class HealthCheck(abc.ABC):
     Subclasses should implement the `run` method to perform the actual health check logic.
     The `run` method can be either synchronous or asynchronous.
 
-    Args:
-        timeout (datetime.timedelta): Wall-clock budget for the probe. A check
-            declaring its own timeout overrides it.
-
     Examples:
         >>> import dataclasses
         >>> from health_check.base import HealthCheck
@@ -55,6 +51,7 @@ class HealthCheck(abc.ABC):
 
     # A dataclass field here would become the first parameter of every check.
     timeout = datetime.timedelta(seconds=5)
+    """Wall-clock budget for the probe; a check declaring its own timeout overrides it."""
 
     @abc.abstractmethod
     async def run(self) -> None:

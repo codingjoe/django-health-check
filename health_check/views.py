@@ -102,28 +102,25 @@ class MediaType:
 
 
 class HealthCheckView(TemplateView):
-    """
-    Perform health checks and return results in various formats.
-
-    Args:
-        max_age (datetime.timedelta): Longest time a shared cache may reuse a
-            successful response. Sent as `max-age`. Zero disables caching.
-        auth_token (str | None): Secret bearer token that authenticates a
-            request and skips the cache.
-        allow_anonymous (bool): Admit requests without an Authorization header
-            when a token is configured. A request with a wrong token still
-            receives HTTP 403.
-
-    """
+    """Perform health checks and return results in various formats."""
 
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
     max_age: datetime.timedelta = datetime.timedelta(0)
+    """Longest time a shared cache may reuse a successful response.
+
+    Sent as `max-age`. Zero disables caching.
+    """
 
     auth_token: str | None = None
+    """Secret bearer token that authenticates a request and skips the cache."""
 
     allow_anonymous: bool = False
+    """Admit requests without an Authorization header when a token is configured.
+
+    A request with a wrong token still receives HTTP 403.
+    """
 
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]

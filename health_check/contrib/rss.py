@@ -21,12 +21,10 @@ class Feed(HealthCheck):
 
     Subclasses must provide:
 
-    Args:
-        feed_url (str): The full URL of the RSS or Atom feed to monitor.
-        timeout (datetime.timedelta): Maximum duration to wait for the HTTP
-            request before failing.
-        max_age (datetime.timedelta): Maximum age for an incident entry to be
-            considered active.
+    Attributes:
+        feed_url: The full URL of the RSS or Atom feed to monitor.
+        timeout: Maximum duration to wait for the HTTP request before failing.
+        max_age: Maximum age for an incident entry to be considered active.
 
     The `timeout` and `max_age` values are used to control how long the
     health check waits for the feed and how far back in time incidents are
