@@ -50,7 +50,7 @@ urlpatterns = [
                     "node/",
                     HealthCheckView.as_view(
                         checks=node_checks,
-                        max_age=timedelta(seconds=10),
+                        max_age=timedelta(0),
                     ),
                     name="health_check-node",
                 ),
@@ -61,9 +61,9 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> This endpoint is public. A CDN can cache a successful response for ten seconds.
-> Failures are never cached. If you do not want to show CPU, memory, and disk
-> figures, restrict the endpoint to your network.
+> This endpoint is public and uncached, because probes must read a fresh result.
+> If you do not want to show CPU, memory, and disk figures, restrict the endpoint
+> to your network.
 
 ### Kubernetes probes
 
@@ -376,7 +376,7 @@ urlpatterns = [
                     "node/",
                     HealthCheckView.as_view(
                         checks=node_checks,
-                        max_age=timedelta(seconds=10),
+                        max_age=timedelta(0),
                     ),
                     name="health_check-node",
                 ),
