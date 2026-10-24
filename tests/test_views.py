@@ -968,7 +968,7 @@ class TestHealthCheckView:
 
     @pytest.mark.asyncio
     async def test_get__authentication_token_requires_token(self, health_check_view):
-        """Reject anonymous requests when authentication is configured."""
+        """Reject anonymous requests when anonymous access is disabled."""
 
         class CountingBackend(HealthCheck):
             runs = 0
@@ -977,7 +977,9 @@ class TestHealthCheckView:
                 CountingBackend.runs += 1
 
         response = await health_check_view(
-            [CountingBackend], authentication_token="secret"
+            [CountingBackend],
+            authentication_token="secret",
+            allow_anonymous=False,
         )
         assert response.status_code == 403
         assert CountingBackend.runs == 0
@@ -1004,8 +1006,8 @@ class TestHealthCheckView:
         assert "no-store" in response["Cache-Control"]
 
     @pytest.mark.asyncio
-    async def test_get__allow_anonymous(self, health_check_view):
-        """Serve the cached response to anonymous requests."""
+    async def test_get__anonymous_allowed_by_default(self, health_check_view):
+        """Serve cached responses to anonymous requests by default."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -1015,7 +1017,6 @@ class TestHealthCheckView:
             [SuccessBackend],
             cache_timeout=datetime.timedelta(seconds=60),
             authentication_token="secret",
-            allow_anonymous=True,
         )
         assert response.status_code == 200
         assert response["Cache-Control"] == "public, max-age=60"
@@ -1034,14 +1035,12 @@ class TestHealthCheckView:
             [SuccessBackend],
             cache_timeout=cache_timeout,
             authentication_token="secret",
-            allow_anonymous=True,
             headers={"Authorization": "Bearer secret"},
         )
         conditional_response = await health_check_view(
             [SuccessBackend],
             cache_timeout=cache_timeout,
             authentication_token="secret",
-            allow_anonymous=True,
             headers={
                 "Authorization": "Bearer secret",
                 "If-None-Match": response["ETag"],

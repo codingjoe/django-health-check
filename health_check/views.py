@@ -107,7 +107,7 @@ class HealthCheckView(TemplateView):
     Perform health checks and return results in various formats.
 
     Set `cache_timeout` to allow shared caches to reuse responses.
-    Set `authentication_token` to require a bearer token.
+    Set `authentication_token` to authenticate requests and bypass the cache.
     """
 
     template_name = "health_check/index.html"
@@ -119,7 +119,7 @@ class HealthCheckView(TemplateView):
     authentication_token: str | None = None
     """Secret bearer token that authenticates a request and bypasses the cache."""
 
-    allow_anonymous: bool = False
+    allow_anonymous: bool = True
     """Allow requests without an authentication token when one is configured."""
 
     checks: typing.Iterable[

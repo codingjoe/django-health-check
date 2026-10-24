@@ -43,13 +43,15 @@ an unchanged result receives HTTP 304.
 
 ### Authentication
 
-Set `authentication_token` to require a bearer token:
+Set `authentication_token` and `allow_anonymous=False` to require a bearer
+token:
 
 ```python
 import os
 
 HealthCheckView.as_view(
     authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
+    allow_anonymous=False,
 )
 ```
 
@@ -61,19 +63,20 @@ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTHENTICATION_TOKEN" https://examp
 
 Requests without a valid token receive HTTP 403 before any check runs.
 Authenticated responses bypass the cache and send `Cache-Control: no-store`.
-This is the default because `allow_anonymous` is `False`.
 
 ### Cache busting with anonymous access
 
-For a public endpoint, set `allow_anonymous=True`. Anonymous visitors get
-the cached result. The uptime monitor sends the token and always gets a
-fresh result:
+`allow_anonymous` defaults to `True`, so adding a token does not make the
+endpoint private. Anonymous visitors get the cached result. The uptime
+monitor sends the token and always gets a fresh result:
 
 ```python
+import datetime
+import os
+
 HealthCheckView.as_view(
     cache_timeout=datetime.timedelta(seconds=30),
     authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
-    allow_anonymous=True,
 )
 ```
 
