@@ -16,7 +16,7 @@ from django.http import (
     HttpResponseForbidden,
     JsonResponse,
 )
-from django.utils.cache import add_never_cache_headers, patch_vary_headers
+from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
@@ -112,8 +112,8 @@ class HealthCheckView(TemplateView):
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
-    cache_timeout: datetime.timedelta | None = None
-    """Time a shared cache may reuse a response. Caching is disabled by default."""
+    cache_timeout: datetime.timedelta = datetime.timedelta(0)
+    """Time a shared cache may reuse a response. Zero disables caching."""
 
     authentication_token: str | None = None
     """Secret bearer token that authenticates a request and bypasses the cache."""
@@ -138,10 +138,7 @@ class HealthCheckView(TemplateView):
             patch_vary_headers(response, ["Accept"])
             if self.authentication_token:
                 patch_vary_headers(response, ["Authorization"])
-            if self.cache_timeout and request.method in ("GET", "HEAD"):
-                return self.patch_cache_headers(request, response)
-            add_never_cache_headers(response)
-            return response
+            return self.patch_cache_headers(request, response)
         return self.render_forbidden_response()
 
     def render_forbidden_response(self) -> HttpResponseForbidden:
@@ -156,11 +153,15 @@ class HealthCheckView(TemplateView):
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set cache headers for a shared cache."""
-        if self.has_valid_authentication_token(request):
-            response["Cache-Control"] = "no-store"
-            return response
-        max_age_secs = int(self.cache_timeout.total_seconds())
-        response["Cache-Control"] = f"public, max-age={max_age_secs}"
+        max_age = int(self.cache_timeout.total_seconds())
+        is_shareable = (
+            max_age > 0
+            and request.method in ("GET", "HEAD")
+            and not self.has_valid_authentication_token(request)
+        )
+        response["Cache-Control"] = (
+            f"public, max-age={max_age}" if is_shareable else "no-store, max-age=0"
+        )
         return response
 
     def is_authorized(self, request: HttpRequest) -> bool:

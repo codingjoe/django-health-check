@@ -17,7 +17,7 @@ resilience and authentication for access control.
 
 | Argument               | Default | Description                                                             |
 | ---------------------- | ------- | ----------------------------------------------------------------------- |
-| `cache_timeout`        | `None`  | Time a shared cache may reuse a response. Caching is off by default.    |
+| `cache_timeout`        | `0s`    | Time a shared cache may reuse a response. Zero disables caching.        |
 | `authentication_token` | `None`  | Bearer token that authenticates a request and bypasses the cache.       |
 | `allow_anonymous`      | `False` | Allow requests without a token when `authentication_token` is set.      |
 | `is_authorized`        | method  | Return whether a request may access the view. Override for your policy. |
@@ -116,7 +116,7 @@ class TeamHealthCheckView(HealthCheckView):
 
 > [!WARNING]
 > Cache exemption is tied to `authentication_token`. When you implement
-> another credential and enable caching, leave `cache_timeout` unset.
+> another credential and enable caching, leave `cache_timeout` at zero.
 > Otherwise a shared cache can serve the response to another client.
 
 ## Getting machine-readable reports
