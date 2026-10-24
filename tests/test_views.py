@@ -1296,8 +1296,16 @@ class TestHealthCheckViewCache:
                 500,
                 datetime.timedelta(seconds=30),
                 {},
-                "no-store",
+                "public, max-age=30",
                 id="failure",
+            ),
+            pytest.param(
+                "get",
+                406,
+                datetime.timedelta(seconds=30),
+                {},
+                "no-store",
+                id="client-error",
             ),
             pytest.param(
                 "post",
@@ -1336,13 +1344,13 @@ class TestHealthCheckViewCache:
         assert "Authorization" not in response.get("Vary", "")
 
     @pytest.mark.asyncio
-    async def test_dispatch__failure_not_cached(self, health_check_view):
-        """Send no-store when a check fails."""
+    async def test_dispatch__failure_cached(self, health_check_view):
+        """Cache a failed check response publicly."""
         response = await health_check_view(
             [FailingBackend], max_age=datetime.timedelta(seconds=30)
         )
         assert response.status_code == 500
-        assert response["Cache-Control"] == "no-store"
+        assert response["Cache-Control"] == "public, max-age=30"
 
 
 class TestHealthCheckViewAuthentication:

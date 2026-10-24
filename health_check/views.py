@@ -108,7 +108,7 @@ class HealthCheckView(TemplateView):
     feed_author = "Django Health Check"
 
     max_age: datetime.timedelta = datetime.timedelta(0)
-    """Longest time a shared cache may reuse a successful response.
+    """Longest time a shared cache may reuse a response.
 
     Sent as `max-age`. Zero disables caching.
     """
@@ -163,7 +163,7 @@ class HealthCheckView(TemplateView):
         """Set cache headers for a shared cache."""
         max_age_seconds = max(0, int(self.max_age.total_seconds()))
         cacheable = (
-            response.status_code == 200
+            response.status_code in (200, 500)
             and max_age_seconds
             and request.method in ("GET", "HEAD")
             and "Authorization" not in request.headers
