@@ -30,8 +30,6 @@ Add the node endpoint to your URL configuration.
 
 ```python
 # urls.py
-import os
-
 from django.urls import include, path
 from health_check.views import HealthCheckView
 
@@ -44,7 +42,7 @@ node_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
+        "health/",
         include(
             [
                 path(
@@ -59,7 +57,6 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> A secret token protects this endpoint from public access.
 > See the [Security](install.md#security) section of the installation guide.
 
 ### Kubernetes probes
@@ -78,13 +75,13 @@ The configuration for this health check endpoint is:
 # deployment.yaml
 livenessProbe:
   httpGet:
-    path: /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    path: /health/node/
     port: 8000
   initialDelaySeconds: 10
   periodSeconds: 30
 readinessProbe:
   httpGet:
-    path: /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    path: /health/node/
     port: 8000
   initialDelaySeconds: 5
   periodSeconds: 10
@@ -122,7 +119,7 @@ The configuration for [Caddy][caddy-active-health-checks] is:
 # Caddyfile
 example.com {
     reverse_proxy localhost:8000 {
-        health_uri      /health/${HEALTH_CHECK_SECRET:-dev}/node/
+        health_uri      /health/node/
         health_interval 30s
         health_timeout  5s
     }
@@ -137,7 +134,7 @@ services:
   app:
     image: myapp
     labels:
-      - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/${HEALTH_CHECK_SECRET:-dev}/node/"
+      - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/node/"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.interval=30s"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.timeout=5s"
 ```
@@ -148,7 +145,7 @@ The configuration for [Nginx][nginx-health-checks] is:
 # nginx.conf
 upstream myapp {
     server localhost:8000;
-    health_check interval=30s timeout=5s uri=/health/${HEALTH_CHECK_SECRET:-dev}/node/;
+    health_check interval=30s timeout=5s uri=/health/node/;
 }
 ```
 
@@ -159,7 +156,7 @@ The configuration for [HAProxy][haproxy-health-checks] is:
 backend myapp
     server app1 localhost:8000 check inter 30s fall 3 rise 2
     http-check expect status 200
-    http-check send meth GET uri /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    http-check send meth GET uri /health/node/
 ```
 
 ## Application health checks
@@ -178,7 +175,7 @@ pip install "django-health-check[redis,rabbitmq,celery,crontask]"
 
 ```python
 # urls.py
-import os
+from datetime import timedelta
 
 from django.urls import include, path
 from health_check.views import HealthCheckView
@@ -206,13 +203,17 @@ application_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
+        "health/",
         include(
             [
                 # other endpoints …
                 path(
                     "application/",
-                    HealthCheckView.as_view(checks=application_checks),
+                    HealthCheckView.as_view(
+                        checks=application_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
+                    ),
                     name="health_check-application",
                 ),
             ]
@@ -221,9 +222,15 @@ urlpatterns = [
 ]
 ```
 
-Point the uptime monitor at `https://example.com/health/<HEALTH_CHECK_SECRET>/application/`.
+Point the uptime monitor at `https://example.com/health/application/`.
 The endpoint returns HTTP 200 when all checks pass. It returns HTTP 500 when a
 check fails. Uptime monitors expect these codes.
+
+Anonymous requests can share a cached response for 30 seconds. Send
+`Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN` to bypass the cache. The view
+runs every check. The monitor always sees a fresh result. The cache does not
+store a failed response. See [Security](install.md#security) to create the
+token.
 
 ## Pipeline health checks
 
@@ -242,7 +249,7 @@ Add the pipeline endpoint to your URL configuration.
 
 ```python
 # urls.py
-import os
+from datetime import timedelta
 
 from django.urls import include, path
 from health_check.views import HealthCheckView
@@ -268,13 +275,17 @@ pipeline_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
+        "health/",
         include(
             [
                 # other endpoints …
                 path(
                     "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
+                    HealthCheckView.as_view(
+                        checks=pipeline_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
+                    ),
                     name="health_check-pipeline",
                 ),
             ]
@@ -282,6 +293,11 @@ urlpatterns = [
     )
 ]
 ```
+
+The pipeline endpoint is public because Slack and Matrix cannot send an
+`Authorization` header. Set `allow_anonymous=True` here.
+The short `max_age` applies to the cached feed while authenticated probes stay
+fresh.
 
 ### Slack or Matrix
 
@@ -292,7 +308,7 @@ Subscribe to the RSS feed in Slack:
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
 2. In your `#ops` or `#incidents` channel, run:
     ```
-    /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
+    /feed subscribe https://www.example.com/health/pipeline/?format=rss
     ```
 
 Or subscribe in Matrix:
@@ -301,7 +317,7 @@ Or subscribe in Matrix:
 # config.toml
 [[bridge]]
     name = "Pipeline Health Monitor"
-    feed_url = "https://example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss"
+    feed_url = "https://example.com/health/pipeline/?format=rss"
     room_id = "!YourRoomId:matrix.org"
 ```
 
@@ -311,7 +327,7 @@ ______________________________________________________________________
 
 ```python
 # urls.py
-import os
+from datetime import timedelta
 
 from django.urls import include, path
 from health_check.views import HealthCheckView
@@ -355,7 +371,7 @@ pipeline_checks = [
 
 urlpatterns = [
     path(
-        "health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
+        "health/",
         include(
             [
                 # Tier 1 – node: liveness & readiness probes
@@ -367,13 +383,21 @@ urlpatterns = [
                 # Tier 2 – application: uptime monitors & on-call alerts
                 path(
                     "application/",
-                    HealthCheckView.as_view(checks=application_checks),
+                    HealthCheckView.as_view(
+                        checks=application_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
+                    ),
                     name="health_check-application",
                 ),
                 # Tier 3 – pipeline: developer RSS/Atom feeds (Slack, Matrix)
                 path(
                     "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
+                    HealthCheckView.as_view(
+                        checks=pipeline_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
+                    ),
                     name="health_check-pipeline",
                 ),
             ]

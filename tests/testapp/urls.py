@@ -14,18 +14,30 @@ class AlwaysFailingCheck(HealthCheck):
         raise HealthCheckError(msg)
 
 
+FAST_CHECKS = [
+    "health_check.checks.Database",
+    "health_check.checks.Cache",
+]
+
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health_check"),
     # Simple endpoint for testing that only checks things that will work
     path(
         "health/test/",
-        HealthCheckView.as_view(
-            checks=[
-                "health_check.checks.Database",
-                "health_check.checks.Cache",
-            ]
-        ),
+        HealthCheckView.as_view(checks=FAST_CHECKS),
         name="health_check_test",
+    ),
+    # Token-protected endpoint that reads the token from the settings
+    path(
+        "health/authenticated/",
+        HealthCheckView.as_view(checks=FAST_CHECKS),
+        name="health_check_auth",
+    ),
+    # Token-protected endpoint with its own token
+    path(
+        "health/authenticated-override/",
+        HealthCheckView.as_view(checks=FAST_CHECKS, auth_token="flag-token"),
+        name="health_check_auth_override",
     ),
     # Failing endpoint for testing error handling
     path(

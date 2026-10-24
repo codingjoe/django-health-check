@@ -10,6 +10,15 @@ The [Cookbook](cookbook.md) gives examples of multi-tier endpoint setups.
 It includes uptime monitoring, container probes, reverse-proxy configuration,
 and RSS/Atom integration into Slack or Matrix.
 
+<div markdown="1">
+::: health_check.views.HealthCheckView
+    options:
+      members:
+        - max_age
+        - auth_token
+        - allow_anonymous
+</div>
+
 ## Get machine-readable reports
 
 ### Plain text
@@ -143,6 +152,13 @@ Database                 ... OK
 CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
 
+The command reads the `HEALTH_CHECK_AUTH_TOKEN` setting as its bearer token.
+Pass `--auth-token` to send a different token:
+
+```shell
+django-admin health_check health_check --auth-token "another-token"
+```
+
 Pass `--no-http` to skip the HTTP server. This option is useful for container
 health checks that do not run a web server:
 
@@ -182,3 +198,12 @@ class CustomHealthCheckView(HealthCheckView):
 
 Then every request has its own thread pool. You keep the speed of concurrent
 execution for synchronous checks. Memory use stays under control.
+
+Set [`max_age`](#health_check.views.HealthCheckView.max_age) to
+`timedelta(seconds=30)` on `HealthCheckView`. A shared cache can then reuse a
+successful response for 30 seconds. The shared cache can be a CDN, a reverse
+proxy, or Django's cache middleware. Text, HTML, and JSON responses return
+HTTP 500 when a check fails, so the cache does not store them. Atom, RSS, and
+OpenMetrics responses always return HTTP 200. A short `max_age` limits how long
+a failed result stays in the cache for these formats. A request with a valid
+bearer token skips the cache and runs the checks.

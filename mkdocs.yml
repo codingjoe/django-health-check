@@ -60,6 +60,7 @@ theme:
     - search.share
 markdown_extensions:
   - github-callouts
+  - md_in_html
   - pymdownx.highlight:
       use_pygments: true
   - pymdownx.superfences

@@ -11,10 +11,11 @@ import dns
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
+from django.core.checks.registry import registry
 from django.test import override_settings
 
 from health_check import Storage
-from health_check.checks import DNS, Cache, Database, Mail
+from health_check.checks import DNS, Cache, Database, Mail, check_auth_token
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -701,3 +702,42 @@ class TestRedisError:
 
         assert issubclass(module.RedisError, Exception)
         assert module.RedisError.__module__ == "health_check.checks"
+
+
+class TestAuthTokenCheck:
+    """Test the auth token deployment check."""
+
+    def test_check_auth_token__setting_absent(self):
+        """Yield no error when the setting is absent."""
+        assert list(check_auth_token(app_configs=None)) == []
+
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN=None)
+    def test_check_auth_token__setting_none(self):
+        """Yield an error when the setting is None."""
+        assert [error.id for error in check_auth_token(app_configs=None)] == [
+            "health_check.E001"
+        ]
+
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="")
+    def test_check_auth_token__setting_empty(self):
+        """Yield an error when the setting is empty."""
+        assert [error.id for error in check_auth_token(app_configs=None)] == [
+            "health_check.E001"
+        ]
+
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="  ")
+    def test_check_auth_token__setting_blank(self):
+        """Yield an error when the setting is only whitespace."""
+        assert [error.id for error in check_auth_token(app_configs=None)] == [
+            "health_check.E001"
+        ]
+
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="secret")
+    def test_check_auth_token__setting_valid(self):
+        """Yield no error when the setting is a non-empty string."""
+        assert list(check_auth_token(app_configs=None)) == []
+
+    def test_check_auth_token__deployment_check(self):
+        """Register the check only for deployment."""
+        assert check_auth_token in registry.get_checks(include_deployment_checks=True)
+        assert check_auth_token not in registry.get_checks()
