@@ -291,8 +291,7 @@ class Page(HealthCheck):
             case label:
                 return f"{type(self).__name__}(label={label!r})"
 
-    async def _request(self) -> httpx.Response:
-        """Return the response from the endpoint."""
+    async def run(self) -> None:
         async with httpx.AsyncClient(
             headers={
                 "Accept": "application/json",
@@ -302,7 +301,7 @@ class Page(HealthCheck):
             follow_redirects=True,
         ) as client:
             try:
-                return await client.get(self.endpoint)
+                response = await client.get(self.endpoint)
             except httpx.TimeoutException as e:
                 msg = "Request timed out"
                 raise ServiceUnavailable(msg) from e
@@ -310,8 +309,6 @@ class Page(HealthCheck):
                 msg = f"Failed to reach endpoint: {e}"
                 raise ServiceUnavailable(msg) from e
 
-    def _parse(self, response: httpx.Response) -> dict[str, typing.Any]:
-        """Return the JSON object from a successful or failed health check response."""
         match response.status_code:
             case 200 | 500:
                 try:
@@ -322,17 +319,14 @@ class Page(HealthCheck):
             case status:
                 msg = f"Unexpected HTTP status {status}"
                 raise ServiceUnavailable(msg)
+
         match results:
             case dict():
-                return results
+                pass
             case _:
                 msg = "Response is not a JSON object"
                 raise ServiceReturnedUnexpectedResult(msg)
 
-    async def run(self) -> None:
-        """Report all failed checks of the remote endpoint as one error."""
-        response = await self._request()
-        results = self._parse(response)
         errors = "\n".join(
             f"{check}: {result}" for check, result in results.items() if result != "OK"
         )
