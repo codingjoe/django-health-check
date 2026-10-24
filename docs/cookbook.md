@@ -61,9 +61,9 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> This endpoint is public. A CDN can cache the response for ten seconds. If you do
-> not want to show CPU, memory, and disk figures, restrict the endpoint to your
-> network.
+> This endpoint is public. A CDN can cache a successful response for ten seconds.
+> Failures are never cached. If you do not want to show CPU, memory, and disk
+> figures, restrict the endpoint to your network.
 
 ### Kubernetes probes
 
@@ -231,9 +231,10 @@ urlpatterns = [
 Point the uptime monitor at `https://example.com/health/application/`.
 It returns HTTP 200 when all checks pass, and HTTP 500 when a check fails.
 
-For anonymous requests, a CDN can cache the response for 30 seconds. When the
-monitor sends `Authorization: Bearer <token>`, the view skips the cache and runs
-every check. See [Security](install.md#security) to create the token.
+For anonymous requests, a CDN can cache a successful response for 30 seconds.
+Failures are never cached. When the monitor sends
+`Authorization: Bearer <token>`, the view skips the cache and runs every check.
+See [Security](install.md#security) to create the token.
 
 ## Pipeline health checks
 

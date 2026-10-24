@@ -105,21 +105,26 @@ class HealthCheckView(TemplateView):
     """
     Perform health checks and return results in various formats.
 
-    Set `cache_timeout` to allow shared caches to reuse responses.
-    Set `authentication_token` to authenticate requests and bypass the cache.
+    Set `cache_timeout` to allow shared caches to reuse successful responses.
+    Set `authentication_token` to authenticate requests and skip the cache.
+    Requests without a valid token receive HTTP 403, unless `allow_anonymous`
+    admits them.
     """
 
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
     cache_timeout: datetime.timedelta = datetime.timedelta(0)
-    """Time a shared cache may reuse a response. Zero disables caching."""
+    """Time a shared cache may reuse a successful response. Zero disables caching."""
 
     authentication_token: str | None = None
-    """Secret bearer token that authenticates a request and bypasses the cache."""
+    """Secret bearer token that authenticates a request and skips the cache."""
 
     allow_anonymous: bool = False
-    """Allow requests without an authentication token when one is configured."""
+    """Admit requests without an Authorization header when a token is configured.
+
+    A request with a wrong token still receives HTTP 403.
+    """
 
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
@@ -133,35 +138,32 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(transaction.non_atomic_requests)
     async def dispatch(self, request, *args, **kwargs):
-        if self.is_authorized(request):
-            response = await super().dispatch(request, *args, **kwargs)
-            patch_vary_headers(response, ["Accept"])
-            if self.authentication_token:
-                patch_vary_headers(response, ["Authorization"])
-            return self.patch_cache_headers(request, response)
-        return self.render_forbidden_response()
-
-    def render_forbidden_response(self) -> HttpResponseForbidden:
-        """Return 403 without running health checks."""
-        response = HttpResponseForbidden(
-            "Authentication failed", content_type="text/plain; charset=utf-8"
-        )
-        patch_vary_headers(response, ["Authorization"])
-        return response
+        if not self.is_authorized(request):
+            response = HttpResponseForbidden(
+                "Authentication failed", content_type="text/plain; charset=utf-8"
+            )
+            patch_vary_headers(response, ["Authorization"])
+            return response
+        response = await super().dispatch(request, *args, **kwargs)
+        patch_vary_headers(response, ["Accept"])
+        if self.authentication_token:
+            patch_vary_headers(response, ["Authorization"])
+        return self.patch_cache_headers(request, response)
 
     def patch_cache_headers(
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set cache headers for a shared cache."""
         max_age = max(0, int(self.cache_timeout.total_seconds()))
-        visibility = (
-            "public"
-            if max_age
+        cacheable = (
+            response.status_code == 200
+            and max_age
             and request.method in ("GET", "HEAD")
             and "Authorization" not in request.headers
-            else "no-store"
         )
-        response["Cache-Control"] = f"{visibility}, max-age={max_age}"
+        response["Cache-Control"] = (
+            f"public, max-age={max_age}" if cacheable else "no-store"
+        )
         return response
 
     def is_authorized(self, request: HttpRequest) -> bool:
