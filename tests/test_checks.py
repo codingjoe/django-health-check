@@ -331,13 +331,26 @@ class TestPage:
 
     @pytest.mark.asyncio
     async def test_run_check__unexpected_http_status(self):
-        """Raise ServiceUnavailable for an unexpected HTTP status."""
+        """Report an unexpected HTTP status when the response is not JSON."""
+        response = self._response(404)
+        response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
-            mock_client.return_value = self._client(self._response(404))
+            mock_client.return_value = self._client(response)
+            result = await Page(endpoint="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not valid JSON (HTTP 404)" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__json_with_unexpected_http_status(self):
+        """Report JSON errors regardless of the HTTP status."""
+        response = self._response(404, {"detail": "Not found"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
-        assert "Unexpected HTTP status 404" in str(result.error)
+        assert str(result.error) == "Unavailable: detail: Not found"
 
     @pytest.mark.asyncio
     async def test_run_check__invalid_json(self):

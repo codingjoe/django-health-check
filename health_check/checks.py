@@ -309,32 +309,21 @@ class Page(HealthCheck):
                 msg = f"Failed to reach endpoint: {e}"
                 raise ServiceUnavailable(msg) from e
 
-        match response.status_code:
-            case 200 | 500:
-                try:
-                    results = response.json()
-                except ValueError as e:
-                    msg = "Response is not valid JSON"
-                    raise ServiceReturnedUnexpectedResult(msg) from e
-            case status:
-                msg = f"Unexpected HTTP status {status}"
-                raise ServiceUnavailable(msg)
+        try:
+            errors = "\n".join(
+                f"{check}: {result}"
+                for check, result in response.json().items()
+                if result != "OK"
+            )
+        except ValueError as e:
+            msg = f"Response is not valid JSON (HTTP {response.status_code})"
+            raise ServiceReturnedUnexpectedResult(msg) from e
+        except AttributeError as e:
+            msg = "Response is not a JSON object"
+            raise ServiceReturnedUnexpectedResult(msg) from e
 
-        match results:
-            case dict():
-                pass
-            case _:
-                msg = "Response is not a JSON object"
-                raise ServiceReturnedUnexpectedResult(msg)
-
-        errors = "\n".join(
-            f"{check}: {result}" for check, result in results.items() if result != "OK"
-        )
-        match errors:
-            case "":
-                return
-            case _:
-                raise ServiceUnavailable(errors)
+        if errors:
+            raise ServiceUnavailable(errors)
 
 
 @dataclasses.dataclass
