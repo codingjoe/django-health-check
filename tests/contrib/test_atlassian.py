@@ -1,9 +1,8 @@
 import datetime
 from unittest import mock
 
+import httpx
 import pytest
-
-pytest.importorskip("httpx")
 
 from health_check.contrib.atlassian import (
     Cloudflare,
@@ -261,8 +260,6 @@ class TestFlyIo:
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):
         """Raise ServiceUnavailable on HTTP error."""
-        import httpx
-
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
         ) as mock_client:
@@ -314,8 +311,6 @@ class TestFlyIo:
     @pytest.mark.asyncio
     async def test_check_status__timeout(self):
         """Raise ServiceUnavailable on timeout."""
-        import httpx
-
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
         ) as mock_client:
@@ -334,8 +329,6 @@ class TestFlyIo:
     @pytest.mark.asyncio
     async def test_check_status__request_error(self):
         """Raise ServiceUnavailable on request error."""
-        import httpx
-
         with mock.patch(
             "health_check.contrib.atlassian.httpx.AsyncClient"
         ) as mock_client:

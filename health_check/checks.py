@@ -2,17 +2,15 @@
 
 import dataclasses
 import datetime
-import json
 import logging
 import smtplib
 import socket
 import typing
-import urllib.error
-import urllib.request
 import uuid
 
 import django
 import dns.asyncresolver
+import httpx
 from django import db
 from django.core.cache import CacheKeyWarning, caches
 from django.core.cache.backends.base import InvalidCacheBackendError
@@ -276,40 +274,35 @@ class Page(HealthCheck):
             case label:
                 return f"{type(self).__name__}(label={label!r})"
 
-    def _request(self) -> tuple[int, bytes]:
-        """Return the HTTP status and body from the endpoint."""
-        request = urllib.request.Request(  # noqa: S310
-            self.endpoint,
+    async def _request(self) -> httpx.Response:
+        """Return the response from the endpoint."""
+        async with httpx.AsyncClient(
             headers={
                 "Accept": "application/json",
                 "User-Agent": "django-health-check",
             },
-        )
-        try:
-            with urllib.request.urlopen(  # noqa: S310
-                request, timeout=self.timeout.total_seconds()
-            ) as response:
-                return response.status, response.read()
-        except urllib.error.HTTPError as e:
-            with e:
-                return e.code, e.read()
-        except urllib.error.URLError as e:
-            msg = f"Failed to reach endpoint: {e.reason}"
-            raise ServiceUnavailable(msg) from e
-        except TimeoutError as e:
-            msg = "Request timed out"
-            raise ServiceUnavailable(msg) from e
+            timeout=self.timeout.total_seconds(),
+            follow_redirects=True,
+        ) as client:
+            try:
+                return await client.get(self.endpoint)
+            except httpx.TimeoutException as e:
+                msg = "Request timed out"
+                raise ServiceUnavailable(msg) from e
+            except httpx.RequestError as e:
+                msg = f"Failed to reach endpoint: {e}"
+                raise ServiceUnavailable(msg) from e
 
-    def _parse(self, status: int, body: bytes) -> dict[str, typing.Any]:
+    def _parse(self, response: httpx.Response) -> dict[str, typing.Any]:
         """Return the JSON object from a successful or failed health check response."""
-        match status:
+        match response.status_code:
             case 200 | 500:
                 try:
-                    results = json.loads(body)
+                    results = response.json()
                 except ValueError as e:
                     msg = "Response is not valid JSON"
                     raise ServiceReturnedUnexpectedResult(msg) from e
-            case _:
+            case status:
                 msg = f"Unexpected HTTP status {status}"
                 raise ServiceUnavailable(msg)
         match results:
@@ -319,18 +312,18 @@ class Page(HealthCheck):
                 msg = "Response is not a JSON object"
                 raise ServiceReturnedUnexpectedResult(msg)
 
-    def run(self) -> None:
+    async def run(self) -> None:
         """Report all failed checks of the remote endpoint as one error."""
-        status, body = self._request()
-        results = self._parse(status, body)
-        errors = [
+        response = await self._request()
+        results = self._parse(response)
+        errors = "\n".join(
             f"{check}: {result}" for check, result in results.items() if result != "OK"
-        ]
+        )
         match errors:
-            case []:
+            case "":
                 return
             case _:
-                raise ServiceUnavailable("\n".join(errors))
+                raise ServiceUnavailable(errors)
 
 
 @dataclasses.dataclass

@@ -14,7 +14,7 @@
 2. Update the dependencies. Include the extras for the checks you want to use.
 
    ```shell
-   uv add 'django-health-check[psutil,celery,kafka,rabbitmq,redis,rss,atlassian]>=4.0.0'
+   uv add 'django-health-check[psutil,celery,kafka,rabbitmq,redis,rss]>=4.0.0'
    ```
 
 3. Remove these `health_check.*` sub-apps from `INSTALLED_APPS`. Do not remove `health_check`.
@@ -61,3 +61,4 @@
 - `CeleryHealthCheck` is replaced with [Ping][health_check.contrib.celery.Ping].
 - `MigrationsHealthCheck` is removed. [Django's check framework](https://docs.djangoproject.com/en/stable/topics/checks/) does the same function.
 - `DatabaseHealthCheck` is replaced with [Database][health_check.Database]. It does not require a table. It supports multiple database aliases.
+- The `atlassian` extra is removed. `httpx` is now a required dependency for API-based cloud status checks.

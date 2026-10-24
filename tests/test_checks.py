@@ -2,14 +2,13 @@
 
 import datetime
 import importlib.util
-import io
 import logging
 import sys
-import urllib.error
 from unittest import mock
 
 import django
 import dns
+import httpx
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
@@ -276,38 +275,51 @@ class TestPage:
     """Test the Page health check."""
 
     @staticmethod
-    def _response(status, body):
+    def _response(status, body=None):
         response = mock.MagicMock()
-        response.status = status
-        response.read.return_value = body
-        response.__enter__.return_value = response
+        response.status_code = status
+        response.json.return_value = body
         return response
+
+    @staticmethod
+    def _client(response):
+        client = mock.MagicMock()
+        client.get = mock.AsyncMock(return_value=response)
+        client.__aenter__.return_value = client
+        return client
 
     @pytest.mark.asyncio
     async def test_run_check__all_ok(self):
         """Report no error when every remote check is OK."""
-        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value = self._response(
-                200, b'{"Database": "OK", "Cache": "OK"}'
-            )
+        response = self._response(200, {"Database": "OK", "Cache": "OK"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            client = self._client(response)
+            mock_client.return_value = client
             check = Page(endpoint="https://example.com/health/")
             result = await check.get_result()
 
         assert result.error is None
-        request = mock_urlopen.call_args.args[0]
-        assert request.full_url == "https://example.com/health/"
-        assert request.get_header("Accept") == "application/json"
-        assert mock_urlopen.call_args.kwargs["timeout"] == 10.0
+        client.get.assert_awaited_once_with("https://example.com/health/")
+        assert mock_client.call_args.kwargs["headers"] == {
+            "Accept": "application/json",
+            "User-Agent": "django-health-check",
+        }
+        assert mock_client.call_args.kwargs["timeout"] == 10.0
+        assert mock_client.call_args.kwargs["follow_redirects"] is True
 
     @pytest.mark.asyncio
     async def test_run_check__multiple_errors(self):
         """Report all remote failures as one error."""
-        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value = self._response(
-                500,
-                b'{"Database": "Unavailable: down", "Cache": "OK", '
-                b'"Mail": "Unexpected Result: bad"}',
-            )
+        response = self._response(
+            500,
+            {
+                "Database": "Unavailable: down",
+                "Cache": "OK",
+                "Mail": "Unexpected Result: bad",
+            },
+        )
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
             check = Page(endpoint="https://example.com/health/")
             result = await check.get_result()
 
@@ -317,32 +329,10 @@ class TestPage:
         )
 
     @pytest.mark.asyncio
-    async def test_run_check__http_error_with_json(self):
-        """Read a JSON body from an HTTP error response."""
-        error = urllib.error.HTTPError(
-            "https://example.com/health/",
-            500,
-            "Internal Server Error",
-            {},
-            io.BytesIO(b'{"Database": "Unavailable: down"}'),
-        )
-        with mock.patch(
-            "health_check.checks.urllib.request.urlopen", side_effect=error
-        ):
-            result = await Page(endpoint="https://example.com/health/").get_result()
-
-        assert isinstance(result.error, ServiceUnavailable)
-        assert "Database: Unavailable: down" in str(result.error)
-
-    @pytest.mark.asyncio
     async def test_run_check__unexpected_http_status(self):
         """Raise ServiceUnavailable for an unexpected HTTP status."""
-        error = urllib.error.HTTPError(
-            "https://example.com/health/", 404, "Not Found", {}, io.BytesIO(b"")
-        )
-        with mock.patch(
-            "health_check.checks.urllib.request.urlopen", side_effect=error
-        ):
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(self._response(404))
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
@@ -351,8 +341,10 @@ class TestPage:
     @pytest.mark.asyncio
     async def test_run_check__invalid_json(self):
         """Raise ServiceReturnedUnexpectedResult for malformed JSON."""
-        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value = self._response(200, b"not json")
+        response = self._response(200)
+        response.json.side_effect = ValueError("invalid json")
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceReturnedUnexpectedResult)
@@ -361,8 +353,8 @@ class TestPage:
     @pytest.mark.asyncio
     async def test_run_check__unexpected_json(self):
         """Raise ServiceReturnedUnexpectedResult for a non-object JSON body."""
-        with mock.patch("health_check.checks.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value = self._response(200, b'["OK"]')
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(self._response(200, ["OK"]))
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceReturnedUnexpectedResult)
@@ -371,10 +363,9 @@ class TestPage:
     @pytest.mark.asyncio
     async def test_run_check__connection_error(self):
         """Raise ServiceUnavailable when the endpoint is unreachable."""
-        error = urllib.error.URLError("Connection refused")
-        with mock.patch(
-            "health_check.checks.urllib.request.urlopen", side_effect=error
-        ):
+        client = self._client(None)
+        client.get.side_effect = httpx.ConnectError("Connection refused")
+        with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)
@@ -383,9 +374,9 @@ class TestPage:
     @pytest.mark.asyncio
     async def test_run_check__timeout(self):
         """Raise ServiceUnavailable when the request times out."""
-        with mock.patch(
-            "health_check.checks.urllib.request.urlopen", side_effect=TimeoutError
-        ):
+        client = self._client(None)
+        client.get.side_effect = httpx.TimeoutException("Timed out")
+        with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
             result = await Page(endpoint="https://example.com/health/").get_result()
 
         assert isinstance(result.error, ServiceUnavailable)

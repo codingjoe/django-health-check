@@ -60,10 +60,10 @@ pip install django-health-check[redis,rabbitmq,celery,kafka,crontask,threadmill]
 
 Watch cloud provider health through their public RSS/Atom status feeds or APIs.
 
-Each cloud provider check requires an extra. The extra depends on the provider:
+The RSS-based checks require the `rss` extra:
 
 ```shell
-pip install django-health-check[rss,atlassian]
+pip install django-health-check[rss]
 ```
 
 ::: health_check.contrib.rss.AWS

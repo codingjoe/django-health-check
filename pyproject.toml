@@ -32,6 +32,7 @@ dynamic = [
 dependencies = [
   "django>=6",
   "dnspython>=2",
+  "httpx>=0.27",
 ]
 [[project.authors]]
 name = "Kristian Ollegaard"
@@ -41,14 +42,13 @@ email = "kristian@oellegaard.com"
 name = "Johannes Maron"
 email = "johannes@maron.family"
 [project.optional-dependencies]
-atlassian = [ "httpx>=0.27" ]
 celery = [ "celery>=5" ]
 crontask = [ "django-crontask[redis]>=2", "redis>=5.0.1" ]
 kafka = [ "confluent-kafka>=2" ]
 psutil = [ "psutil>=7.2" ]
 rabbitmq = [ "aio-pika>=9" ]
 redis = [ "redis>=5.0.1" ]
-rss = [ "feedparser>=6", "httpx>=0.27" ]
+rss = [ "feedparser>=6" ]
 threadmill = [ "threadmill[redis]>=0.7.3" ]
 [project.urls]
 Changelog = "https://github.com/codingjoe/django-health-check/releases"
