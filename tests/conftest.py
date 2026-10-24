@@ -12,7 +12,13 @@ def health_check_view():
     factory = AsyncRequestFactory()
 
     async def render_view(
-        checks, accept_header=None, format_param=None, headers=None, **view_kwargs
+        checks,
+        accept_header=None,
+        format_param=None,
+        headers=None,
+        method="GET",
+        view_class=HealthCheckView,
+        **view_kwargs,
     ):
         """Render a HealthCheckView with custom checks and optional parameters."""
         path = "/"
@@ -23,8 +29,8 @@ def health_check_view():
         if accept_header:
             headers["Accept"] = accept_header
 
-        request = factory.get(path, headers=headers) if headers else factory.get(path)
-        view = HealthCheckView.as_view(checks=checks, **view_kwargs)
+        request = factory.generic(method, path, headers=headers or None)
+        view = view_class.as_view(checks=checks, **view_kwargs)
         response = await view(request)
         if hasattr(response, "render"):
             response.render()

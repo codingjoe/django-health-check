@@ -107,7 +107,7 @@ class HealthCheckView(TemplateView):
     Perform health checks and return results in various formats.
 
     Set `cache_timeout` to allow shared caches to reuse responses.
-    Set `auth_token` to let a secret bearer token force a cache refresh.
+    Set `authentication_token` to require a bearer token.
     """
 
     template_name = "health_check/index.html"
@@ -116,12 +116,11 @@ class HealthCheckView(TemplateView):
     cache_timeout: datetime.timedelta | None = None
     """Time a shared cache may reuse a response. Caching is disabled by default."""
 
-    auth_token: str | None = None
-    """
-    Secret bearer token that marks a request as a cache refresh.
+    authentication_token: str | None = None
+    """Secret bearer token that authenticates a request and bypasses the cache."""
 
-    Requests with any other Authorization header receive a 403 response.
-    """
+    allow_anonymous: bool = False
+    """Allow requests without an authentication token when one is configured."""
 
     checks: typing.Iterable[
         type[HealthCheck] | str | tuple[type[HealthCheck] | str, dict[str, typing.Any]]
@@ -135,21 +134,21 @@ class HealthCheckView(TemplateView):
 
     @method_decorator(transaction.non_atomic_requests)
     async def dispatch(self, request, *args, **kwargs):
-        if self.has_invalid_auth_token(request):
+        if not self.is_authorized(request):
             return self.render_forbidden_response(request)
         response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
-        if not self.cache_timeout:
+        if self.authentication_token:
+            patch_vary_headers(response, ["Authorization"])
+        if not self.cache_timeout or request.method not in ("GET", "HEAD"):
             add_never_cache_headers(response)
             return response
-        if self.auth_token:
-            patch_vary_headers(response, ["Authorization"])
         return self.patch_cache_headers(request, response)
 
     def render_forbidden_response(self, request: HttpRequest) -> HttpResponse:
         """Return 403 without running health checks."""
         response = HttpResponse(
-            "" if request.method == "HEAD" else "Invalid cache refresh token",
+            "" if request.method == "HEAD" else "Authentication failed",
             status=403,
             content_type="text/plain; charset=utf-8",
         )
@@ -161,7 +160,7 @@ class HealthCheckView(TemplateView):
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set shared cache headers and answer matching entity tags with 304."""
-        is_refresh = self.has_cache_refresh_token(request)
+        is_refresh = self.should_bypass_cache(request)
         etag = self.calculate_etag(response, uuid.uuid4().bytes if is_refresh else b"")
         response["ETag"] = quote_etag(f'W/"{etag}"')
         if is_refresh:
@@ -186,22 +185,25 @@ class HealthCheckView(TemplateView):
         )
         return digest.hexdigest()
 
-    def has_cache_refresh_token(self, request: HttpRequest) -> bool:
-        """Return whether the request carries the secret cache refresh token."""
-        if not self.auth_token:
+    def is_authorized(self, request: HttpRequest) -> bool:
+        """Return whether the request may access the view."""
+        if self.authentication_token is None or self.has_valid_authentication_token(
+            request
+        ):
+            return True
+        return self.allow_anonymous and "Authorization" not in request.headers
+
+    def should_bypass_cache(self, request: HttpRequest) -> bool:
+        """Return whether the request must run fresh checks and skip shared caches."""
+        return self.has_valid_authentication_token(request)
+
+    def has_valid_authentication_token(self, request: HttpRequest) -> bool:
+        """Return whether the request carries the configured bearer token."""
+        if not self.authentication_token:
             return False
         scheme, _, token = request.headers.get("Authorization", "").partition(" ")
         return scheme.lower() == "bearer" and hmac.compare_digest(
-            token.encode(), self.auth_token.encode()
-        )
-
-    def has_invalid_auth_token(self, request: HttpRequest) -> bool:
-        """Return whether the request carries a wrong cache refresh token."""
-        return (
-            bool(self.cache_timeout)
-            and bool(self.auth_token)
-            and "Authorization" in request.headers
-            and not self.has_cache_refresh_token(request)
+            token.encode(), self.authentication_token.encode()
         )
 
     async def get(self, request, *args, **kwargs):

@@ -967,8 +967,63 @@ class TestHealthCheckView:
         assert b"Failed" in response.content
 
     @pytest.mark.asyncio
-    async def test_get__auth_token_refreshes_cache(self, health_check_view):
-        """Return a fresh response when the secret bearer token is valid."""
+    async def test_get__authentication_token_requires_token(self, health_check_view):
+        """Reject anonymous requests when authentication is configured."""
+
+        class CountingBackend(HealthCheck):
+            runs = 0
+
+            async def run(self):
+                CountingBackend.runs += 1
+
+        response = await health_check_view(
+            [CountingBackend], authentication_token="secret"
+        )
+        assert response.status_code == 403
+        assert CountingBackend.runs == 0
+        assert b"Authentication failed" in response.content
+        assert "no-store" in response["Cache-Control"]
+        assert "ETag" not in response
+
+    @pytest.mark.asyncio
+    async def test_get__authentication_token_without_cache_timeout(
+        self, health_check_view
+    ):
+        """Serve fresh results to an authenticated request without caching."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend],
+            authentication_token="secret",
+            headers={"Authorization": "Bearer secret"},
+        )
+        assert response.status_code == 200
+        assert "no-store" in response["Cache-Control"]
+
+    @pytest.mark.asyncio
+    async def test_get__allow_anonymous(self, health_check_view):
+        """Serve the cached response to anonymous requests."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view(
+            [SuccessBackend],
+            cache_timeout=datetime.timedelta(seconds=60),
+            authentication_token="secret",
+            allow_anonymous=True,
+        )
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "public, max-age=60"
+        assert "Authorization" in response["Vary"]
+
+    @pytest.mark.asyncio
+    async def test_get__authentication_token_bypasses_cache(self, health_check_view):
+        """Return a fresh response when the authentication token is valid."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -978,13 +1033,15 @@ class TestHealthCheckView:
         response = await health_check_view(
             [SuccessBackend],
             cache_timeout=cache_timeout,
-            auth_token="secret",
+            authentication_token="secret",
+            allow_anonymous=True,
             headers={"Authorization": "Bearer secret"},
         )
         conditional_response = await health_check_view(
             [SuccessBackend],
             cache_timeout=cache_timeout,
-            auth_token="secret",
+            authentication_token="secret",
+            allow_anonymous=True,
             headers={
                 "Authorization": "Bearer secret",
                 "If-None-Match": response["ETag"],
@@ -997,10 +1054,10 @@ class TestHealthCheckView:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("authorization", ["Bearer wrong", "Basic abc"])
-    async def test_get__invalid_auth_token_returns_forbidden(
+    async def test_get__invalid_authentication_token_returns_forbidden(
         self, health_check_view, authorization
     ):
-        """Reject a wrong cache refresh token without running checks."""
+        """Reject a wrong authentication token without running checks."""
 
         class CountingBackend(HealthCheck):
             runs = 0
@@ -1011,19 +1068,22 @@ class TestHealthCheckView:
         response = await health_check_view(
             [CountingBackend],
             cache_timeout=datetime.timedelta(seconds=60),
-            auth_token="secret",
+            authentication_token="secret",
+            allow_anonymous=True,
             headers={"Authorization": authorization},
         )
         assert response.status_code == 403
         assert CountingBackend.runs == 0
-        assert b"Invalid cache refresh token" in response.content
+        assert b"Authentication failed" in response.content
         assert "no-store" in response["Cache-Control"]
         assert "Authorization" in response["Vary"]
         assert "ETag" not in response
 
     @pytest.mark.asyncio
-    async def test_get__auth_header_without_auth_token(self, health_check_view):
-        """Ignore Authorization headers when no refresh token is configured."""
+    async def test_get__authorization_header_without_token_configured(
+        self, health_check_view
+    ):
+        """Ignore Authorization headers when no token is configured."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -1039,8 +1099,65 @@ class TestHealthCheckView:
         assert "Authorization" not in response["Vary"]
 
     @pytest.mark.asyncio
-    async def test_get__auth_token_without_cache_timeout(self, health_check_view):
-        """Ignore a wrong token when caching is disabled."""
+    async def test_get__allow_anonymous_without_token_configured(
+        self, health_check_view
+    ):
+        """Ignore allow_anonymous when no token is configured."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        response = await health_check_view([SuccessBackend], allow_anonymous=False)
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_get__custom_is_authorized(self, health_check_view):
+        """Use a custom permission policy."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        class CustomHealthCheckView(HealthCheckView):
+            def is_authorized(self, request):
+                return request.headers.get("X-Team-Token") == "team"
+
+        denied = await health_check_view(
+            [SuccessBackend], view_class=CustomHealthCheckView
+        )
+        allowed = await health_check_view(
+            [SuccessBackend],
+            view_class=CustomHealthCheckView,
+            headers={"X-Team-Token": "team"},
+        )
+        assert denied.status_code == 403
+        assert allowed.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_get__custom_should_bypass_cache(self, health_check_view):
+        """Use a custom cache bypass policy."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        class CustomHealthCheckView(HealthCheckView):
+            def should_bypass_cache(self, request):
+                return False
+
+        response = await health_check_view(
+            [SuccessBackend],
+            view_class=CustomHealthCheckView,
+            cache_timeout=datetime.timedelta(seconds=60),
+            authentication_token="secret",
+            headers={"Authorization": "Bearer secret"},
+        )
+        assert response["Cache-Control"] == "public, max-age=60"
+
+    @pytest.mark.asyncio
+    async def test_get__options_with_cache_timeout(self, health_check_view):
+        """Answer OPTIONS without computing an entity tag."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):
@@ -1048,15 +1165,15 @@ class TestHealthCheckView:
 
         response = await health_check_view(
             [SuccessBackend],
-            auth_token="secret",
-            headers={"Authorization": "Bearer wrong"},
+            method="OPTIONS",
+            cache_timeout=datetime.timedelta(seconds=60),
         )
         assert response.status_code == 200
         assert "no-store" in response["Cache-Control"]
 
     @pytest.mark.asyncio
-    async def test_get__cache_vary_without_auth_token(self, health_check_view):
-        """Vary only on Accept when no refresh token is configured."""
+    async def test_get__vary_without_token_configured(self, health_check_view):
+        """Vary only on Accept when no token is configured."""
 
         class SuccessBackend(HealthCheck):
             async def run(self):

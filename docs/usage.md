@@ -10,14 +10,15 @@ For step-by-step examples of multi-tier endpoint setups, including uptime
 monitoring, container probes, reverse-proxy configuration, and RSS/Atom
 integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
-## Caching responses
+## Caching and authentication
 
-Responses are never cached by default. To let a CDN or reverse proxy cache the
-health status for a short time, set `cache_timeout`:
+### Caching for availability
+
+A short cache protects the endpoint from request floods. Set `cache_timeout`
+to let a CDN or reverse proxy reuse the response:
 
 ```python
 import datetime
-import os
 
 from django.urls import path
 from health_check.views import HealthCheckView
@@ -32,51 +33,86 @@ urlpatterns = [
 ]
 ```
 
-The view sends `Cache-Control: public, max-age=30` and a stable `ETag`. The
-ETag changes only when a check result changes. A cache that revalidates an
-unchanged result receives HTTP 304. When `auth_token` is configured, the view
-also sends `Vary: Authorization`, so a compliant shared cache keeps the
-unauthenticated response separate from requests with an Authorization header.
+The view sends `Cache-Control: public, max-age=30` and a weak `ETag`.
+The ETag changes only when a check result changes. A cache that revalidates
+an unchanged result receives HTTP 304.
 
 > [!WARNING]
 > Only enable caching on endpoints without a secret in the URL. The view
-> cannot detect URL secrets. Leave `cache_timeout` unset when the endpoint
-> uses a token in the path.
+> cannot detect URL secrets.
 
-To force a fresh check from an uptime monitor, configure a secret bearer
-token:
+### Authentication
+
+Set `authentication_token` to require a bearer token:
 
 ```python
+import os
+
 HealthCheckView.as_view(
-    cache_timeout=datetime.timedelta(seconds=30),
-    auth_token=os.environ["HEALTH_CHECK_AUTH_TOKEN"],
+    authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
 )
 ```
 
 Send the token in the `Authorization` header:
 
 ```shell
-curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" https://example.com/health/
+curl -H "Authorization: Bearer $HEALTH_CHECK_AUTHENTICATION_TOKEN" https://example.com/health/
 ```
 
-A valid token gives every response a unique ETag. The response is not cached.
-Normal visitors keep receiving the cached result until it expires.
+Requests without a valid token receive HTTP 403 before any check runs.
+Authenticated responses bypass the cache and send `Cache-Control: no-store`.
+This is the default because `allow_anonymous` is `False`.
 
-Any other `Authorization` header value returns HTTP 403 before checks run.
-This prevents random tokens from forcing fresh checks or creating cache
-variants. Ensure your CDN honors `Vary: Authorization` and forwards the
-header to the origin. Sentry uptime monitors and other services can send this
-header as a request header.
+### Cache busting with anonymous access
+
+For a public endpoint, set `allow_anonymous=True`. Anonymous visitors get
+the cached result. The uptime monitor sends the token and always gets a
+fresh result:
+
+```python
+HealthCheckView.as_view(
+    cache_timeout=datetime.timedelta(seconds=30),
+    authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
+    allow_anonymous=True,
+)
+```
+
+Any `Authorization` header with a wrong token receives HTTP 403 before
+checks run. Random tokens cannot create cache variants or trigger checks.
 
 > [!NOTE]
-> `auth_token` only applies together with `cache_timeout`. It controls cache
-> refreshes and does not restrict access to the endpoint. When `auth_token`
-> is set, the `Authorization` header is reserved for it.
+> When `authentication_token` is set, the `Authorization` header is
+> reserved for it. Ensure your CDN honors `Vary: Authorization` and forwards
+> the header to the origin.
 
 > [!NOTE]
 > A client can still ask a shared cache to revalidate with
 > `Cache-Control: no-cache`. Configure your CDN to ignore client cache
-> directives if unauthenticated clients must never trigger checks.
+> directives if anonymous clients must never trigger checks.
+
+### Custom policies
+
+Override `is_authorized` to implement another permission model. Override
+`should_bypass_cache` to change when a request skips the cache.
+
+```python
+import os
+
+from health_check.views import HealthCheckView
+
+
+class TeamHealthCheckView(HealthCheckView):
+    def is_authorized(self, request):
+        return request.headers.get("X-Team-Token") == os.environ["TEAM_TOKEN"]
+
+    def should_bypass_cache(self, request):
+        return self.is_authorized(request)
+```
+
+> [!WARNING]
+> When caching is enabled and you use another credential, return `True` from
+> `should_bypass_cache` for authenticated requests. Otherwise a shared cache
+> can serve the response to another client.
 
 ## Getting machine-readable reports
 
