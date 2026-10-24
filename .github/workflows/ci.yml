@@ -65,6 +65,7 @@ jobs:
           - "redis"
           - "crontask"
           - "rss"
+          - "atlassian"
         include:
           - python-version: "3.14"
             django-version: "6.1"
