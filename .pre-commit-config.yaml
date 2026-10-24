@@ -25,6 +25,13 @@ repos:
     rev: v1.46.6
     hooks:
       - id: djlint-reformat-django
+  - repo: https://github.com/thibaudcolas/pre-commit-stylelint
+    rev: v17.16.0
+    hooks:
+      - id: stylelint
+        additional_dependencies:
+          - stylelint@17.16.0
+          - stylelint-config-standard@40.0.0
   - repo: https://github.com/hukkin/mdformat
     rev: 1.0.0
     hooks:
