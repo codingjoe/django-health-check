@@ -104,7 +104,7 @@ Protect the health check endpoint with a bearer token.
     ```
 4. Send the token in the request:
     ```shell
-    $ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" http://www.example.com/health/
+    $ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" https://www.example.com/health/
     ```
 
 The view and the `health_check` command read this setting. Requests without
