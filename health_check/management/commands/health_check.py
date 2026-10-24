@@ -56,6 +56,12 @@ class Command(BaseCommand):
             default=5,
             help="Timeout in seconds for the health check request (default: 5 seconds)",
         )
+        parser.add_argument(
+            "--auth-token",
+            type=str,
+            default=getattr(settings, "HEALTH_CHECK_AUTH_TOKEN", None),
+            help="Bearer token for an authenticated endpoint (default: settings.HEALTH_CHECK_AUTH_TOKEN)",
+        )
         http_group = parser.add_mutually_exclusive_group()
         http_group.add_argument(
             "--http",
@@ -90,7 +96,8 @@ class Command(BaseCommand):
 
         if options.get("verbosity", 1) >= 2:
             self.stdout.write(
-                f"Checking health endpoint at {url!r} with headers: {headers}"
+                f"Checking health endpoint at {url!r} "
+                f"with headers: {self._redact_headers(headers)}"
             )
 
         self.stdout.write(self._fetch(url, headers, options))
@@ -115,7 +122,19 @@ class Command(BaseCommand):
         # Add X-Forwarded-Proto header
         if forwarded_proto := options.get("forwarded_proto"):
             headers["X-Forwarded-Proto"] = forwarded_proto
+        # Add Authorization header
+        if token := options.get("auth_token"):
+            headers["Authorization"] = f"Bearer {token}"
         return headers
+
+    @staticmethod
+    def _redact_headers(headers):
+        """Return the headers with the Authorization value masked."""
+        return (
+            headers | {"Authorization": "Bearer ******"}
+            if "Authorization" in headers
+            else headers
+        )
 
     def _fetch(self, url, headers, options):
         """Return the body of the health check endpoint response."""
@@ -132,6 +151,12 @@ class Command(BaseCommand):
                 case 400:
                     self.stderr.write(
                         f"{url!r} is not reachable: {e.reason}\nPlease check your ALLOWED_HOSTS setting or use the --forwarded-host option."
+                    )
+                    sys.exit(2)
+                case 403:
+                    self.stderr.write(
+                        f"{url!r} requires authentication. "
+                        "Provide a token with --auth-token or set the HEALTH_CHECK_AUTH_TOKEN setting."
                     )
                     sys.exit(2)
                 case _:
