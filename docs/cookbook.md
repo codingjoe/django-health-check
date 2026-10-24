@@ -239,10 +239,10 @@ This status includes cloud platforms, PaaS providers, and third-party services.
 The development team watches these checks with RSS/Atom feeds in Slack or
 Matrix. Then upstream outages become known before they become support tickets.
 
-Install the extra for RSS-based provider checks:
+Install the extras that read the feeds from cloud providers:
 
 ```shell
-pip install "django-health-check[rss]"
+pip install "django-health-check[rss,atlassian]"
 ```
 
 Add the pipeline endpoint to your URL configuration.
