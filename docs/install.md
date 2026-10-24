@@ -92,7 +92,6 @@ Protect the health check endpoint with a bearer token.
    ```shell
    python -c "from django.utils.crypto import get_random_string; print(get_random_string(64))"
    ```
-   `get_random_string` uses `secrets`. 64 characters give about 380 bits of entropy.
    > [!WARNING]
    > Do NOT use Django's `SECRET_KEY` setting!
 1. Put the token in your settings:
