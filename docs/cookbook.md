@@ -30,8 +30,6 @@ Add the node endpoint to your URL configuration.
 
 ```python
 # urls.py
-from datetime import timedelta
-
 from django.urls import include, path
 from health_check.views import HealthCheckView
 
@@ -49,10 +47,7 @@ urlpatterns = [
             [
                 path(
                     "node/",
-                    HealthCheckView.as_view(
-                        checks=node_checks,
-                        max_age=timedelta(0),
-                    ),
+                    HealthCheckView.as_view(checks=node_checks),
                     name="health_check-node",
                 ),
             ]
@@ -379,10 +374,7 @@ urlpatterns = [
                 # Tier 1: node, liveness and readiness probes
                 path(
                     "node/",
-                    HealthCheckView.as_view(
-                        checks=node_checks,
-                        max_age=timedelta(0),
-                    ),
+                    HealthCheckView.as_view(checks=node_checks),
                     name="health_check-node",
                 ),
                 # Tier 2: application, uptime monitors and on-call alerts
