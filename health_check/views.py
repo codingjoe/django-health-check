@@ -107,10 +107,10 @@ class HealthCheckView(TemplateView):
     template_name = "health_check/index.html"
     feed_author = "Django Health Check"
 
-    cache_timeout: datetime.timedelta = datetime.timedelta(0)
-    """Time a shared cache may reuse a successful response, sent as `max-age`.
+    max_age: datetime.timedelta = datetime.timedelta(0)
+    """Longest time a shared cache may reuse a successful response.
 
-    Zero disables caching.
+    Sent as `max-age`. Zero disables caching.
     """
 
     authentication_token: str | None = None
@@ -150,15 +150,15 @@ class HealthCheckView(TemplateView):
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
         """Set cache headers for a shared cache."""
-        max_age = max(0, int(self.cache_timeout.total_seconds()))
+        max_age_seconds = max(0, int(self.max_age.total_seconds()))
         cacheable = (
             response.status_code == 200
-            and max_age
+            and max_age_seconds
             and request.method in ("GET", "HEAD")
             and "Authorization" not in request.headers
         )
         response["Cache-Control"] = (
-            f"public, max-age={max_age}" if cacheable else "no-store"
+            f"public, max-age={max_age_seconds}" if cacheable else "no-store"
         )
         return response
 

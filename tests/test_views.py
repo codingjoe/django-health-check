@@ -1208,7 +1208,7 @@ class TestHealthCheckView:
 
 class TestHealthCheckViewCache:
     @pytest.mark.parametrize(
-        ("method", "status", "cache_timeout", "headers", "expected"),
+        ("method", "status", "max_age", "headers", "expected"),
         [
             pytest.param(
                 "get",
@@ -1232,7 +1232,7 @@ class TestHealthCheckViewCache:
                 datetime.timedelta(0),
                 {},
                 "no-store",
-                id="zero-timeout",
+                id="zero-max-age",
             ),
             pytest.param(
                 "get",
@@ -1240,7 +1240,7 @@ class TestHealthCheckViewCache:
                 datetime.timedelta(seconds=-1),
                 {},
                 "no-store",
-                id="negative-timeout",
+                id="negative-max-age",
             ),
             pytest.param(
                 "get",
@@ -1268,12 +1268,10 @@ class TestHealthCheckViewCache:
             ),
         ],
     )
-    def test_patch_cache_headers(
-        self, method, status, cache_timeout, headers, expected
-    ):
-        """Set Cache-Control from timeout, status, method, and Authorization header."""
+    def test_patch_cache_headers(self, method, status, max_age, headers, expected):
+        """Set Cache-Control from max_age, status, method, and Authorization."""
         view = HealthCheckView()
-        view.cache_timeout = cache_timeout
+        view.max_age = max_age
         request = getattr(AsyncRequestFactory(), method)("/", headers=headers)
         response = view.patch_cache_headers(request, HttpResponse(status=status))
         assert response["Cache-Control"] == expected
@@ -1282,7 +1280,7 @@ class TestHealthCheckViewCache:
     async def test_dispatch__public_cache(self, health_check_view):
         """Cache a successful anonymous response publicly."""
         response = await health_check_view(
-            [SuccessBackend], cache_timeout=datetime.timedelta(seconds=30)
+            [SuccessBackend], max_age=datetime.timedelta(seconds=30)
         )
         assert response.status_code == 200
         assert response["Cache-Control"] == "public, max-age=30"
@@ -1292,7 +1290,7 @@ class TestHealthCheckViewCache:
     async def test_dispatch__failure_not_cached(self, health_check_view):
         """Send no-store when a check fails."""
         response = await health_check_view(
-            [FailingBackend], cache_timeout=datetime.timedelta(seconds=30)
+            [FailingBackend], max_age=datetime.timedelta(seconds=30)
         )
         assert response.status_code == 500
         assert response["Cache-Control"] == "no-store"
@@ -1363,7 +1361,7 @@ class TestHealthCheckViewAuthentication:
         response = await health_check_view(
             [SuccessBackend],
             authentication_token="secret",
-            cache_timeout=datetime.timedelta(seconds=30),
+            max_age=datetime.timedelta(seconds=30),
         )
         assert response.status_code == 403
         assert response.content == b"Authentication failed"
@@ -1377,7 +1375,7 @@ class TestHealthCheckViewAuthentication:
             [SuccessBackend],
             headers={"Authorization": "Bearer secret"},
             authentication_token="secret",
-            cache_timeout=datetime.timedelta(seconds=30),
+            max_age=datetime.timedelta(seconds=30),
         )
         assert response.status_code == 200
         assert response["Cache-Control"] == "no-store"
@@ -1390,7 +1388,7 @@ class TestHealthCheckViewAuthentication:
             [SuccessBackend],
             authentication_token="secret",
             allow_anonymous=True,
-            cache_timeout=datetime.timedelta(seconds=30),
+            max_age=datetime.timedelta(seconds=30),
         )
         assert response.status_code == 200
         assert response["Cache-Control"] == "public, max-age=30"

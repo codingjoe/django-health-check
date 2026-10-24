@@ -50,7 +50,7 @@ urlpatterns = [
                     "node/",
                     HealthCheckView.as_view(
                         checks=node_checks,
-                        cache_timeout=timedelta(seconds=10),
+                        max_age=timedelta(seconds=10),
                     ),
                     name="health_check-node",
                 ),
@@ -216,7 +216,7 @@ urlpatterns = [
                     "application/",
                     HealthCheckView.as_view(
                         checks=application_checks,
-                        cache_timeout=timedelta(seconds=30),
+                        max_age=timedelta(seconds=30),
                         authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
                         allow_anonymous=True,
                     ),
@@ -376,7 +376,7 @@ urlpatterns = [
                     "node/",
                     HealthCheckView.as_view(
                         checks=node_checks,
-                        cache_timeout=timedelta(seconds=10),
+                        max_age=timedelta(seconds=10),
                     ),
                     name="health_check-node",
                 ),
@@ -385,7 +385,7 @@ urlpatterns = [
                     "application/",
                     HealthCheckView.as_view(
                         checks=application_checks,
-                        cache_timeout=timedelta(seconds=30),
+                        max_age=timedelta(seconds=30),
                         authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
                         allow_anonymous=True,
                     ),

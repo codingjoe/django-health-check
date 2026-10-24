@@ -11,7 +11,7 @@ For multi-tier examples, see the [Cookbook](cookbook.md).
 ::: health_check.views.HealthCheckView
     options:
       members:
-        - cache_timeout
+        - max_age
         - authentication_token
         - allow_anonymous
 
@@ -184,7 +184,7 @@ concurrent execution for synchronous checks, but the memory stays under
 control.
 
 To let a CDN cache successful responses, set
-[`cache_timeout`](#health_check.views.HealthCheckView.cache_timeout) to
+[`max_age`](#health_check.views.HealthCheckView.max_age) to
 `timedelta(seconds=30)` on `HealthCheckView`. A failing check returns HTTP 500,
 which is never cached. A request with a valid bearer token skips the
 cache and runs the checks.
