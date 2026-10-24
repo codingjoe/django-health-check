@@ -31,7 +31,7 @@ This project includes these health checks:
 - [Celery][health_check.contrib.celery.Ping], [Crontask scheduler][health_check.contrib.crontask.Scheduler],
   [Kafka][health_check.contrib.kafka.Kafka], [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] &
   [Redis][health_check.contrib.redis.Redis]
-- [Cloud provider status](checks.md#cloud-provider-status) for many cloud and PaaS providers.
+- [Cloud provider status](checks.md#cloud-provider-status) for cloud and PaaS providers.
 
 The bundled checks cover the common cases. If your stack is different, you can write your own checks.
 
