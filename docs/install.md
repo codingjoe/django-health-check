@@ -85,24 +85,24 @@ urlpatterns = [
 
 ## Security
 
-Keep the health check endpoint private with a bearer token.
+Protect the health check endpoint with a bearer token.
 
 1. Enable HTTPS.
-1. Generate a strong token with Django's helper:
+1. Generate a token with `get_random_string`:
    ```shell
    python -c "from django.utils.crypto import get_random_string; print(get_random_string(64))"
    ```
-   `get_random_string` draws from `secrets`. 64 characters give about 380 bits of entropy.
+   `get_random_string` uses `secrets`. 64 characters give about 380 bits of entropy.
    > [!WARNING]
    > Do NOT use Django's `SECRET_KEY` setting!
-1. Store it in your settings, ideally from the environment:
+1. Put the token in your settings:
    ```python
    # settings.py
    import os
 
    HEALTH_CHECK_TOKEN = os.environ["HEALTH_CHECK_TOKEN"]
    ```
-1. Pass it to the view:
+1. Pass the token to the view:
    ```python
    # urls.py
    from django.conf import settings
@@ -117,7 +117,7 @@ Keep the health check endpoint private with a bearer token.
        ),
    ]
    ```
-1. Send the token as `Authorization: Bearer <token>`. Requests without it get HTTP 403.
+1. Send the token as `Authorization: Bearer <token>`. Requests without the token receive HTTP 403.
 
-Set `allow_anonymous=True` to keep the endpoint public. Valid token requests
-still bypass the cache.
+To keep the endpoint public, set `allow_anonymous=True`. A request with a valid
+token still skips the cache.

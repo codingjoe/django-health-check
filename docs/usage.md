@@ -2,18 +2,16 @@
 
 ## Setting up monitoring
 
-You can point an uptime monitor such as Pingdom, StatusCake, or other
-uptime robots at your service. The `/health/` endpoint returns an HTTP
-200 when every check passes, and an HTTP 500 when any of them fails.
+You can point an uptime monitor such as Pingdom or StatusCake at your service.
+The `/health/` endpoint returns HTTP 200 when every check passes, and HTTP 500
+when a check fails.
 
-For step-by-step examples of multi-tier endpoint setups, including uptime
-monitoring, container probes, reverse-proxy configuration, and RSS/Atom
-integration into Slack or Matrix, see the [Cookbook](cookbook.md).
+For multi-tier examples, see the [Cookbook](cookbook.md).
 
-Pass `cache_timeout=timedelta(seconds=30)` to `HealthCheckView` to let a CDN
-cache anonymous `GET` and `HEAD` responses. A valid bearer token skips the cache
-and runs the checks. Set `allow_anonymous=True` to serve the cached copy to
-everyone else, and see [Security](install.md#security) to set up the token.
+To let a CDN cache the response, set `cache_timeout=timedelta(seconds=30)` on
+`HealthCheckView`. A request with a valid bearer token skips the cache and runs
+the checks. To serve the cached response to requests without a token, set
+`allow_anonymous=True`. See [Security](install.md#security) to create the token.
 
 ## Getting machine-readable reports
 

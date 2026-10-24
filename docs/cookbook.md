@@ -15,10 +15,9 @@ ______________________________________________________________________
 
 ## Node health checks
 
-Node checks confirm the server has enough resources to run the app.
-Use them for **liveness and readiness probes** in container
-orchestrators such as Kubernetes, Docker, and Podman, or for reverse-proxy
-checks in HAProxy, nginx, Caddy, and Traefik.
+Node checks show whether the server has enough resources to run the app.
+Use them for **liveness and readiness probes** in Kubernetes, Docker, and Podman.
+Use them for reverse-proxy checks in HAProxy, nginx, Caddy, and Traefik.
 
 The `psutil` extra provides OS resource checks such as CPU, memory, and disk usage.
 
@@ -62,9 +61,9 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> This endpoint is public. The ten second cache lets a CDN absorb repeat traffic.
-> Restrict it to your network if you do not want CPU, memory, and disk figures
-> exposed.
+> This endpoint is public. A CDN can cache the response for ten seconds. If you do
+> not want to show CPU, memory, and disk figures, restrict the endpoint to your
+> network.
 
 ### Kubernetes probes
 
@@ -172,8 +171,7 @@ reachable and operational. **Uptime monitors** such as Pingdom,
 Better Uptime, or StatusCake watch these endpoints and page on-call engineers when
 something goes down.
 
-To cover the whole stack — databases, caches, message brokers, email, storage —
-you'll need some extra dependencies:
+To cover the whole stack, install these extras:
 
 ```shell
 pip install "django-health-check[redis,rabbitmq,celery,crontask]"
@@ -231,19 +229,18 @@ urlpatterns = [
 ```
 
 Point the uptime monitor at `https://example.com/health/application/`.
-It returns HTTP 200 when all checks pass and HTTP 500 when any fail.
+It returns HTTP 200 when all checks pass, and HTTP 500 when a check fails.
 
-Anonymous requests, a CDN included, get a copy cached for 30 seconds. When the
+For anonymous requests, a CDN can cache the response for 30 seconds. When the
 monitor sends `Authorization: Bearer <token>`, the view skips the cache and runs
-every check, so on-call alerts never read a stale result. The
-[Security](install.md#security) section shows how to generate the token.
+every check. See [Security](install.md#security) to create the token.
 
 ## Pipeline health checks
 
-Pipeline checks add **upstream provider status** on top of your application checks —
-cloud platforms, PaaS providers, third-party services. The dev team watches these
-via RSS/Atom feeds in Slack or Matrix, so upstream outages surface before they become
-support tickets.
+Pipeline checks add **upstream provider status** to your application checks.
+They cover cloud platforms, PaaS providers, and third-party services. The dev
+team reads the results in RSS/Atom feeds in Slack or Matrix. Then the dev team
+sees upstream outages before users report them.
 
 Install the extras that read the feeds from cloud providers:
 
@@ -294,8 +291,8 @@ urlpatterns = [
 ]
 ```
 
-Slack and Matrix cannot send an `Authorization` header, so the pipeline endpoint
-stays public. Leave `authentication_token` unset here.
+The pipeline endpoint is public because Slack and Matrix cannot send an
+`Authorization` header. Leave `authentication_token` unset here.
 
 ### Slack or Matrix
 
