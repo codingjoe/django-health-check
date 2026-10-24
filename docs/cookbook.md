@@ -57,11 +57,7 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> This endpoint is uncached, because probes must read a fresh result.
-> Probes send the `Authorization` header, because this endpoint shares the
-> `HEALTH_CHECK_AUTH_TOKEN` setting.
-> If you do not want to show CPU, memory, and disk figures, restrict access to
-> your network.
+> See the [Security](install.md#security) section of the installation guide.
 
 ### Kubernetes probes
 
@@ -227,13 +223,14 @@ urlpatterns = [
 ```
 
 Point the uptime monitor at `https://example.com/health/application/`.
-It returns HTTP 200 when all checks pass, and HTTP 500 when a check fails.
-Uptime monitors expect these codes.
+The endpoint returns HTTP 200 when all checks pass. It returns HTTP 500 when a
+check fails. Uptime monitors expect these codes.
 
-For anonymous requests, a CDN can cache a successful response for 30 seconds.
-Failures are never cached. When the monitor sends
-`Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN`, the view skips the cache and
-runs every check. See [Security](install.md#security) to create the token.
+Anonymous requests can share a cached response for 30 seconds. Send
+`Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN` to bypass the cache. The view
+runs every check. The monitor always sees a fresh result. The cache does not
+store a failed response. See [Security](install.md#security) to create the
+token.
 
 ## Pipeline health checks
 
@@ -252,6 +249,8 @@ Add the pipeline endpoint to your URL configuration.
 
 ```python
 # urls.py
+from datetime import timedelta
+
 from django.urls import include, path
 from health_check.views import HealthCheckView
 
@@ -283,7 +282,9 @@ urlpatterns = [
                 path(
                     "pipeline/",
                     HealthCheckView.as_view(
-                        checks=pipeline_checks, allow_anonymous=True
+                        checks=pipeline_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
                     ),
                     name="health_check-pipeline",
                 ),
@@ -295,6 +296,8 @@ urlpatterns = [
 
 The pipeline endpoint is public because Slack and Matrix cannot send an
 `Authorization` header. Set `allow_anonymous=True` here.
+The short `max_age` applies to the cached feed while authenticated probes stay
+fresh.
 
 ### Slack or Matrix
 
@@ -304,9 +307,9 @@ Subscribe to the RSS feed in Slack:
 
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
 2. In your `#ops` or `#incidents` channel, run:
-    ```
-    /feed subscribe https://www.example.com/health/pipeline/?format=rss
-    ```
+   ```
+   /feed subscribe https://www.example.com/health/pipeline/?format=rss
+   ```
 
 Or subscribe in Matrix:
 
@@ -371,13 +374,13 @@ urlpatterns = [
         "health/",
         include(
             [
-                # Tier 1: node, liveness and readiness probes
+                # Tier 1 – node: liveness & readiness probes
                 path(
                     "node/",
                     HealthCheckView.as_view(checks=node_checks),
                     name="health_check-node",
                 ),
-                # Tier 2: application, uptime monitors and on-call alerts
+                # Tier 2 – application: uptime monitors & on-call alerts
                 path(
                     "application/",
                     HealthCheckView.as_view(
@@ -387,11 +390,13 @@ urlpatterns = [
                     ),
                     name="health_check-application",
                 ),
-                # Tier 3: pipeline, developer RSS/Atom feeds (Slack, Matrix)
+                # Tier 3 – pipeline: developer RSS/Atom feeds (Slack, Matrix)
                 path(
                     "pipeline/",
                     HealthCheckView.as_view(
-                        checks=pipeline_checks, allow_anonymous=True
+                        checks=pipeline_checks,
+                        max_age=timedelta(seconds=30),
+                        allow_anonymous=True,
                     ),
                     name="health_check-pipeline",
                 ),

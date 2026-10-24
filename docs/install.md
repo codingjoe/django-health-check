@@ -88,35 +88,27 @@ urlpatterns = [
 Protect the health check endpoint with a bearer token.
 
 1. Enable HTTPS.
-
 2. Generate a strong secret token:
-
-    ```shell
-    python -c "import secrets; print(secrets.token_urlsafe())"
-    ```
-
-    > [!WARNING]
-    > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
-    > to sign other data.
-
+   ```shell
+   python -c "import secrets; print(secrets.token_urlsafe())"
+   ```
+   > [!WARNING]
+   > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
+   > to sign other data.
 3. Add the token to your settings:
+   ```python
+   # settings.py
+   import os
 
-    ```python
-    # settings.py
-    import os
-
-    HEALTH_CHECK_AUTH_TOKEN = os.getenv("HEALTH_CHECK_AUTH_TOKEN")
-    ```
-
-    The view and the `health_check` command read this setting.
-
+   HEALTH_CHECK_AUTH_TOKEN = os.getenv("HEALTH_CHECK_AUTH_TOKEN")
+   ```
 4. Send the token in the request:
+   ```shell
+   $ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" http://www.example.com/health/
+   ```
 
-    ```shell
-    $ curl -H "Authorization: Bearer $HEALTH_CHECK_AUTH_TOKEN" http://www.example.com/health/
-    ```
-
-    Requests without the token receive HTTP 403.
+The view and the `health_check` command read this setting. Requests without
+the token receive HTTP 403.
 
 To keep the endpoint public, set `allow_anonymous=True`. This admits only
 requests with no `Authorization` header. A request with a wrong or malformed
