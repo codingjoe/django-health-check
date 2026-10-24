@@ -30,9 +30,7 @@ Add the node endpoint to your URL configuration.
 
 ```python
 # urls.py
-import os
-
-from django.urls import include, path
+from django.urls import path
 from health_check.views import HealthCheckView
 
 node_checks = [
@@ -44,23 +42,17 @@ node_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
-        include(
-            [
-                path(
-                    "node/",
-                    HealthCheckView.as_view(checks=node_checks),
-                    name="health_check-node",
-                ),
-            ]
-        ),
-    )
+        "health/node/",
+        HealthCheckView.as_view(checks=node_checks),
+        name="health_check-node",
+    ),
 ]
 ```
 
 > [!TIP]
-> Protect this endpoint with a secret token. Do not make it publicly accessible.
-> See the [Security](install.md#security) section of the installation guide.
+> Keep this endpoint on a private network. Do not expose node checks to the
+> public internet. The [application endpoint](#application-health-checks)
+> uses a token for public access.
 
 ### Kubernetes probes
 
@@ -77,13 +69,13 @@ For our health check endpoint, the configuration looks like this:
 # deployment.yaml
 livenessProbe:
   httpGet:
-    path: /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    path: /health/node/
     port: 8000
   initialDelaySeconds: 10
   periodSeconds: 30
 readinessProbe:
   httpGet:
-    path: /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    path: /health/node/
     port: 8000
   initialDelaySeconds: 5
   periodSeconds: 10
@@ -121,7 +113,7 @@ In [Caddy][caddy-active-health-checks], the configuration looks like this:
 # Caddyfile
 example.com {
     reverse_proxy localhost:8000 {
-        health_uri      /health/${HEALTH_CHECK_SECRET:-dev}/node/
+        health_uri      /health/node/
         health_interval 30s
         health_timeout  5s
     }
@@ -136,7 +128,7 @@ services:
   app:
     image: myapp
     labels:
-      - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/${HEALTH_CHECK_SECRET:-dev}/node/"
+      - "traefik.http.services.myapp.loadbalancer.healthcheck.path=/health/node/"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.interval=30s"
       - "traefik.http.services.myapp.loadbalancer.healthcheck.timeout=5s"
 ```
@@ -147,7 +139,7 @@ services:
 # nginx.conf
 upstream myapp {
     server localhost:8000;
-    health_check interval=30s timeout=5s uri=/health/${HEALTH_CHECK_SECRET:-dev}/node/;
+    health_check interval=30s timeout=5s uri=/health/node/;
 }
 ```
 
@@ -158,7 +150,7 @@ upstream myapp {
 backend myapp
     server app1 localhost:8000 check inter 30s fall 3 rise 2
     http-check expect status 200
-    http-check send meth GET uri /health/${HEALTH_CHECK_SECRET:-dev}/node/
+    http-check send meth GET uri /health/node/
 ```
 
 ## Application health checks
@@ -177,9 +169,10 @@ pip install "django-health-check[redis,rabbitmq,celery,crontask]"
 
 ```python
 # urls.py
+import datetime
 import os
 
-from django.urls import include, path
+from django.urls import path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
 
@@ -205,24 +198,26 @@ application_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
-        include(
-            [
-                # other endpoints …
-                path(
-                    "application/",
-                    HealthCheckView.as_view(checks=application_checks),
-                    name="health_check-application",
-                ),
-            ]
+        "health/application/",
+        HealthCheckView.as_view(
+            checks=application_checks,
+            cache_timeout=datetime.timedelta(seconds=30),
+            authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
         ),
-    )
+        name="health_check-application",
+    ),
 ]
 ```
 
-Point the uptime monitor at `https://example.com/health/<HEALTH_CHECK_SECRET>/application/`.
-It returns HTTP 200 when all checks pass and HTTP 500 when any fail — exactly the
-codes monitors watch for.
+Point the uptime monitor at `https://example.com/health/application/`.
+It returns HTTP 200 when all checks pass and HTTP 500 when any fail, exactly
+the codes monitors watch for.
+
+Anonymous requests get a cached result for up to 30 seconds. Send
+`Authorization: Bearer <token>` to run every check and get a fresh result.
+`allow_anonymous` defaults to `True`, so status pages and load balancers keep
+working. Set `allow_anonymous=False` to reject anonymous requests with
+HTTP 403. See [Caching and authentication](usage.md#caching-and-authentication).
 
 ## Pipeline health checks
 
@@ -241,9 +236,9 @@ Add the pipeline endpoint to your URL configuration.
 
 ```python
 # urls.py
-import os
+import datetime
 
-from django.urls import include, path
+from django.urls import path
 from health_check.views import HealthCheckView
 
 application_checks = [
@@ -267,20 +262,19 @@ pipeline_checks = [
 urlpatterns = [
     # …
     path(
-        f"health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
-        include(
-            [
-                # other endpoints …
-                path(
-                    "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
-                    name="health_check-pipeline",
-                ),
-            ]
+        "health/pipeline/",
+        HealthCheckView.as_view(
+            checks=pipeline_checks,
+            cache_timeout=datetime.timedelta(seconds=60),
         ),
-    )
+        name="health_check-pipeline",
+    ),
 ]
 ```
+
+A 60 second cache keeps feed readers from running upstream checks on every
+poll. Slack and Matrix cannot send an `Authorization` header, so this
+endpoint stays anonymous.
 
 ### Slack or Matrix
 
@@ -291,7 +285,7 @@ Subscribe to the RSS feed in Slack:
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
 1. In your `#ops` or `#incidents` channel, run:
    ```
-   /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
+   /feed subscribe https://www.example.com/health/pipeline/?format=rss
    ```
 
 ... or subscribe in Matrix:
@@ -300,7 +294,7 @@ Subscribe to the RSS feed in Slack:
 # config.toml
 [[bridge]]
     name = "Pipeline Health Monitor"
-    feed_url = "https://example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss"
+    feed_url = "https://example.com/health/pipeline/?format=rss"
     room_id = "!YourRoomId:matrix.org"
 ```
 
@@ -310,9 +304,10 @@ ______________________________________________________________________
 
 ```python
 # urls.py
+import datetime
 import os
 
-from django.urls import include, path
+from django.urls import path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
 
@@ -353,30 +348,30 @@ pipeline_checks = [
 ]
 
 urlpatterns = [
+    # Tier 1 – node: liveness & readiness probes on a private network
     path(
-        "health/{os.getenv('HEALTH_CHECK_SECRET', 'dev')}/",
-        include(
-            [
-                # Tier 1 – node: liveness & readiness probes
-                path(
-                    "node/",
-                    HealthCheckView.as_view(checks=node_checks),
-                    name="health_check-node",
-                ),
-                # Tier 2 – application: uptime monitors & on-call alerts
-                path(
-                    "application/",
-                    HealthCheckView.as_view(checks=application_checks),
-                    name="health_check-application",
-                ),
-                # Tier 3 – pipeline: developer RSS/Atom feeds (Slack, Matrix)
-                path(
-                    "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
-                    name="health_check-pipeline",
-                ),
-            ]
+        "health/node/",
+        HealthCheckView.as_view(checks=node_checks),
+        name="health_check-node",
+    ),
+    # Tier 2 – application: uptime monitors & on-call alerts
+    path(
+        "health/application/",
+        HealthCheckView.as_view(
+            checks=application_checks,
+            cache_timeout=datetime.timedelta(seconds=30),
+            authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
         ),
+        name="health_check-application",
+    ),
+    # Tier 3 – pipeline: developer RSS/Atom feeds (Slack, Matrix)
+    path(
+        "health/pipeline/",
+        HealthCheckView.as_view(
+            checks=pipeline_checks,
+            cache_timeout=datetime.timedelta(seconds=60),
+        ),
+        name="health_check-pipeline",
     ),
 ]
 ```

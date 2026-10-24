@@ -12,6 +12,16 @@ integration into Slack or Matrix, see the [Cookbook](cookbook.md).
 
 ## Caching and authentication
 
+Caching and authentication are independent features. Enable caching for
+resilience and authentication for access control.
+
+| Argument               | Default | Description                                                             |
+| ---------------------- | ------- | ----------------------------------------------------------------------- |
+| `cache_timeout`        | `None`  | Time a shared cache may reuse a response. Caching is off by default.    |
+| `authentication_token` | `None`  | Bearer token that authenticates a request and bypasses the cache.       |
+| `allow_anonymous`      | `True`  | Allow requests without a token when `authentication_token` is set.      |
+| `is_authorized`        | method  | Return whether a request may access the view. Override for your policy. |
+
 ### Caching for availability
 
 A short cache protects the endpoint from request floods. Set `cache_timeout`
@@ -36,10 +46,6 @@ urlpatterns = [
 The view sends `Cache-Control: public, max-age=30` and a weak `ETag`.
 The ETag changes only when a check result changes. A cache that revalidates
 an unchanged result receives HTTP 304.
-
-> [!WARNING]
-> Only enable caching on endpoints without a secret in the URL. The view
-> cannot detect URL secrets.
 
 ### Authentication
 
