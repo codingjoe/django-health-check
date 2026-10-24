@@ -203,6 +203,7 @@ urlpatterns = [
             checks=application_checks,
             cache_timeout=datetime.timedelta(seconds=30),
             authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
+            allow_anonymous=True,
         ),
         name="health_check-application",
     ),
@@ -215,9 +216,9 @@ the codes monitors watch for.
 
 Anonymous requests get a cached result for up to 30 seconds. Send
 `Authorization: Bearer <token>` to run every check and get a fresh result.
-`allow_anonymous` defaults to `True`, so status pages and load balancers keep
-working. Set `allow_anonymous=False` to reject anonymous requests with
-HTTP 403. See [Caching and authentication](usage.md#caching-and-authentication).
+`allow_anonymous=True` keeps status pages and load balancers working. Remove
+it to reject anonymous requests with HTTP 403. See
+[Caching and authentication](usage.md#caching-and-authentication).
 
 ## Pipeline health checks
 
@@ -361,6 +362,7 @@ urlpatterns = [
             checks=application_checks,
             cache_timeout=datetime.timedelta(seconds=30),
             authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
+            allow_anonymous=True,
         ),
         name="health_check-application",
     ),

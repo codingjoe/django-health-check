@@ -119,7 +119,7 @@ class HealthCheckView(TemplateView):
     authentication_token: str | None = None
     """Secret bearer token that authenticates a request and bypasses the cache."""
 
-    allow_anonymous: bool = True
+    allow_anonymous: bool = False
     """Allow requests without an authentication token when one is configured."""
 
     checks: typing.Iterable[

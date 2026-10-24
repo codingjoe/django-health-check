@@ -108,7 +108,6 @@ You can keep the health check endpoint private by requiring a bearer token.
            "health/",
            HealthCheckView.as_view(
                authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
-               allow_anonymous=False,
            ),
            name="health_check",
        ),
@@ -120,6 +119,6 @@ You can keep the health check endpoint private by requiring a bearer token.
    ```
 
 Requests without a valid token receive HTTP 403 before any check runs.
-`allow_anonymous` defaults to `True`, so you must set it to `False` to make the
-endpoint private. See [Caching and authentication](usage.md#caching-and-authentication)
+`allow_anonymous` defaults to `False`, so the endpoint is private as soon as
+a token is set. See [Caching and authentication](usage.md#caching-and-authentication)
 for cache busting and custom policies.

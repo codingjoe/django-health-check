@@ -19,7 +19,7 @@ resilience and authentication for access control.
 | ---------------------- | ------- | ----------------------------------------------------------------------- |
 | `cache_timeout`        | `None`  | Time a shared cache may reuse a response. Caching is off by default.    |
 | `authentication_token` | `None`  | Bearer token that authenticates a request and bypasses the cache.       |
-| `allow_anonymous`      | `True`  | Allow requests without a token when `authentication_token` is set.      |
+| `allow_anonymous`      | `False` | Allow requests without a token when `authentication_token` is set.      |
 | `is_authorized`        | method  | Return whether a request may access the view. Override for your policy. |
 
 ### Caching for availability
@@ -49,15 +49,13 @@ an unchanged result receives HTTP 304.
 
 ### Authentication
 
-Set `authentication_token` and `allow_anonymous=False` to require a bearer
-token:
+Set `authentication_token` to require a bearer token:
 
 ```python
 import os
 
 HealthCheckView.as_view(
     authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
-    allow_anonymous=False,
 )
 ```
 
@@ -72,9 +70,10 @@ Authenticated responses bypass the cache and send `Cache-Control: no-store`.
 
 ### Cache busting with anonymous access
 
-`allow_anonymous` defaults to `True`, so adding a token does not make the
-endpoint private. Anonymous visitors get the cached result. The uptime
-monitor sends the token and always gets a fresh result:
+`allow_anonymous` defaults to `False`, so a token makes the endpoint
+private. Set `allow_anonymous=True` to let anonymous visitors get the
+cached result. The uptime monitor sends the token and always gets a fresh
+result:
 
 ```python
 import datetime
@@ -83,6 +82,7 @@ import os
 HealthCheckView.as_view(
     cache_timeout=datetime.timedelta(seconds=30),
     authentication_token=os.environ["HEALTH_CHECK_AUTHENTICATION_TOKEN"],
+    allow_anonymous=True,
 )
 ```
 
