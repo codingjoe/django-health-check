@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import pytest
 from django.core.management import call_command
+from django.test import override_settings
 
 from health_check.management.commands.health_check import Command
 
@@ -376,8 +377,9 @@ class TestHealthCheckCommand:
             output = stdout.getvalue()
             assert "OK" in output or "working" in output
 
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="setting-token")
     def test_handle__token_authenticates(self, live_server):
-        """Send a bearer token when --auth-token is provided."""
+        """Prefer the --auth-token value over the setting."""
         parsed = urlparse(live_server.url)
         addrport = f"{parsed.hostname}:{parsed.port}"
 
@@ -385,9 +387,9 @@ class TestHealthCheckCommand:
         stderr = StringIO()
         call_command(
             "health_check",
-            "health_check_auth",
+            "health_check_auth_override",
             addrport,
-            auth_token="test-token",
+            auth_token="flag-token",
             stdout=stdout,
             stderr=stderr,
         )
@@ -395,6 +397,7 @@ class TestHealthCheckCommand:
         assert "Database" in output or "Cache" in output
         assert "OK" in output or "working" in output
 
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="test-token")
     def test_handle__missing_token_exits_2(self, live_server):
         """Return exit code 2 and an auth hint when the token is missing."""
         parsed = urlparse(live_server.url)
@@ -402,14 +405,12 @@ class TestHealthCheckCommand:
 
         stdout = StringIO()
         stderr = StringIO()
-        with (
-            patch.dict(os.environ, {"HEALTH_CHECK_AUTH_TOKEN": ""}),
-            pytest.raises(SystemExit) as exc_info,
-        ):
+        with pytest.raises(SystemExit) as exc_info:
             call_command(
                 "health_check",
                 "health_check_auth",
                 addrport,
+                auth_token="",
                 stdout=stdout,
                 stderr=stderr,
             )
@@ -419,21 +420,21 @@ class TestHealthCheckCommand:
         assert "--auth-token" in error_output
         assert "HEALTH_CHECK_AUTH_TOKEN" in error_output
 
-    def test_handle__token_from_environment(self, live_server):
-        """Use HEALTH_CHECK_AUTH_TOKEN from the environment as the default token."""
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="test-token")
+    def test_handle__token_from_settings(self, live_server):
+        """Use HEALTH_CHECK_AUTH_TOKEN from the settings as the default token."""
         parsed = urlparse(live_server.url)
         addrport = f"{parsed.hostname}:{parsed.port}"
 
         stdout = StringIO()
         stderr = StringIO()
-        with patch.dict(os.environ, {"HEALTH_CHECK_AUTH_TOKEN": "test-token"}):
-            call_command(
-                "health_check",
-                "health_check_auth",
-                addrport,
-                stdout=stdout,
-                stderr=stderr,
-            )
+        call_command(
+            "health_check",
+            "health_check_auth",
+            addrport,
+            stdout=stdout,
+            stderr=stderr,
+        )
         output = stdout.getvalue()
         assert "OK" in output or "working" in output
 

@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 from django.http import HttpResponse
-from django.test import AsyncRequestFactory
+from django.test import AsyncRequestFactory, override_settings
 
 from health_check.base import HealthCheck
 from health_check.exceptions import (
@@ -1379,6 +1379,17 @@ class TestHealthCheckViewAuthentication:
         )
         assert response.status_code == 200
         assert response["Cache-Control"] == "no-store"
+        assert "Authorization" in response["Vary"]
+
+    @pytest.mark.asyncio
+    @override_settings(HEALTH_CHECK_AUTH_TOKEN="secret")
+    async def test_dispatch__token_from_settings(self, health_check_view):
+        """Read the bearer token from the settings when the view has none."""
+        response = await health_check_view(
+            [SuccessBackend],
+            headers={"Authorization": "Bearer secret"},
+        )
+        assert response.status_code == 200
         assert "Authorization" in response["Vary"]
 
     @pytest.mark.asyncio

@@ -62,7 +62,9 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> This endpoint is public and uncached, because probes must read a fresh result.
+> This endpoint is uncached, because probes must read a fresh result.
+> Probes send the `Authorization` header, because this endpoint shares the
+> `HEALTH_CHECK_AUTH_TOKEN` setting.
 > If you do not want to show CPU, memory, and disk figures, restrict access to
 > your network.
 
@@ -182,7 +184,6 @@ pip install "django-health-check[redis,rabbitmq,celery,crontask]"
 
 ```python
 # urls.py
-import os
 from datetime import timedelta
 
 from django.urls import include, path
@@ -220,7 +221,6 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         max_age=timedelta(seconds=30),
-                        auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",
@@ -287,7 +287,9 @@ urlpatterns = [
                 # other endpoints …
                 path(
                     "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
+                    HealthCheckView.as_view(
+                        checks=pipeline_checks, allow_anonymous=True
+                    ),
                     name="health_check-pipeline",
                 ),
             ]
@@ -297,7 +299,7 @@ urlpatterns = [
 ```
 
 The pipeline endpoint is public because Slack and Matrix cannot send an
-`Authorization` header. Leave `auth_token` unset here.
+`Authorization` header. Set `allow_anonymous=True` here.
 
 ### Slack or Matrix
 
@@ -327,7 +329,6 @@ ______________________________________________________________________
 
 ```python
 # urls.py
-import os
 from datetime import timedelta
 
 from django.urls import include, path
@@ -390,7 +391,6 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         max_age=timedelta(seconds=30),
-                        auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",
@@ -398,7 +398,9 @@ urlpatterns = [
                 # Tier 3: pipeline, developer RSS/Atom feeds (Slack, Matrix)
                 path(
                     "pipeline/",
-                    HealthCheckView.as_view(checks=pipeline_checks),
+                    HealthCheckView.as_view(
+                        checks=pipeline_checks, allow_anonymous=True
+                    ),
                     name="health_check-pipeline",
                 ),
             ]

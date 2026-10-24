@@ -99,24 +99,16 @@ Protect the health check endpoint with a bearer token.
     > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
     > to sign other data.
 
-3. Add the token to your URL configuration:
+3. Add the token to your settings:
 
     ```python
-    # urls.py
+    # settings.py
     import os
 
-    from django.urls import path
-    from health_check.views import HealthCheckView
-
-    urlpatterns = [
-        # …
-        path(
-            "health/",
-            HealthCheckView.as_view(auth_token=os.getenv("HEALTH_CHECK_AUTH_TOKEN")),
-            name="health_check",
-        ),
-    ]
+    HEALTH_CHECK_AUTH_TOKEN = os.getenv("HEALTH_CHECK_AUTH_TOKEN")
     ```
+
+    The view and the `health_check` command read this setting.
 
 4. Send the token in the request:
 

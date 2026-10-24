@@ -150,14 +150,12 @@ Database                 ... OK
 CustomHealthCheck        ... Unavailable: Something went wrong!
 ```
 
-If the view sets `auth_token`, pass a bearer token:
+The command reads the `HEALTH_CHECK_AUTH_TOKEN` setting as its bearer token.
+Pass `--auth-token` to send a different token:
 
 ```shell
 django-admin health_check health_check --auth-token "$HEALTH_CHECK_AUTH_TOKEN"
 ```
-
-The command reads `HEALTH_CHECK_AUTH_TOKEN` from the environment when you omit
-`--auth-token`.
 
 Pass `--no-http` to skip the HTTP server. This option is useful for container
 health checks that do not run a web server:

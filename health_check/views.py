@@ -7,6 +7,7 @@ import timeit
 import typing
 from concurrent.futures import Executor
 
+from django.conf import settings
 from django.db import transaction
 from django.http import (
     HttpRequest,
@@ -114,7 +115,10 @@ class HealthCheckView(TemplateView):
     """
 
     auth_token: str | None = None
-    """Secret bearer token that authenticates a request and skips the cache."""
+    """Secret bearer token that authenticates a request and skips the cache.
+
+    Defaults to the `HEALTH_CHECK_AUTH_TOKEN` setting.
+    """
 
     allow_anonymous: bool = False
     """Admit requests without an Authorization header when a token is configured.
@@ -142,7 +146,7 @@ class HealthCheckView(TemplateView):
             return response
         response = await super().dispatch(request, *args, **kwargs)
         patch_vary_headers(response, ["Accept"])
-        if self.auth_token:
+        if self.get_auth_token():
             patch_vary_headers(response, ["Authorization"])
         return self.patch_cache_headers(request, response)
 
@@ -162,13 +166,16 @@ class HealthCheckView(TemplateView):
         )
         return response
 
+    def get_auth_token(self) -> str | None:
+        """Return the bearer token from the view or the settings."""
+        return self.auth_token or getattr(settings, "HEALTH_CHECK_AUTH_TOKEN", None)
+
     def is_authorized(self, request: HttpRequest) -> bool:
         """Return whether the request may access the view."""
-        if self.auth_token:
+        if auth_token := self.get_auth_token():
             scheme, _, token = request.headers.get("Authorization", "").partition(" ")
             return (
-                scheme.lower() == "bearer"
-                and constant_time_compare(token, self.auth_token)
+                scheme.lower() == "bearer" and constant_time_compare(token, auth_token)
             ) or (self.allow_anonymous and "Authorization" not in request.headers)
         return True
 

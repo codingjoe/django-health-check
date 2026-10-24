@@ -59,8 +59,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--auth-token",
             type=str,
-            default=os.getenv("HEALTH_CHECK_AUTH_TOKEN"),
-            help="Bearer token for an authenticated endpoint (default: $HEALTH_CHECK_AUTH_TOKEN)",
+            default=getattr(settings, "HEALTH_CHECK_AUTH_TOKEN", None),
+            help="Bearer token for an authenticated endpoint (default: settings.HEALTH_CHECK_AUTH_TOKEN)",
         )
         http_group = parser.add_mutually_exclusive_group()
         http_group.add_argument(
@@ -156,7 +156,7 @@ class Command(BaseCommand):
                 case 403:
                     self.stderr.write(
                         f"{url!r} requires authentication. "
-                        "Provide a token with --auth-token or set the HEALTH_CHECK_AUTH_TOKEN environment variable."
+                        "Provide a token with --auth-token or set the HEALTH_CHECK_AUTH_TOKEN setting."
                     )
                     sys.exit(2)
                 case _:
