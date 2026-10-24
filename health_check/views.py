@@ -108,7 +108,10 @@ class HealthCheckView(TemplateView):
     feed_author = "Django Health Check"
 
     cache_timeout: datetime.timedelta = datetime.timedelta(0)
-    """Time a shared cache may reuse a successful response. Zero disables caching."""
+    """Time a shared cache may reuse a successful response, sent as `max-age`.
+
+    Zero disables caching.
+    """
 
     authentication_token: str | None = None
     """Secret bearer token that authenticates a request and skips the cache."""
