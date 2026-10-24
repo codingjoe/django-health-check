@@ -18,29 +18,29 @@
 [![djversion](https://img.shields.io/pypi/djversions/django-health-check.svg)](https://pypi.python.org/pypi/django-health-check/)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://pypi.python.org/pypi/django-health-check/)
 
-This project monitors your services and reports back when something looks wrong.
+This project monitors your services. It reports when a service is not healthy.
 
 [Documentation](https://codingjoe.dev/django-health-check/) | [Issues](https://github.com/codingjoe/django-health-check/issues/new/choose) | [Changelog](https://github.com/codingjoe/django-health-check/releases) | [Funding](https://github.com/sponsors/codingjoe) 💚
 
-The following health checks are bundled with this project:
+This project includes these health checks:
 
 - [caches][health_check.Cache] & [databases][health_check.Database]
-- [disk][health_check.contrib.psutil.Disk] & [memory][health_check.contrib.psutil.Memory] utilization
+- [disk][health_check.contrib.psutil.Disk] & [memory][health_check.contrib.psutil.Memory] usage
 - [DNS][health_check.DNS] & [email][health_check.Mail]
 - [storages][health_check.Storage]
 - [Celery][health_check.contrib.celery.Ping], [Crontask scheduler][health_check.contrib.crontask.Scheduler],
   [Kafka][health_check.contrib.kafka.Kafka], [RabbitMQ][health_check.contrib.rabbitmq.RabbitMQ] &
   [Redis][health_check.contrib.redis.Redis]
-- [Cloud provider status](checks.md#cloud-provider-status) for numerous cloud and PaaS providers.
+- [Cloud provider status](checks.md#cloud-provider-status) for cloud and PaaS providers.
 
-The bundled checks cover the common cases. If your stack is different, you can write your own.
+The bundled checks cover the common cases. If your stack is different, you can write your own checks.
 
-Contributions are welcome. Open a pull request and we'll take a look.
+Contributions are welcome. Open a pull request.
 
 ## Integrations
 
-The main entry point is an HTML view for your web application. However,
-there are multiple machine-readable formats available for integration:
+The main entry point is an HTML view for your web application. You can also use
+these machine-readable formats:
 
 - [HTTP Status Codes] for load balancers and uptime monitors
 - [OpenMetrics] for [Prometheus] and [Grafana]
