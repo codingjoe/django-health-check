@@ -61,4 +61,3 @@
 - `CeleryHealthCheck` is replaced with [Ping][health_check.contrib.celery.Ping].
 - `MigrationsHealthCheck` is removed. [Django's check framework](https://docs.djangoproject.com/en/stable/topics/checks/) does the same function.
 - `DatabaseHealthCheck` is replaced with [Database][health_check.Database]. It does not require a table. It supports multiple database aliases.
-- The `atlassian` extra remains for compatibility but installs no dependencies. `httpx` is now required for API-based cloud status checks.
