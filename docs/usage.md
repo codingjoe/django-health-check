@@ -17,6 +17,11 @@ token, set `allow_anonymous=True`. See [Security](install.md#security) to
 create the token.
 
 ::: health_check.views.HealthCheckView
+    options:
+      members:
+        - cache_timeout
+        - authentication_token
+        - allow_anonymous
 
 ## Getting machine-readable reports
 
