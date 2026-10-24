@@ -17,6 +17,8 @@ and RSS/Atom integration into Slack or Matrix.
         - max_age
         - auth_token
         - allow_anonymous
+      docstring_options:
+        warn_unknown_params: false
 </div>
 
 ## Get machine-readable reports
@@ -132,6 +134,9 @@ You can also write your own checks. Inherit from
 [HealthCheck][health_check.HealthCheck] and implement the `run` method.
 
 ::: health_check.HealthCheck
+    options:
+      docstring_options:
+        warn_unknown_params: false
 
 ## Django command
 

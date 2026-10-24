@@ -30,8 +30,8 @@ class HealthCheck(abc.ABC):
     The `run` method can be either synchronous or asynchronous.
 
     Args:
-        timeout: Wall-clock budget for the probe. A check declaring its own
-            timeout overrides it.
+        timeout (datetime.timedelta): Wall-clock budget for the probe. A check
+            declaring its own timeout overrides it.
 
     Examples:
         >>> import dataclasses

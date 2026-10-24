@@ -106,13 +106,13 @@ class HealthCheckView(TemplateView):
     Perform health checks and return results in various formats.
 
     Args:
-        max_age: Longest time a shared cache may reuse a successful response.
-            Sent as `max-age`. Zero disables caching.
-        auth_token: Secret bearer token that authenticates a request and skips
-            the cache.
-        allow_anonymous: Admit requests without an Authorization header when a
-            token is configured. A request with a wrong token still receives
-            HTTP 403.
+        max_age (datetime.timedelta): Longest time a shared cache may reuse a
+            successful response. Sent as `max-age`. Zero disables caching.
+        auth_token (str | None): Secret bearer token that authenticates a
+            request and skips the cache.
+        allow_anonymous (bool): Admit requests without an Authorization header
+            when a token is configured. A request with a wrong token still
+            receives HTTP 403.
 
     """
 
