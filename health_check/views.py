@@ -1,18 +1,23 @@
 import asyncio
+import base64
 import contextlib
 import datetime
+import hashlib
 import logging
 import re
 import timeit
 import typing
 from concurrent.futures import Executor
+from importlib.resources import files
 
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils.cache import add_never_cache_headers, patch_vary_headers
+from django.utils.csp import CSP
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.utils.module_loading import import_string
+from django.views.decorators.csp import csp_override
 from django.views.generic import TemplateView
 
 from health_check.base import HealthCheck, HealthCheckResult
@@ -109,6 +114,16 @@ class HealthCheckView(TemplateView):
         "health_check.checks.Mail",
         "health_check.checks.Storage",
     )
+    stylesheet = (
+        files("health_check").joinpath("status.css").read_text(encoding="utf-8")
+    )
+    stylesheet_hash = base64.b64encode(
+        hashlib.sha256(stylesheet.encode()).digest()
+    ).decode()
+    csp_config = {
+        "default-src": [CSP.NONE],
+        "style-src": [f"'sha256-{stylesheet_hash}'"],
+    }
 
     @method_decorator(transaction.non_atomic_requests)
     async def dispatch(self, request, *args, **kwargs):
@@ -195,7 +210,12 @@ class HealthCheckView(TemplateView):
             **super().get_context_data(**kwargs),
             "results": self.results,
             "errors": any(result.error for result in self.results),
+            "stylesheet": self.stylesheet,
         }
+
+    def render_to_response(self, context, **response_kwargs):
+        render = csp_override(self.csp_config)(super().render_to_response)
+        return render(context, **response_kwargs)
 
     def get_executor(self) -> contextlib.AbstractContextManager[Executor | None]:
         """

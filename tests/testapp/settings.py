@@ -25,6 +25,10 @@ INSTALLED_APPS = [
     "tests",
 ]
 
+MIDDLEWARE = [
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+]
+
 
 STATIC_URL = "/static/"
 

@@ -1,5 +1,7 @@
+import base64
 import dataclasses
 import datetime
+import hashlib
 import json
 import logging
 import re
@@ -1174,6 +1176,53 @@ class TestHealthCheckView:
         if hasattr(response, "render"):
             response.render()
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_get__stylesheet(self, health_check_view):
+        """Render the status page stylesheet without a nonce attribute."""
+
+        class SuccessBackend(HealthCheck):
+            async def run(self):
+                pass
+
+        content = (await health_check_view([SuccessBackend])).content
+        assert b"<style>:root {" in content
+        assert b"nonce=" not in content
+
+    @pytest.mark.asyncio
+    async def test_get__content_security_policy_style_hash(self):
+        """Override the policy with the rendered stylesheet hash."""
+        from django.test import AsyncClient, override_settings
+
+        with override_settings(
+            MIDDLEWARE=["django.middleware.csp.ContentSecurityPolicyMiddleware"],
+            SECURE_CSP={"default-src": ["https://example.com"]},
+        ):
+            response = await AsyncClient().get("/health/fail/")
+
+        stylesheet = re.search(rb"<style>(.*?)</style>", response.content, re.DOTALL)
+        digest = base64.b64encode(hashlib.sha256(stylesheet.group(1)).digest()).decode()
+        policy = response["Content-Security-Policy"]
+        assert "default-src 'none'" in policy
+        assert f"style-src 'sha256-{digest}'" in policy
+        assert "example.com" not in policy
+
+    def test_render_to_response__subclass_csp_config(self):
+        """Apply the CSP config of the view class."""
+        from django.middleware.csp import ContentSecurityPolicyMiddleware
+        from django.test import RequestFactory
+
+        class CustomHealthCheckView(HealthCheckView):
+            csp_config = {"default-src": ["https://example.com"]}
+
+        view = CustomHealthCheckView()
+        view.request = RequestFactory().get("/")
+        view.results = []
+        middleware = ContentSecurityPolicyMiddleware(
+            lambda request: view.render_to_response(view.get_context_data())
+        )
+        response = middleware(view.request)
+        assert response["Content-Security-Policy"] == "default-src https://example.com"
 
     def test_abnf_escape(self):
         assert HealthCheckView.abnf_escape("simple") == "simple"
