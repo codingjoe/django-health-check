@@ -273,12 +273,14 @@ class RemoteCheck(HealthCheck):
 
     Args:
         url: Absolute URL of the remote health check.
+        auth_token: Bearer token for an authenticated remote health check.
         label: Label that replaces the URL in the check representation.
         timeout: Request timeout.
 
     """
 
     url: str = dataclasses.field(repr=False)
+    auth_token: str | None = dataclasses.field(default=None, repr=False)
     label: str | None = None
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
@@ -292,11 +294,16 @@ class RemoteCheck(HealthCheck):
                 return f"{type(self).__name__}(label={label!r})"
 
     async def run(self) -> None:
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "django-health-check",
+        }
+        match self.auth_token:
+            case str(token) if token:
+                headers["Authorization"] = f"Bearer {token}"
+
         async with httpx.AsyncClient(
-            headers={
-                "Accept": "application/json",
-                "User-Agent": "django-health-check",
-            },
+            headers=headers,
             timeout=self.timeout.total_seconds(),
             follow_redirects=True,
         ) as client:

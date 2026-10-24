@@ -316,6 +316,23 @@ class TestRemoteCheck:
         assert mock_client.call_args.kwargs["follow_redirects"] is True
 
     @pytest.mark.asyncio
+    async def test_run_check__auth_token(self):
+        """Send the auth token as a bearer token."""
+        response = self._response(200, {"Database": "OK"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            check = RemoteCheck(
+                url="https://example.com/health/",
+                auth_token="secret",
+            )
+            result = await check.get_result()
+
+        assert result.error is None
+        assert (
+            mock_client.call_args.kwargs["headers"]["Authorization"] == "Bearer secret"
+        )
+
+    @pytest.mark.asyncio
     async def test_run_check__multiple_errors(self):
         """Report all remote failures as one error."""
         response = self._response(
@@ -414,9 +431,19 @@ class TestRemoteCheck:
         assert repr(check) == "RemoteCheck(label='example')"
         assert check.url not in repr(check)
 
+    def test_repr__auth_token(self):
+        """Exclude the auth token from the representation."""
+        check = RemoteCheck(url="https://example.com/health/", auth_token="secret")
+        assert "secret" not in repr(check)
+
     def test_labels__url(self):
         """Exclude the URL from labels."""
         check = RemoteCheck(url="https://example.com/health/")
+        assert check.labels == {"check": "RemoteCheck"}
+
+    def test_labels__auth_token(self):
+        """Exclude the auth token from labels."""
+        check = RemoteCheck(url="https://example.com/health/", auth_token="secret")
         assert check.labels == {"check": "RemoteCheck"}
 
     def test_labels__label(self):
