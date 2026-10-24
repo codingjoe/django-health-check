@@ -6,6 +6,8 @@ import re
 from unittest import mock
 
 import pytest
+from django.http import HttpResponse
+from django.test import AsyncRequestFactory
 
 from health_check.base import HealthCheck
 from health_check.exceptions import (
@@ -15,6 +17,20 @@ from health_check.exceptions import (
     StatusPageWarning,
 )
 from health_check.views import HealthCheckView, MediaType
+
+
+class SuccessBackend(HealthCheck):
+    """Health check that always passes."""
+
+    async def run(self):
+        pass
+
+
+class FailingBackend(HealthCheck):
+    """Health check that always fails."""
+
+    async def run(self):
+        raise HealthCheckError("Failed")
 
 
 class TestMediaType:
@@ -1188,3 +1204,204 @@ class TestHealthCheckView:
         assert HealthCheckView.abnf_dumps({"a": "b"}) == 'a="b"'
         assert HealthCheckView.abnf_dumps({"a": "b", "c": "d"}) == 'a="b",c="d"'
         assert HealthCheckView.abnf_dumps({"a": 'b"c'}) == 'a="b\\"c"'
+
+
+class TestHealthCheckViewCache:
+    @pytest.mark.parametrize(
+        ("method", "status", "cache_timeout", "headers", "expected"),
+        [
+            pytest.param(
+                "get",
+                200,
+                datetime.timedelta(seconds=30),
+                {},
+                "public, max-age=30",
+                id="success",
+            ),
+            pytest.param(
+                "head",
+                200,
+                datetime.timedelta(seconds=30),
+                {},
+                "public, max-age=30",
+                id="head",
+            ),
+            pytest.param(
+                "get",
+                200,
+                datetime.timedelta(0),
+                {},
+                "no-store",
+                id="zero-timeout",
+            ),
+            pytest.param(
+                "get",
+                200,
+                datetime.timedelta(seconds=-1),
+                {},
+                "no-store",
+                id="negative-timeout",
+            ),
+            pytest.param(
+                "get",
+                500,
+                datetime.timedelta(seconds=30),
+                {},
+                "no-store",
+                id="failure",
+            ),
+            pytest.param(
+                "post",
+                200,
+                datetime.timedelta(seconds=30),
+                {},
+                "no-store",
+                id="unsafe-method",
+            ),
+            pytest.param(
+                "get",
+                200,
+                datetime.timedelta(seconds=30),
+                {"Authorization": "Bearer secret"},
+                "no-store",
+                id="authorization",
+            ),
+        ],
+    )
+    def test_patch_cache_headers(
+        self, method, status, cache_timeout, headers, expected
+    ):
+        """Set Cache-Control from timeout, status, method, and Authorization header."""
+        view = HealthCheckView()
+        view.cache_timeout = cache_timeout
+        request = getattr(AsyncRequestFactory(), method)("/", headers=headers)
+        response = view.patch_cache_headers(request, HttpResponse(status=status))
+        assert response["Cache-Control"] == expected
+
+    @pytest.mark.asyncio
+    async def test_dispatch__public_cache(self, health_check_view):
+        """Cache a successful anonymous response publicly."""
+        response = await health_check_view(
+            [SuccessBackend], cache_timeout=datetime.timedelta(seconds=30)
+        )
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "public, max-age=30"
+        assert "Authorization" not in response.get("Vary", "")
+
+    @pytest.mark.asyncio
+    async def test_dispatch__failure_not_cached(self, health_check_view):
+        """Send no-store when a check fails."""
+        response = await health_check_view(
+            [FailingBackend], cache_timeout=datetime.timedelta(seconds=30)
+        )
+        assert response.status_code == 500
+        assert response["Cache-Control"] == "no-store"
+
+
+class TestHealthCheckViewAuthentication:
+    @pytest.mark.parametrize(
+        ("token", "allow_anonymous", "headers", "expected"),
+        [
+            pytest.param(None, False, {}, True, id="unprotected"),
+            pytest.param(
+                None,
+                False,
+                {"Authorization": "Bearer anything"},
+                True,
+                id="unprotected-ignores-header",
+            ),
+            pytest.param(
+                "secret",
+                False,
+                {"Authorization": "Bearer secret"},
+                True,
+                id="valid-token",
+            ),
+            pytest.param(
+                "secret",
+                False,
+                {"Authorization": "bearer secret"},
+                True,
+                id="scheme-case-insensitive",
+            ),
+            pytest.param(
+                "secret",
+                False,
+                {"Authorization": "Bearer wrong"},
+                False,
+                id="wrong-token",
+            ),
+            pytest.param(
+                "secret",
+                False,
+                {"Authorization": "Basic secret"},
+                False,
+                id="wrong-scheme",
+            ),
+            pytest.param("secret", False, {}, False, id="missing-header"),
+            pytest.param("secret", True, {}, True, id="anonymous-admitted"),
+            pytest.param(
+                "secret",
+                True,
+                {"Authorization": "Bearer wrong"},
+                False,
+                id="wrong-token-not-anonymous",
+            ),
+        ],
+    )
+    def test_is_authorized(self, token, allow_anonymous, headers, expected):
+        """Authorize only a matching bearer token unless anonymity is admitted."""
+        view = HealthCheckView()
+        view.authentication_token = token
+        view.allow_anonymous = allow_anonymous
+        request = AsyncRequestFactory().get("/", headers=headers)
+        assert view.is_authorized(request) is expected
+
+    @pytest.mark.asyncio
+    async def test_dispatch__forbidden_without_token(self, health_check_view):
+        """Return 403 and vary on Authorization when no token is sent."""
+        response = await health_check_view(
+            [SuccessBackend],
+            authentication_token="secret",
+            cache_timeout=datetime.timedelta(seconds=30),
+        )
+        assert response.status_code == 403
+        assert response.content == b"Authentication failed"
+        assert "Authorization" in response["Vary"]
+        assert "Cache-Control" not in response
+
+    @pytest.mark.asyncio
+    async def test_dispatch__valid_token_skips_cache(self, health_check_view):
+        """Serve an authenticated request and send no-store."""
+        response = await health_check_view(
+            [SuccessBackend],
+            headers={"Authorization": "Bearer secret"},
+            authentication_token="secret",
+            cache_timeout=datetime.timedelta(seconds=30),
+        )
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "no-store"
+        assert "Authorization" in response["Vary"]
+
+    @pytest.mark.asyncio
+    async def test_dispatch__anonymous_admitted(self, health_check_view):
+        """Serve an anonymous request when the view allows it."""
+        response = await health_check_view(
+            [SuccessBackend],
+            authentication_token="secret",
+            allow_anonymous=True,
+            cache_timeout=datetime.timedelta(seconds=30),
+        )
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "public, max-age=30"
+
+    @pytest.mark.asyncio
+    async def test_dispatch__wrong_token_forbidden(self, health_check_view):
+        """Reject a wrong token even when anonymity is admitted."""
+        response = await health_check_view(
+            [SuccessBackend],
+            headers={"Authorization": "Bearer wrong"},
+            authentication_token="secret",
+            allow_anonymous=True,
+        )
+        assert response.status_code == 403
