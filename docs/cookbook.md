@@ -179,9 +179,9 @@ pip install "django-health-check[redis,rabbitmq,celery,crontask]"
 
 ```python
 # urls.py
+import os
 from datetime import timedelta
 
-from django.conf import settings
 from django.urls import include, path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
@@ -217,7 +217,7 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         cache_timeout=timedelta(seconds=30),
-                        authentication_token=settings.HEALTH_CHECK_TOKEN,
+                        authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",
@@ -323,9 +323,9 @@ ______________________________________________________________________
 
 ```python
 # urls.py
+import os
 from datetime import timedelta
 
-from django.conf import settings
 from django.urls import include, path
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
@@ -386,7 +386,7 @@ urlpatterns = [
                     HealthCheckView.as_view(
                         checks=application_checks,
                         cache_timeout=timedelta(seconds=30),
-                        authentication_token=settings.HEALTH_CHECK_TOKEN,
+                        authentication_token=os.getenv("HEALTH_CHECK_TOKEN"),
                         allow_anonymous=True,
                     ),
                     name="health_check-application",
