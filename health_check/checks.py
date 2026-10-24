@@ -10,6 +10,7 @@ import uuid
 
 import django
 import dns.asyncresolver
+import httpx
 from django import db
 from django.conf import settings
 from django.core.cache import CacheKeyWarning, caches
@@ -261,6 +262,74 @@ class Mail(HealthCheck):
         finally:
             connection.close()
         logger.debug("Connection established. Mail backend %r is healthy.", connection)
+
+
+@dataclasses.dataclass
+class RemoteCheck(HealthCheck):
+    """
+    Check a remote django-health-check endpoint.
+
+    Report every non-OK result as a single error.
+
+    Args:
+        url: Absolute URL of the remote health check.
+        auth_token: Bearer token for an authenticated remote health check.
+        label: Label that replaces the URL in the check representation.
+        timeout: Request timeout.
+
+    """
+
+    url: str = dataclasses.field(repr=False)
+    auth_token: str | None = dataclasses.field(default=None, repr=False)
+    label: str | None = None
+    timeout: datetime.timedelta = dataclasses.field(
+        default=datetime.timedelta(seconds=10), repr=False
+    )
+
+    def __repr__(self) -> str:
+        match self.label:
+            case None:
+                return f"{type(self).__name__}(url={self.url!r})"
+            case label:
+                return f"{type(self).__name__}(label={label!r})"
+
+    async def run(self) -> None:
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "django-health-check",
+        }
+        if token := self.auth_token:
+            headers["Authorization"] = f"Bearer {token}"
+
+        async with httpx.AsyncClient(
+            headers=headers,
+            timeout=self.timeout.total_seconds(),
+            follow_redirects=True,
+        ) as client:
+            try:
+                response = await client.get(self.url)
+            except httpx.TimeoutException as e:
+                msg = "Request timed out"
+                raise ServiceUnavailable(msg) from e
+            except httpx.RequestError as e:
+                msg = f"Failed to reach URL: {e}"
+                raise ServiceUnavailable(msg) from e
+
+        try:
+            errors = "\n".join(
+                f"{check}: {result}"
+                for check, result in response.json().items()
+                if result != "OK"
+            )
+        except ValueError as e:
+            msg = f"Response is not valid JSON (HTTP {response.status_code})"
+            raise ServiceReturnedUnexpectedResult(msg) from e
+        except AttributeError as e:
+            msg = "Response is not a JSON object"
+            raise ServiceReturnedUnexpectedResult(msg) from e
+
+        if errors:
+            raise ServiceUnavailable(errors)
 
 
 @dataclasses.dataclass

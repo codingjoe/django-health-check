@@ -10,6 +10,8 @@
 
 ::: health_check.Mail
 
+::: health_check.RemoteCheck
+
 ::: health_check.Storage
 
 ## System Services

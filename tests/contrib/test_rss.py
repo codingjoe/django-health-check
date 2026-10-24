@@ -4,18 +4,18 @@ import datetime
 import logging
 from unittest import mock
 
+import httpx
 import pytest
 
-httpx = pytest.importorskip("httpx")
 pytest.importorskip("feedparser")
 
-from health_check.contrib.rss import (  # noqa: E402
+from health_check.contrib.rss import (
     AWS,
     Azure,
     GoogleCloud,
     Heroku,
 )
-from health_check.exceptions import (  # noqa: E402
+from health_check.exceptions import (
     ServiceUnavailable,
     ServiceWarning,
     StatusPageWarning,
@@ -183,8 +183,6 @@ class TestAWS:
     @pytest.mark.asyncio
     async def test_check_status__http_error(self):
         """Raise ServiceUnavailable on HTTP error."""
-        import httpx
-
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_response = mock.MagicMock()
             mock_response.status_code = 404
@@ -207,8 +205,6 @@ class TestAWS:
     @pytest.mark.asyncio
     async def test_check_status__url_error(self):
         """Raise ServiceUnavailable on request error."""
-        import httpx
-
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(
@@ -225,8 +221,6 @@ class TestAWS:
     @pytest.mark.asyncio
     async def test_check_status__timeout_error(self):
         """Raise ServiceUnavailable on timeout."""
-        import httpx
-
         with mock.patch("health_check.contrib.rss.httpx.AsyncClient") as mock_client:
             mock_context = mock.AsyncMock()
             mock_context.__aenter__.return_value.get = mock.AsyncMock(

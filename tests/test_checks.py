@@ -8,6 +8,7 @@ from unittest import mock
 
 import django
 import dns
+import httpx
 import pytest
 from django import db
 from django.core.cache import CacheKeyWarning
@@ -15,7 +16,14 @@ from django.core.checks.registry import registry
 from django.test import override_settings
 
 from health_check import Storage
-from health_check.checks import DNS, Cache, Database, Mail, check_auth_token
+from health_check.checks import (
+    DNS,
+    Cache,
+    Database,
+    Mail,
+    RemoteCheck,
+    check_auth_token,
+)
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
@@ -269,6 +277,179 @@ class TestMail:
             check = Mail()
             result = await check.get_result()
             assert result.error is None
+
+
+class TestRemoteCheck:
+    """Test the RemoteCheck health check."""
+
+    @staticmethod
+    def _response(status, body=None):
+        response = mock.MagicMock()
+        response.status_code = status
+        response.json.return_value = body
+        return response
+
+    @staticmethod
+    def _client(response):
+        client = mock.MagicMock()
+        client.get = mock.AsyncMock(return_value=response)
+        client.__aenter__.return_value = client
+        return client
+
+    @pytest.mark.asyncio
+    async def test_run_check__all_ok(self):
+        """Report no error when every remote check is OK."""
+        response = self._response(200, {"Database": "OK", "Cache": "OK"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            client = self._client(response)
+            mock_client.return_value = client
+            check = RemoteCheck(url="https://example.com/health/")
+            result = await check.get_result()
+
+        assert result.error is None
+        client.get.assert_awaited_once_with("https://example.com/health/")
+        assert mock_client.call_args.kwargs["headers"] == {
+            "Accept": "application/json",
+            "User-Agent": "django-health-check",
+        }
+        assert mock_client.call_args.kwargs["timeout"] == 10.0
+        assert mock_client.call_args.kwargs["follow_redirects"] is True
+
+    @pytest.mark.asyncio
+    async def test_run_check__auth_token(self):
+        """Send the auth token as a bearer token."""
+        response = self._response(200, {"Database": "OK"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            check = RemoteCheck(
+                url="https://example.com/health/",
+                auth_token="secret",
+            )
+            result = await check.get_result()
+
+        assert result.error is None
+        assert (
+            mock_client.call_args.kwargs["headers"]["Authorization"] == "Bearer secret"
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_check__multiple_errors(self):
+        """Report all remote failures as one error."""
+        response = self._response(
+            500,
+            {
+                "Database": "Unavailable: down",
+                "Cache": "OK",
+                "Mail": "Unexpected Result: bad",
+            },
+        )
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            check = RemoteCheck(url="https://example.com/health/")
+            result = await check.get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert str(result.error) == (
+            "Unavailable: Database: Unavailable: down\nMail: Unexpected Result: bad"
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_check__unexpected_http_status(self):
+        """Report an unexpected HTTP status when the response is not JSON."""
+        response = self._response(404)
+        response.json.side_effect = ValueError("invalid json")
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not valid JSON (HTTP 404)" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__json_with_unexpected_http_status(self):
+        """Report JSON errors regardless of the HTTP status."""
+        response = self._response(404, {"detail": "Not found"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert str(result.error) == "Unavailable: detail: Not found"
+
+    @pytest.mark.asyncio
+    async def test_run_check__invalid_json(self):
+        """Raise ServiceReturnedUnexpectedResult for malformed JSON."""
+        response = self._response(200)
+        response.json.side_effect = ValueError("invalid json")
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not valid JSON" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__unexpected_json(self):
+        """Raise ServiceReturnedUnexpectedResult for a non-object JSON body."""
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(self._response(200, ["OK"]))
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
+        assert "Response is not a JSON object" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__connection_error(self):
+        """Raise ServiceUnavailable when the URL is unreachable."""
+        client = self._client(None)
+        client.get.side_effect = httpx.ConnectError("Connection refused")
+        with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Failed to reach URL: Connection refused" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_run_check__timeout(self):
+        """Raise ServiceUnavailable when the request times out."""
+        client = self._client(None)
+        client.get.side_effect = httpx.TimeoutException("Timed out")
+        with mock.patch("health_check.checks.httpx.AsyncClient", return_value=client):
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, ServiceUnavailable)
+        assert "Request timed out" in str(result.error)
+
+    def test_repr__url(self):
+        """Show the URL when no label is set."""
+        check = RemoteCheck(url="https://example.com/health/")
+        assert repr(check) == "RemoteCheck(url='https://example.com/health/')"
+
+    def test_repr__label(self):
+        """Show the label instead of the URL."""
+        check = RemoteCheck(url="https://example.com/health/", label="example")
+        assert repr(check) == "RemoteCheck(label='example')"
+        assert check.url not in repr(check)
+
+    def test_repr__auth_token(self):
+        """Exclude the auth token from the representation."""
+        check = RemoteCheck(url="https://example.com/health/", auth_token="secret")
+        assert "secret" not in repr(check)
+
+    def test_labels__url(self):
+        """Exclude the URL from labels."""
+        check = RemoteCheck(url="https://example.com/health/")
+        assert check.labels == {"check": "RemoteCheck"}
+
+    def test_labels__auth_token(self):
+        """Exclude the auth token from labels."""
+        check = RemoteCheck(url="https://example.com/health/", auth_token="secret")
+        assert check.labels == {"check": "RemoteCheck"}
+
+    def test_labels__label(self):
+        """Include the label in labels."""
+        check = RemoteCheck(url="https://example.com/health/", label="example")
+        assert check.labels == {"check": "RemoteCheck", "label": "example"}
 
 
 class TestStorage:
