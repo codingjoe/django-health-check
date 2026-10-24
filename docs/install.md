@@ -110,10 +110,3 @@ Add a secure token to your URL to keep the health check endpoint private.
        ),
    ]
    ```
-
-### Content Security Policy
-
-The status page carries one inline `<style>` element. With Django 6.0's CSP
-middleware and nonces enabled, the template renders the request's nonce on that
-element, so a nonce-based policy allows the inline style. Without a nonce, the
-`nonce` attribute renders empty and browsers disregard it.
