@@ -1,9 +1,9 @@
 # Cookbook
 
-This cookbook walks through setting up multiple health check endpoints,
-each aimed at a different audience and use case.
+This cookbook shows how to set up multiple health check endpoints. Each
+endpoint has a different audience and use case.
 
-A solid setup exposes **three tiers** of endpoints:
+A good setup has **three tiers** of endpoints:
 
 | Tier                                      | Purpose                 | Consumers                              |
 | ----------------------------------------- | ----------------------- | -------------------------------------- |
@@ -15,12 +15,12 @@ ______________________________________________________________________
 
 ## Node health checks
 
-Node checks confirm the server has enough resources to run the app.
-Use them for **liveness and readiness probes** in container
-orchestrators such as Kubernetes, Docker, and Podman, or for reverse-proxy
-checks in HAProxy, nginx, Caddy, and Traefik.
+Node checks make sure that the server has enough resources to run the application.
+Use them for **liveness and readiness probes** in container orchestrators,
+for example Kubernetes, Docker, and Podman. You can also use them for
+reverse-proxy checks in HAProxy, nginx, Caddy, and Traefik.
 
-The `psutil` extra provides OS resource checks such as CPU, memory, and disk usage.
+The `psutil` extra provides OS resource checks for CPU, memory, and disk usage.
 
 ```shell
 pip install "django-health-check[psutil]"
@@ -59,19 +59,20 @@ urlpatterns = [
 ```
 
 > [!TIP]
-> Protect this endpoint with a secret token. Do not make it publicly accessible.
+> A secret token protects this endpoint from public access.
 > See the [Security](install.md#security) section of the installation guide.
 
 ### Kubernetes probes
 
 Kubernetes uses liveness and readiness probes to decide when to restart a pod.
-We hit the endpoint over HTTP, which also proves the whole HTTP stack works.
+The probes use HTTP. Thus they also prove that the full HTTP stack operates
+correctly.
 
 > [!NOTE]
-> Bind your WSGI/ASGI server to `0.0.0.0`, not just `127.0.0.1`, so the kubelet
-> can reach the `httpGet` probes.
+> If the WSGI/ASGI server binds to `0.0.0.0`, the kubelet can reach the
+> `httpGet` probes. A bind to `127.0.0.1` is not sufficient.
 
-For our health check endpoint, the configuration looks like this:
+The configuration for this health check endpoint is:
 
 ```yaml
 # deployment.yaml
@@ -90,13 +91,13 @@ readinessProbe:
 ```
 
 See the [Kubernetes documentation](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-liveness-http-request)
-for more details.
+for more information.
 
 ### Docker / Podman
 
-Compose has no native HTTP probes, so we use the
-[`health_check` command](usage.md#django-command) instead. It doesn't need
-CURL in the image, and it can emulate proxy requests to satisfy HTTPS
+Compose has no native HTTP probes. Thus this setup uses the
+[`health_check` command](usage.md#django-command). The command does not need
+CURL in the image. It can emulate proxy requests to satisfy HTTPS
 requirements.
 
 ```yaml
@@ -112,10 +113,10 @@ services:
 
 ### Load balancers
 
-Most reverse-proxies can load balance.
-Once configured, they only route traffic to healthy instances.
+Most reverse proxies can load balance. After configuration, they send traffic
+only to healthy instances.
 
-In [Caddy][caddy-active-health-checks], the configuration looks like this:
+The configuration for [Caddy][caddy-active-health-checks] is:
 
 ```caddy
 # Caddyfile
@@ -128,7 +129,7 @@ example.com {
 }
 ```
 
-… in [Traefik][traefik-health-checks], the configuration looks like this:
+The configuration for [Traefik][traefik-health-checks] is:
 
 ```yaml
 # compose.yml
@@ -141,7 +142,7 @@ services:
       - "traefik.http.services.myapp.loadbalancer.healthcheck.timeout=5s"
 ```
 
-… in [Nginx][nginx-health-checks], the configuration looks like this:
+The configuration for [Nginx][nginx-health-checks] is:
 
 ```nginx
 # nginx.conf
@@ -151,7 +152,7 @@ upstream myapp {
 }
 ```
 
-… and in [HAProxy][haproxy-health-checks], the configuration looks like this:
+The configuration for [HAProxy][haproxy-health-checks] is:
 
 ```haproxy
 # haproxy.cfg
@@ -163,13 +164,13 @@ backend myapp
 
 ## Application health checks
 
-Application checks make sure every production service your app depends on is
-reachable and operational. **Uptime monitors** such as Pingdom,
-Better Uptime, or StatusCake watch these endpoints and page on-call engineers when
-something goes down.
+Application checks make sure that each production service of your application
+is reachable and operates correctly. **Uptime monitors**, for example Pingdom,
+Better Uptime, or StatusCake, watch these endpoints. They notify on-call
+engineers when a service fails.
 
-To cover the whole stack — databases, caches, message brokers, email, storage —
-you'll need some extra dependencies:
+The full stack includes databases, caches, message brokers, email, and storage.
+To cover the full stack, install these extra dependencies:
 
 ```shell
 pip install "django-health-check[redis,rabbitmq,celery,crontask]"
@@ -221,15 +222,15 @@ urlpatterns = [
 ```
 
 Point the uptime monitor at `https://example.com/health/<HEALTH_CHECK_SECRET>/application/`.
-It returns HTTP 200 when all checks pass and HTTP 500 when any fail — exactly the
-codes monitors watch for.
+The endpoint returns HTTP 200 when all checks pass. It returns HTTP 500 when a
+check fails. Uptime monitors expect these codes.
 
 ## Pipeline health checks
 
-Pipeline checks add **upstream provider status** on top of your application checks —
-cloud platforms, PaaS providers, third-party services. The dev team watches these
-via RSS/Atom feeds in Slack or Matrix, so upstream outages surface before they become
-support tickets.
+Pipeline checks add **upstream provider status** to your application checks.
+This status includes cloud platforms, PaaS providers, and third-party services.
+The development team watches these checks with RSS/Atom feeds in Slack or
+Matrix. Then upstream outages become known before they become support tickets.
 
 Install the extras that read the feeds from cloud providers:
 
@@ -284,17 +285,17 @@ urlpatterns = [
 
 ### Slack or Matrix
 
-You can now alert engineers about upstream outages in Slack or Matrix.
+You can now tell engineers about upstream outages in Slack or Matrix.
 
 Subscribe to the RSS feed in Slack:
 
 1. Install the [Slack RSS App](https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack).
-1. In your `#ops` or `#incidents` channel, run:
+2. In your `#ops` or `#incidents` channel, run:
    ```
    /feed subscribe https://www.example.com/health/<HEALTH_CHECK_SECRET>/pipeline/?format=rss
    ```
 
-... or subscribe in Matrix:
+Or subscribe in Matrix:
 
 ```toml
 # config.toml

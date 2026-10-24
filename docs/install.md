@@ -8,7 +8,7 @@ uv add django-health-check
 pip install django-health-check
 ```
 
-Add `health_check` and any desired plugins to your `INSTALLED_APPS` in `settings.py`:
+Add `health_check` and the plugins that you want to `INSTALLED_APPS` in `settings.py`:
 
 ```python
 # settings.py
@@ -79,22 +79,23 @@ urlpatterns = [
 ```
 
 > [!NOTE]
-> The `name` argument is required — the `health_check` command needs it to
-> resolve this endpoint URL via `reverse()`. When you run the command, pass this name as
-> the `endpoint` argument, for example `django-admin health_check health_check`.
+> The `name` argument is required. The `health_check` command uses it to resolve
+> this endpoint URL with `reverse()`. When you run the command, pass this name as
+> the `endpoint` argument. For example, `django-admin health_check health_check`.
 
 ## Security
 
-You can keep the health check endpoint private by adding a secure token to your URL.
+Add a secure token to your URL to keep the health check endpoint private.
 
 1. Enable HTTPS.
-1. Generate a strong secret token:
+2. Generate a strong secret token:
    ```shell
    python -c "import secrets; print(secrets.token_urlsafe())"
    ```
    > [!WARNING]
-   > Do NOT use Django's `SECRET_KEY` setting!
-1. Add it to your URL configuration:
+   > Do NOT use Django's `SECRET_KEY` setting. Django also uses this setting
+   > to sign other data.
+3. Add the token to your URL configuration:
    ```python
    #  urls.py
    from django.urls import include, path
