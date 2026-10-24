@@ -1,13 +1,11 @@
 import asyncio
 import contextlib
 import datetime
-import hashlib
 import hmac
 import logging
 import re
 import timeit
 import typing
-import uuid
 from concurrent.futures import Executor
 
 from django.db import transaction
@@ -18,14 +16,9 @@ from django.http import (
     HttpResponseForbidden,
     JsonResponse,
 )
-from django.utils.cache import (
-    add_never_cache_headers,
-    get_conditional_response,
-    patch_vary_headers,
-)
+from django.utils.cache import add_never_cache_headers, patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
-from django.utils.http import quote_etag
 from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
 
@@ -162,33 +155,13 @@ class HealthCheckView(TemplateView):
     def patch_cache_headers(
         self, request: HttpRequest, response: HttpResponseBase
     ) -> HttpResponseBase:
-        """Set shared cache headers and answer matching entity tags with 304."""
-        is_authenticated = self.has_valid_authentication_token(request)
-        etag = self.calculate_etag(
-            response, uuid.uuid4().bytes if is_authenticated else b""
-        )
-        response["ETag"] = quote_etag(f'W/"{etag}"')
-        if is_authenticated:
+        """Set cache headers for a shared cache."""
+        if self.has_valid_authentication_token(request):
             response["Cache-Control"] = "no-store"
             return response
         max_age_secs = int(self.cache_timeout.total_seconds())
         response["Cache-Control"] = f"public, max-age={max_age_secs}"
-        return get_conditional_response(
-            request, etag=response["ETag"], response=response
-        )
-
-    def calculate_etag(self, response: HttpResponseBase, salt: bytes = b"") -> str:
-        """Return an entity tag for the current check results."""
-        digest = hashlib.sha256(salt)
-        digest.update(str(response.status_code).encode())
-        digest.update(response.get("Content-Type", "").encode())
-        digest.update(
-            b"".join(
-                repr(result.check).encode() + b"\0" + str(result.error).encode() + b"\0"
-                for result in self.results
-            )
-        )
-        return digest.hexdigest()
+        return response
 
     def is_authorized(self, request: HttpRequest) -> bool:
         """Return whether the request may access the view."""

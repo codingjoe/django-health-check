@@ -43,9 +43,9 @@ urlpatterns = [
 ]
 ```
 
-The view sends `Cache-Control: public, max-age=30` and a weak `ETag`.
-The ETag changes only when a check result changes. A cache that revalidates
-an unchanged result receives HTTP 304.
+The view sends `Cache-Control: public, max-age=30`. A shared cache may serve
+the response for 30 seconds without contacting the origin. After that it
+fetches a fresh response. Every request runs the checks again.
 
 ### Authentication
 
