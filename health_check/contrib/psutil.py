@@ -13,6 +13,9 @@ from health_check.exceptions import (
     ServiceWarning,
 )
 
+_CGROUP_ROOT = pathlib.Path("/sys/fs/cgroup")
+_PROC_SELF_CGROUP = pathlib.Path("/proc/self/cgroup")
+
 
 @dataclasses.dataclass
 class Battery(HealthCheck):
@@ -112,10 +115,57 @@ class Disk(HealthCheck):
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
+@dataclasses.dataclass(frozen=True)
+class _CgroupMemory:
+    """Memory usage of a cgroup v2 control group."""
+
+    total: int
+    available: int
+
+    @property
+    def percent(self) -> float:
+        """Return the memory usage in percent."""
+        return 100 * (self.total - self.available) / self.total
+
+    @classmethod
+    def read(cls) -> _CgroupMemory | None:
+        """Return the control group's memory or None if it cannot be read."""
+        try:
+            group = next(
+                (
+                    line.removeprefix("0::/")
+                    for line in _PROC_SELF_CGROUP.read_text().splitlines()
+                    if line.startswith("0::/")
+                ),
+                "",
+            )
+            path = _CGROUP_ROOT / group
+            total = int(path.joinpath("memory.max").read_text())
+            if total <= 0:
+                return None
+            current = int(path.joinpath("memory.current").read_text())
+            memory_stat = path.joinpath("memory.stat").read_text().splitlines()
+            inactive_file = next(
+                (
+                    int(value)
+                    for key, value in map(str.split, memory_stat)
+                    if key == "inactive_file"
+                ),
+                0,
+            )
+        except OSError, ValueError:
+            return None
+        return cls(total=total, available=total - max(current - inactive_file, 0))
+
+
 @dataclasses.dataclass()
 class Memory(HealthCheck):
     """
     Warn about system memory utilization.
+
+    Inside a cgroup v2 container, the check reports the memory of the control group
+    against its limit, excluding reclaimable page cache as `docker stats` and
+    Kubernetes do. Otherwise, the check reports the host's memory.
 
     Args:
         min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
@@ -129,22 +179,25 @@ class Memory(HealthCheck):
 
     def run(self):
         try:
-            memory = psutil.virtual_memory()
+            memory = _CgroupMemory.read() or psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
-            msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent}\u202f%)"
-            if (
-                self.min_gibibytes_available
-                and available_gibi < self.min_gibibytes_available
-            ):
-                raise ServiceWarning(msg)
-            if (
-                self.max_memory_usage_percent
-                and memory.percent >= self.max_memory_usage_percent
-            ):
-                raise ServiceWarning(msg)
         except ValueError as e:
             raise ServiceReturnedUnexpectedResult("ValueError") from e
+        msg = (
+            f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB"
+            f" ({memory.percent:.1f}\u202f%)"
+        )
+        if (
+            self.min_gibibytes_available
+            and available_gibi < self.min_gibibytes_available
+        ):
+            raise ServiceWarning(msg)
+        if (
+            self.max_memory_usage_percent
+            and memory.percent >= self.max_memory_usage_percent
+        ):
+            raise ServiceWarning(msg)
 
 
 @dataclasses.dataclass
