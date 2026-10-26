@@ -22,11 +22,11 @@ repos:
     hooks:
       - id: django-upgrade
   - repo: https://github.com/djlint/djLint
-    rev: v1.46.6
+    rev: v1.47.1
     hooks:
       - id: djlint-reformat-django
   - repo: https://github.com/thibaudcolas/pre-commit-stylelint
-    rev: v17.16.0
+    rev: v18.0.0-next.0
     hooks:
       - id: stylelint
         additional_dependencies:
@@ -43,7 +43,7 @@ repos:
           - mdformat-gfm-alerts
         exclude: '.github/agents/'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
+    rev: v0.17.2
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
