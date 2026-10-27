@@ -584,6 +584,32 @@ class TestTemperature:
             assert "95.0" in str(result.error)
 
     @pytest.mark.asyncio
+    async def test_check_status__temperature_sensor_without_threshold(self):
+        """Skip a sensor without a high threshold when no maximum is configured."""
+        sensor1 = shwtemp(label="", current=47.0, high=None, critical=None)
+        sensor2 = shwtemp(label="Core 0", current=45.0, high=80.0, critical=90.0)
+        temperatures = {"asus": [sensor1], "coretemp": [sensor2]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device=None, max_temperature_celsius=None)
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__temperature_sensor_without_threshold_exceeds_max(
+        self,
+    ):
+        """Compare a sensor without a high threshold to the configured maximum."""
+        sensor = shwtemp(label="", current=95.0, high=None, critical=None)
+        temperatures = {"asus": [sensor]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device="asus", max_temperature_celsius=90.0)
+            result = await check.get_result()
+            assert isinstance(result.error, ServiceWarning)
+            assert "95.0" in str(result.error)
+
+    @pytest.mark.asyncio
     async def test_check_status__temperature_device_not_found(self):
         """Raise ServiceUnavailable when specified device is not found."""
         temperatures = {"other_device": []}
