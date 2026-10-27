@@ -156,7 +156,7 @@ class Temperature(HealthCheck):
 
     Args:
         device: The device to check temperature for, e.g. 'coretemp' for CPU temperature on many systems. If None, check all available sensors.
-        max_temperature_celsius: Maximum temperature in degree Celsius or None to disable the check.
+        max_temperature_celsius: Maximum temperature in degree Celsius or None to use each sensor's high threshold.
 
     """
 
@@ -189,7 +189,8 @@ class Temperature(HealthCheck):
 
     def _check_temperature(self, sensor, device=None):
         """Warn when a sensor reaches the configured or built-in high threshold."""
-        if sensor.current < (self.max_temperature_celsius or sensor.high):
+        threshold = self.max_temperature_celsius or sensor.high
+        if threshold is None or sensor.current < threshold:
             return
         location = f"{device} " if device else ""
         msg = f"{location}{sensor.label} {sensor.current:.1f}\u202f°C"
