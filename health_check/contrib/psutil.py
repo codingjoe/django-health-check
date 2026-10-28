@@ -3,6 +3,7 @@ import datetime
 import os
 import pathlib
 import socket
+from typing import ClassVar
 
 import psutil
 
@@ -12,9 +13,6 @@ from health_check.exceptions import (
     ServiceUnavailable,
     ServiceWarning,
 )
-
-_CGROUP_ROOT = pathlib.Path("/sys/fs/cgroup")
-_PROC_SELF_CGROUP = pathlib.Path("/proc/self/cgroup")
 
 
 @dataclasses.dataclass
@@ -122,6 +120,9 @@ class _CgroupMemory:
     total: int
     available: int
 
+    ROOT: ClassVar[pathlib.Path] = pathlib.Path("/sys/fs/cgroup")
+    PROC_SELF_CGROUP: ClassVar[pathlib.Path] = pathlib.Path("/proc/self/cgroup")
+
     @property
     def percent(self) -> float:
         """Return the memory usage in percent."""
@@ -134,12 +135,12 @@ class _CgroupMemory:
             group = next(
                 (
                     line.removeprefix("0::/")
-                    for line in _PROC_SELF_CGROUP.read_text().splitlines()
+                    for line in cls.PROC_SELF_CGROUP.read_text().splitlines()
                     if line.startswith("0::/")
                 ),
                 "",
             )
-            path = _CGROUP_ROOT / group
+            path = cls.ROOT / group
             if not (total := int(path.joinpath("memory.max").read_text())):
                 return None
             current = int(path.joinpath("memory.current").read_text())

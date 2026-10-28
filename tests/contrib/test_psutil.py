@@ -126,7 +126,7 @@ class TestMemory:
     def host_memory(self, monkeypatch, tmp_path_factory):
         """Force host memory for tests that do not use a control group."""
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CGROUP_ROOT",
+            "health_check.contrib.psutil._CgroupMemory.ROOT",
             tmp_path_factory.mktemp("cgroup"),
         )
 
@@ -137,9 +137,10 @@ class TestMemory:
         root.mkdir()
         proc_self_cgroup = tmp_path / "proc-self-cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", root)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", root)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
         return root
 
@@ -319,9 +320,10 @@ class TestCgroupMemory:
         """Read the cgroup v2 directory of the current process."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/docker/abc\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
         cgroup = tmp_path / "docker/abc"
         cgroup.mkdir(parents=True)
@@ -333,18 +335,20 @@ class TestCgroupMemory:
         """Return None on a cgroup v1 host without a v2 memory limit."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("12:memory:/docker/abc\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
 
         assert _CgroupMemory.read() is None
 
     def test_read__proc_self_cgroup_unavailable(self, monkeypatch, tmp_path):
         """Return None when /proc/self/cgroup cannot be read."""
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", tmp_path / "missing"
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            tmp_path / "missing",
         )
 
         assert _CgroupMemory.read() is None
@@ -353,9 +357,10 @@ class TestCgroupMemory:
         """Return None when the cgroup memory limit is zero."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
         _write_cgroup(tmp_path, limit=0)
 
@@ -365,9 +370,10 @@ class TestCgroupMemory:
         """Never report negative cgroup memory usage."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
         _write_cgroup(tmp_path, current=_MIB, inactive_file=2 * _MIB)
 
@@ -380,9 +386,10 @@ class TestCgroupMemory:
         """Treat memory.stat without inactive_file as having no reclaimable memory."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CGROUP_ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._PROC_SELF_CGROUP", proc_self_cgroup
+            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            proc_self_cgroup,
         )
         _write_cgroup(tmp_path, current=_MIB)
         (tmp_path / "memory.stat").write_text("anon 0\n")
