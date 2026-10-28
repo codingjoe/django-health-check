@@ -163,10 +163,6 @@ class Memory(HealthCheck):
     """
     Warn about system memory utilization.
 
-    Inside a cgroup v2 container, the check reports the memory of the control group
-    against its limit, excluding reclaimable page cache as `docker stats` and
-    Kubernetes do. Otherwise, the check reports the host's memory.
-
     Args:
         min_gibibytes_available: Minimum available memory in gibibytes or None to disable the check.
         max_memory_usage_percent: Maximum memory usage in percent or None to disable the check.
