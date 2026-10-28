@@ -178,22 +178,19 @@ class Memory(HealthCheck):
             memory = _CgroupMemory.read() or psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
+            msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent:.1f}\u202f%)"
+            if (
+                self.min_gibibytes_available
+                and available_gibi < self.min_gibibytes_available
+            ):
+                raise ServiceWarning(msg)
+            if (
+                self.max_memory_usage_percent
+                and memory.percent >= self.max_memory_usage_percent
+            ):
+                raise ServiceWarning(msg)
         except ValueError as e:
             raise ServiceReturnedUnexpectedResult("ValueError") from e
-        msg = (
-            f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB"
-            f" ({memory.percent:.1f}\u202f%)"
-        )
-        if (
-            self.min_gibibytes_available
-            and available_gibi < self.min_gibibytes_available
-        ):
-            raise ServiceWarning(msg)
-        if (
-            self.max_memory_usage_percent
-            and memory.percent >= self.max_memory_usage_percent
-        ):
-            raise ServiceWarning(msg)
 
 
 @dataclasses.dataclass
