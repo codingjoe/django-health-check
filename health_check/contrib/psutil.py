@@ -141,21 +141,23 @@ class _CgroupMemory:
                 "",
             )
             path = cls.ROOT / group
-            if not (total := int(path.joinpath("memory.max").read_text())):
-                return None
-            current = int(path.joinpath("memory.current").read_text())
-            memory_stat = path.joinpath("memory.stat").read_text().splitlines()
-            inactive_file = next(
-                (
-                    int(value)
-                    for key, value in map(str.split, memory_stat)
-                    if key == "inactive_file"
-                ),
-                0,
-            )
+            if total := int(path.joinpath("memory.max").read_text()):
+                current = int(path.joinpath("memory.current").read_text())
+                memory_stat = path.joinpath("memory.stat").read_text().splitlines()
+                inactive_file = next(
+                    (
+                        int(value)
+                        for key, value in map(str.split, memory_stat)
+                        if key == "inactive_file"
+                    ),
+                    0,
+                )
+                return cls(
+                    total=total, available=total - max(current - inactive_file, 0)
+                )
         except OSError, ValueError:
-            return None
-        return cls(total=total, available=total - max(current - inactive_file, 0))
+            pass
+        return None
 
 
 @dataclasses.dataclass()
