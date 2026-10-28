@@ -139,35 +139,25 @@ class _CgroupMemory:
             (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
             "",
         )
-        total = cls._field(path, "memory.max")
-        current = cls._field(path, "memory.current")
-        inactive_file = cls._stat(path, "inactive_file")
+        total = cls._value(path, "memory.max")
+        current = cls._value(path, "memory.current")
+        inactive_file = cls._value(path, "memory.stat", "inactive_file")
         if total and current is not None and inactive_file is not None:
             return cls(total=total, available=total - max(current - inactive_file, 0))
         return None
 
     @staticmethod
-    def _field(path: pathlib.Path, name: str) -> int | None:
-        """Return an integer cgroup field, or None when it cannot be read."""
+    def _value(path: pathlib.Path, name: str, key: str | None = None) -> int | None:
+        """Return an integer field, or a keyed counter from a stats file."""
         try:
-            return int(path.joinpath(name).read_text())
-        except OSError, ValueError:
-            return None
-
-    @staticmethod
-    def _stat(path: pathlib.Path, key: str) -> int | None:
-        """
-        Return a memory.stat counter, or None when the file cannot be read.
-
-        A missing key counts as zero.
-        """
-        try:
-            lines = path.joinpath("memory.stat").read_text().splitlines()
+            lines = path.joinpath(name).read_text().splitlines()
+            if key is None:
+                return int(lines[0])
             return next(
-                (int(value) for name, value in map(str.split, lines) if name == key),
+                (int(value) for field, value in map(str.split, lines) if field == key),
                 0,
             )
-        except OSError, ValueError:
+        except OSError, ValueError, IndexError:
             return None
 
 
