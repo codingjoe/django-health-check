@@ -112,6 +112,47 @@ class Disk(HealthCheck):
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
+class _CGroup:
+    """Memory usage of a cgroup v2 control group."""
+
+    total: int
+    available: int
+
+    def __init__(
+        self,
+        root: pathlib.Path = pathlib.Path("/sys/fs/cgroup"),
+        proc_self_cgroup: pathlib.Path = pathlib.Path("/proc/self/cgroup"),
+    ):
+        lines = proc_self_cgroup.read_text().splitlines()
+        path = root / next(
+            (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
+            "",
+        )
+        if not (total := self._field(path, "memory.max")):
+            raise ValueError("Unlimited")
+        current = self._field(path, "memory.current")
+        inactive_file = self._stat(path, "memory.stat", "inactive_file")
+        self.total = total
+        self.available = total - max(current - inactive_file, 0)
+
+    @property
+    def percent(self) -> float:
+        """Return the memory usage in percent."""
+        return 100 * (self.total - self.available) / self.total
+
+    @staticmethod
+    def _field(path: pathlib.Path, name: str) -> int:
+        return int(path.joinpath(name).read_text())
+
+    @staticmethod
+    def _stat(path: pathlib.Path, name: str, key: str) -> int:
+        lines = path.joinpath(name).read_text().splitlines()
+        return next(
+            (int(value) for field, value in map(str.split, lines) if field == key),
+            0,
+        )
+
+
 @dataclasses.dataclass()
 class Memory(HealthCheck):
     """
@@ -129,10 +170,13 @@ class Memory(HealthCheck):
 
     def run(self):
         try:
-            memory = psutil.virtual_memory()
+            try:
+                memory = _CGroup()
+            except OSError, ValueError:
+                memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
-            msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent}\u202f%)"
+            msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent:.1f}\u202f%)"
             if (
                 self.min_gibibytes_available
                 and available_gibi < self.min_gibibytes_available
