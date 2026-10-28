@@ -140,8 +140,7 @@ class _CgroupMemory:
                 "",
             )
             path = _CGROUP_ROOT / group
-            total = int(path.joinpath("memory.max").read_text())
-            if total <= 0:
+            if not (total := int(path.joinpath("memory.max").read_text())):
                 return None
             current = int(path.joinpath("memory.current").read_text())
             memory_stat = path.joinpath("memory.stat").read_text().splitlines()
