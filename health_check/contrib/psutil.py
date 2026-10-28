@@ -115,15 +115,16 @@ class Disk(HealthCheck):
 class _Cgroup:
     """Memory usage of a cgroup v2 control group."""
 
-    ROOT = pathlib.Path("/sys/fs/cgroup")
-    PROC_SELF_CGROUP = pathlib.Path("/proc/self/cgroup")
-
     total: int
     available: int
 
-    def __init__(self):
-        lines = self.PROC_SELF_CGROUP.read_text().splitlines()
-        path = self.ROOT / next(
+    def __init__(
+        self,
+        root: pathlib.Path = pathlib.Path("/sys/fs/cgroup"),
+        proc_self_cgroup: pathlib.Path = pathlib.Path("/proc/self/cgroup"),
+    ):
+        lines = proc_self_cgroup.read_text().splitlines()
+        path = root / next(
             (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
             "",
         )
