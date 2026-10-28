@@ -114,7 +114,7 @@ class Disk(HealthCheck):
 
 
 @dataclasses.dataclass(frozen=True)
-class _CgroupMemory:
+class _Cgroup:
     """Memory usage of a cgroup v2 control group."""
 
     total: int
@@ -129,7 +129,7 @@ class _CgroupMemory:
         return 100 * (self.total - self.available) / self.total
 
     @classmethod
-    def read(cls) -> _CgroupMemory | None:
+    def read(cls) -> _Cgroup | None:
         """Return the control group's memory or None if it cannot be read."""
         try:
             lines = cls.PROC_SELF_CGROUP.read_text().splitlines()
@@ -141,30 +141,24 @@ class _CgroupMemory:
         )
         total = cls._field(path, "memory.max")
         current = cls._field(path, "memory.current")
-        inactive_file = cls._stat(path, "inactive_file")
+        inactive_file = cls._stat(path, "memory.stat", "inactive_file")
         if total and current is not None and inactive_file is not None:
             return cls(total=total, available=total - max(current - inactive_file, 0))
         return None
 
     @staticmethod
     def _field(path: pathlib.Path, name: str) -> int | None:
-        """Return an integer cgroup field, or None when it cannot be read."""
         try:
             return int(path.joinpath(name).read_text())
         except OSError, ValueError:
             return None
 
     @staticmethod
-    def _stat(path: pathlib.Path, key: str) -> int | None:
-        """
-        Return a memory.stat counter, or None when the file cannot be read.
-
-        A missing key counts as zero.
-        """
+    def _stat(path: pathlib.Path, name: str, key: str) -> int | None:
         try:
-            lines = path.joinpath("memory.stat").read_text().splitlines()
+            lines = path.joinpath(name).read_text().splitlines()
             return next(
-                (int(value) for name, value in map(str.split, lines) if name == key),
+                (int(value) for field, value in map(str.split, lines) if field == key),
                 0,
             )
         except OSError, ValueError:
@@ -188,7 +182,7 @@ class Memory(HealthCheck):
 
     def run(self):
         try:
-            memory = _CgroupMemory.read() or psutil.virtual_memory()
+            memory = _Cgroup.read() or psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
             msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent:.1f}\u202f%)"

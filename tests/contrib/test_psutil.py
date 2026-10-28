@@ -18,7 +18,7 @@ from health_check.contrib.psutil import (
     Disk,
     Memory,
     Temperature,
-    _CgroupMemory,
+    _Cgroup,
 )
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
@@ -128,7 +128,7 @@ class TestMemory:
     def no_cgroup(self, monkeypatch, tmp_path_factory):
         """Force host memory for tests that do not use a control group."""
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.ROOT",
+            "health_check.contrib.psutil._Cgroup.ROOT",
             tmp_path_factory.mktemp("cgroup"),
         )
 
@@ -139,9 +139,9 @@ class TestMemory:
         root.mkdir()
         proc_self_cgroup = tmp_path / "proc-self-cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", root)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", root)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
         return root
@@ -219,7 +219,7 @@ class TestMemory:
 
         assert result.error is None
         mock_virtual_memory.assert_not_called()
-        memory = _CgroupMemory.read()
+        memory = _Cgroup.read()
         assert memory.total == self.GIB
         assert memory.available == 724 * self.MIB
         assert memory.percent == pytest.approx(300 / 1024 * 100)
@@ -241,7 +241,7 @@ class TestMemory:
 
         assert result.error is None
         mock_virtual_memory.assert_not_called()
-        memory = _CgroupMemory.read()
+        memory = _Cgroup.read()
         assert memory.available == self.GIB - (current - inactive_file)
         assert memory.percent == pytest.approx(45.0, abs=1e-6)
 
@@ -318,64 +318,64 @@ class TestMemory:
         """Read the cgroup v2 directory of the current process."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/docker/abc\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
         cgroup = tmp_path / "docker/abc"
         cgroup.mkdir(parents=True)
         self.write_cgroup(cgroup, current=self.MIB)
 
-        assert _CgroupMemory.read().total == self.GIB
+        assert _Cgroup.read().total == self.GIB
 
     def test_read__cgroup_v1_falls_back_to_host(self, monkeypatch, tmp_path):
         """Return None on a cgroup v1 host without a v2 memory limit."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("12:memory:/docker/abc\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
 
-        assert _CgroupMemory.read() is None
+        assert _Cgroup.read() is None
 
     def test_read__proc_self_cgroup_unavailable(self, monkeypatch, tmp_path):
         """Return None when /proc/self/cgroup cannot be read."""
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             tmp_path / "missing",
         )
 
-        assert _CgroupMemory.read() is None
+        assert _Cgroup.read() is None
 
     def test_read__zero_limit(self, monkeypatch, tmp_path):
         """Return None when the cgroup memory limit is zero."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
         self.write_cgroup(tmp_path, limit=0)
 
-        assert _CgroupMemory.read() is None
+        assert _Cgroup.read() is None
 
     def test_read__inactive_file_exceeds_current(self, monkeypatch, tmp_path):
         """Never report negative cgroup memory usage."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
         self.write_cgroup(tmp_path, current=self.MIB, inactive_file=2 * self.MIB)
 
-        memory = _CgroupMemory.read()
+        memory = _Cgroup.read()
 
         assert memory.available == self.GIB
         assert memory.percent == 0.0
@@ -384,15 +384,15 @@ class TestMemory:
         """Treat memory.stat without inactive_file as having no reclaimable memory."""
         proc_self_cgroup = tmp_path / "cgroup"
         proc_self_cgroup.write_text("0::/\n")
-        monkeypatch.setattr("health_check.contrib.psutil._CgroupMemory.ROOT", tmp_path)
+        monkeypatch.setattr("health_check.contrib.psutil._Cgroup.ROOT", tmp_path)
         monkeypatch.setattr(
-            "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
+            "health_check.contrib.psutil._Cgroup.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
         self.write_cgroup(tmp_path, current=self.MIB)
         (tmp_path / "memory.stat").write_text("anon 0\n")
 
-        memory = _CgroupMemory.read()
+        memory = _Cgroup.read()
 
         assert memory.available == self.GIB - self.MIB
 
