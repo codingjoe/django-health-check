@@ -537,7 +537,7 @@ class TestTemperature:
         temperatures = {"coretemp": [sensor]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
-            check = Temperature(device="coretemp", max_temperature_celsius=None)
+            check = Temperature(device="coretemp")
             result = await check.get_result()
             assert result.error is None
 
@@ -562,8 +562,7 @@ class TestTemperature:
         temperatures = {"coretemp": [sensor]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
-            # When max_temperature_celsius is None, use sensor.high
-            check = Temperature(device="coretemp", max_temperature_celsius=None)
+            check = Temperature(device="coretemp")
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)
@@ -591,7 +590,55 @@ class TestTemperature:
         temperatures = {"asus": [sensor1], "coretemp": [sensor2]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
-            check = Temperature(device=None, max_temperature_celsius=None)
+            check = Temperature(device=None)
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__temperature_max_none_disables_check(self):
+        """Disable the check for a hot sensor when the maximum is None."""
+        sensor = shwtemp(label="Core 0", current=95.0, high=80.0, critical=90.0)
+        temperatures = {"coretemp": [sensor]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device="coretemp", max_temperature_celsius=None)
+            result = await check.get_result()
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_check_status__temperature_zero_max_warns(self):
+        """Raise ServiceWarning when the maximum is zero."""
+        sensor = shwtemp(label="Core 0", current=25.0, high=80.0, critical=90.0)
+        temperatures = {"coretemp": [sensor]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device="coretemp", max_temperature_celsius=0.0)
+            result = await check.get_result()
+            assert isinstance(result.error, ServiceWarning)
+            assert "25.0" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__temperature_max_above_critical(self):
+        """Raise ServiceWarning when the maximum exceeds the critical threshold."""
+        sensor = shwtemp(label="Core 0", current=50.0, high=80.0, critical=90.0)
+        temperatures = {"coretemp": [sensor]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device="coretemp", max_temperature_celsius=95.0)
+            result = await check.get_result()
+            assert isinstance(result.error, ServiceWarning)
+            assert "95.0" in str(result.error)
+            assert "90.0" in str(result.error)
+            assert "Core 0" in str(result.error)
+
+    @pytest.mark.asyncio
+    async def test_check_status__temperature_max_above_missing_critical(self):
+        """Skip the maximum warning when the sensor has no critical threshold."""
+        sensor = shwtemp(label="Core 0", current=50.0, high=80.0, critical=None)
+        temperatures = {"coretemp": [sensor]}
+
+        with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
+            check = Temperature(device="coretemp", max_temperature_celsius=95.0)
             result = await check.get_result()
             assert result.error is None
 
@@ -641,7 +688,7 @@ class TestTemperature:
         temperatures = {"coretemp": [sensor1, sensor2]}
 
         with mock.patch("psutil.sensors_temperatures", return_value=temperatures):
-            check = Temperature(device="coretemp", max_temperature_celsius=None)
+            check = Temperature(device="coretemp")
             result = await check.get_result()
             assert result.error is not None
             assert isinstance(result.error, ServiceWarning)

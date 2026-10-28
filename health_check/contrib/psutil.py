@@ -191,21 +191,29 @@ class Memory(HealthCheck):
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
+SENSOR_HIGH_THRESHOLD = object()
+
+
 @dataclasses.dataclass
 class Temperature(HealthCheck):
     """
     Warn about system temperature.
 
-    If no maximum temperature is specified, the sensor's high threshold will be used.
+    Each sensor's current temperature is compared to a maximum.
+    Without a configured maximum, each sensor's high threshold applies.
+    A sensor without a high threshold is skipped unless a maximum is configured.
+    A configured maximum above a sensor's critical threshold is reported as a warning.
 
     Args:
         device: The device to check temperature for, e.g. 'coretemp' for CPU temperature on many systems. If None, check all available sensors.
-        max_temperature_celsius: Maximum temperature in degree Celsius or None to use each sensor's high threshold.
+        max_temperature_celsius: Maximum temperature in degree Celsius. If omitted, use each sensor's high threshold. Set to None to disable the check.
 
     """
 
     device: str | None = dataclasses.field(default="coretemp")
-    max_temperature_celsius: float | None = dataclasses.field(default=None, repr=False)
+    max_temperature_celsius: float | None | object = dataclasses.field(
+        default=SENSOR_HIGH_THRESHOLD, repr=False
+    )
     hostname: str = dataclasses.field(default_factory=socket.gethostname, init=False)
 
     def run(self):
@@ -232,10 +240,19 @@ class Temperature(HealthCheck):
             self._check_temperature(sensor)
 
     def _check_temperature(self, sensor, device=None):
-        """Warn when a sensor reaches the configured or built-in high threshold."""
-        threshold = self.max_temperature_celsius or sensor.high
-        if threshold is None or sensor.current < threshold:
-            return
-        location = f"{device} " if device else ""
-        msg = f"{location}{sensor.label} {sensor.current:.1f}\u202f°C"
-        raise ServiceWarning(msg)
+        """Warn about a sensor exceeding its threshold or a misconfigured maximum."""
+        if self.max_temperature_celsius is not None:
+            location = f"{device} " if device else ""
+            if self.max_temperature_celsius is SENSOR_HIGH_THRESHOLD:
+                threshold = sensor.high
+            else:
+                threshold = self.max_temperature_celsius
+                if sensor.critical is not None and threshold > sensor.critical:
+                    msg = (
+                        f"{location}Configured maximum {threshold:.1f}\u202f°C exceeds "
+                        f"critical threshold {sensor.critical:.1f}\u202f°C of sensor {sensor.label!r}"
+                    )
+                    raise ServiceWarning(msg)
+            if threshold is not None and sensor.current >= threshold:
+                msg = f"{location}{sensor.label} {sensor.current:.1f}\u202f°C"
+                raise ServiceWarning(msg)
