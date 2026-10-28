@@ -3,7 +3,6 @@ import datetime
 import os
 import pathlib
 import socket
-from typing import ClassVar
 
 import psutil
 
@@ -113,56 +112,44 @@ class Disk(HealthCheck):
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
-@dataclasses.dataclass(frozen=True)
 class _Cgroup:
     """Memory usage of a cgroup v2 control group."""
+
+    ROOT = pathlib.Path("/sys/fs/cgroup")
+    PROC_SELF_CGROUP = pathlib.Path("/proc/self/cgroup")
 
     total: int
     available: int
 
-    ROOT: ClassVar[pathlib.Path] = pathlib.Path("/sys/fs/cgroup")
-    PROC_SELF_CGROUP: ClassVar[pathlib.Path] = pathlib.Path("/proc/self/cgroup")
+    def __init__(self):
+        lines = self.PROC_SELF_CGROUP.read_text().splitlines()
+        path = self.ROOT / next(
+            (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
+            "",
+        )
+        if not (total := self._field(path, "memory.max")):
+            raise ValueError("Unlimited")
+        current = self._field(path, "memory.current")
+        inactive_file = self._stat(path, "memory.stat", "inactive_file")
+        self.total = total
+        self.available = total - max(current - inactive_file, 0)
 
     @property
     def percent(self) -> float:
         """Return the memory usage in percent."""
         return 100 * (self.total - self.available) / self.total
 
-    @classmethod
-    def read(cls) -> _Cgroup | None:
-        """Return the control group's memory or None if it cannot be read."""
-        try:
-            lines = cls.PROC_SELF_CGROUP.read_text().splitlines()
-        except OSError:
-            return None
-        path = cls.ROOT / next(
-            (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
-            "",
+    @staticmethod
+    def _field(path: pathlib.Path, name: str) -> int:
+        return int(path.joinpath(name).read_text())
+
+    @staticmethod
+    def _stat(path: pathlib.Path, name: str, key: str) -> int:
+        lines = path.joinpath(name).read_text().splitlines()
+        return next(
+            (int(value) for field, value in map(str.split, lines) if field == key),
+            0,
         )
-        total = cls._field(path, "memory.max")
-        current = cls._field(path, "memory.current")
-        inactive_file = cls._stat(path, "memory.stat", "inactive_file")
-        if total and current is not None and inactive_file is not None:
-            return cls(total=total, available=total - max(current - inactive_file, 0))
-        return None
-
-    @staticmethod
-    def _field(path: pathlib.Path, name: str) -> int | None:
-        try:
-            return int(path.joinpath(name).read_text())
-        except OSError, ValueError:
-            return None
-
-    @staticmethod
-    def _stat(path: pathlib.Path, name: str, key: str) -> int | None:
-        try:
-            lines = path.joinpath(name).read_text().splitlines()
-            return next(
-                (int(value) for field, value in map(str.split, lines) if field == key),
-                0,
-            )
-        except OSError, ValueError:
-            return None
 
 
 @dataclasses.dataclass()
@@ -182,7 +169,10 @@ class Memory(HealthCheck):
 
     def run(self):
         try:
-            memory = _Cgroup.read() or psutil.virtual_memory()
+            try:
+                memory = _Cgroup()
+            except OSError, ValueError:
+                memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
             total_gibi = memory.total / (1024**3)
             msg = f"RAM {available_gibi:.1f}/{total_gibi:.1f}GiB ({memory.percent:.1f}\u202f%)"
