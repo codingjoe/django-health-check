@@ -132,31 +132,33 @@ class _CgroupMemory:
     def read(cls) -> _CgroupMemory | None:
         """Return the control group's memory or None if it cannot be read."""
         try:
-            group = next(
-                (
-                    line.removeprefix("0::/")
-                    for line in cls.PROC_SELF_CGROUP.read_text().splitlines()
-                    if line.startswith("0::/")
-                ),
-                "",
-            )
-            path = cls.ROOT / group
-            if total := int(path.joinpath("memory.max").read_text()):
-                current = int(path.joinpath("memory.current").read_text())
-                memory_stat = path.joinpath("memory.stat").read_text().splitlines()
-                inactive_file = next(
-                    (
-                        int(value)
-                        for key, value in map(str.split, memory_stat)
-                        if key == "inactive_file"
-                    ),
-                    0,
-                )
-                return cls(
-                    total=total, available=total - max(current - inactive_file, 0)
-                )
+            return cls._measure()
         except OSError, ValueError:
-            pass
+            return None
+
+    @classmethod
+    def _measure(cls) -> _CgroupMemory | None:
+        """Return the control group's memory, or None when the limit is unlimited."""
+        path = cls.ROOT / next(
+            (
+                line.removeprefix("0::/")
+                for line in cls.PROC_SELF_CGROUP.read_text().splitlines()
+                if line.startswith("0::/")
+            ),
+            "",
+        )
+        if total := int(path.joinpath("memory.max").read_text()):
+            current = int(path.joinpath("memory.current").read_text())
+            memory_stat = path.joinpath("memory.stat").read_text().splitlines()
+            inactive_file = next(
+                (
+                    int(value)
+                    for key, value in map(str.split, memory_stat)
+                    if key == "inactive_file"
+                ),
+                0,
+            )
+            return cls(total=total, available=total - max(current - inactive_file, 0))
         return None
 
 
