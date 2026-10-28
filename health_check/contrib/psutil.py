@@ -132,34 +132,43 @@ class _CgroupMemory:
     def read(cls) -> _CgroupMemory | None:
         """Return the control group's memory or None if it cannot be read."""
         try:
-            return cls._measure()
+            lines = cls.PROC_SELF_CGROUP.read_text().splitlines()
+        except OSError:
+            return None
+        path = cls.ROOT / next(
+            (line.removeprefix("0::/") for line in lines if line.startswith("0::/")),
+            "",
+        )
+        total = cls._field(path, "memory.max")
+        current = cls._field(path, "memory.current")
+        inactive_file = cls._stat(path, "inactive_file")
+        if total and current is not None and inactive_file is not None:
+            return cls(total=total, available=total - max(current - inactive_file, 0))
+        return None
+
+    @staticmethod
+    def _field(path: pathlib.Path, name: str) -> int | None:
+        """Return an integer cgroup field, or None when it cannot be read."""
+        try:
+            return int(path.joinpath(name).read_text())
         except OSError, ValueError:
             return None
 
-    @classmethod
-    def _measure(cls) -> _CgroupMemory | None:
-        """Return the control group's memory, or None when the limit is unlimited."""
-        path = cls.ROOT / next(
-            (
-                line.removeprefix("0::/")
-                for line in cls.PROC_SELF_CGROUP.read_text().splitlines()
-                if line.startswith("0::/")
-            ),
-            "",
-        )
-        if total := int(path.joinpath("memory.max").read_text()):
-            current = int(path.joinpath("memory.current").read_text())
-            memory_stat = path.joinpath("memory.stat").read_text().splitlines()
-            inactive_file = next(
-                (
-                    int(value)
-                    for key, value in map(str.split, memory_stat)
-                    if key == "inactive_file"
-                ),
+    @staticmethod
+    def _stat(path: pathlib.Path, key: str) -> int | None:
+        """
+        Return a memory.stat counter, or None when the file cannot be read.
+
+        A missing key counts as zero.
+        """
+        try:
+            lines = path.joinpath("memory.stat").read_text().splitlines()
+            return next(
+                (int(value) for name, value in map(str.split, lines) if name == key),
                 0,
             )
-            return cls(total=total, available=total - max(current - inactive_file, 0))
-        return None
+        except OSError, ValueError:
+            return None
 
 
 @dataclasses.dataclass()
