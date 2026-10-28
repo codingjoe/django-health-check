@@ -206,7 +206,7 @@ class TestMemory:
 
     @pytest.mark.asyncio
     async def test_run_check__cgroup_working_set(self, cgroup):
-        """Report the cgroup working set and succeed below the threshold."""
+        """Succeed when the cgroup working set is below the threshold."""
         self.write_cgroup(
             cgroup,
             limit=self.GIB,
