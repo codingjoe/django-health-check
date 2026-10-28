@@ -27,48 +27,6 @@ from health_check.exceptions import (
 )
 
 
-class CgroupTestCase:
-    """Helpers for the cgroup v2 memory tests."""
-
-    GIB = 1024**3
-    MIB = 1024**2
-
-    def write_cgroup(
-        self,
-        path: pathlib.Path,
-        *,
-        limit: int | str = GIB,
-        current: int = 0,
-        inactive_file: int = 0,
-    ) -> None:
-        """Write the memory control files of a cgroup v2 directory."""
-        (path / "memory.max").write_text(f"{limit}\n")
-        (path / "memory.current").write_text(f"{current}\n")
-        (path / "memory.stat").write_text(f"inactive_file {inactive_file}\n")
-
-    def host_memory(
-        self, *, available: int | None = None, percent: float = 95.0
-    ) -> svmem:
-        """Return a host memory sample with 8 GiB total memory."""
-        available = self.GIB if available is None else available
-        total = 8 * self.GIB
-        values = {
-            "total": total,
-            "available": available,
-            "percent": percent,
-            "used": total - available,
-            "free": available,
-            "active": 0,
-            "inactive": 0,
-            "buffers": 0,
-            "cached": 0,
-            "shared": 0,
-            "slab": 0,
-            "wired": 0,
-        }
-        return svmem(*(values[field] for field in svmem._fields))
-
-
 class TestDisk:
     """Test the Disk health check."""
 
@@ -125,8 +83,46 @@ class TestDisk:
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
 
-class TestMemory(CgroupTestCase):
+class TestMemory:
     """Test the Memory health check."""
+
+    GIB = 1024**3
+    MIB = 1024**2
+
+    def write_cgroup(
+        self,
+        path: pathlib.Path,
+        *,
+        limit: int | str = GIB,
+        current: int = 0,
+        inactive_file: int = 0,
+    ) -> None:
+        """Write the memory control files of a cgroup v2 directory."""
+        (path / "memory.max").write_text(f"{limit}\n")
+        (path / "memory.current").write_text(f"{current}\n")
+        (path / "memory.stat").write_text(f"inactive_file {inactive_file}\n")
+
+    def host_memory(
+        self, *, available: int | None = None, percent: float = 95.0
+    ) -> svmem:
+        """Return a host memory sample with 8 GiB total memory."""
+        available = self.GIB if available is None else available
+        total = 8 * self.GIB
+        values = {
+            "total": total,
+            "available": available,
+            "percent": percent,
+            "used": total - available,
+            "free": available,
+            "active": 0,
+            "inactive": 0,
+            "buffers": 0,
+            "cached": 0,
+            "shared": 0,
+            "slab": 0,
+            "wired": 0,
+        }
+        return svmem(*(values[field] for field in svmem._fields))
 
     @pytest.fixture(autouse=True)
     def no_cgroup(self, monkeypatch, tmp_path_factory):
@@ -317,10 +313,6 @@ class TestMemory(CgroupTestCase):
         assert result.error is not None
         assert isinstance(result.error, ServiceWarning)
         assert "8.0GiB" in str(result.error)
-
-
-class TestCgroupMemory(CgroupTestCase):
-    """Test cgroup v2 memory discovery."""
 
     def test_read__cgroup_v2(self, monkeypatch, tmp_path):
         """Read the cgroup v2 directory of the current process."""
