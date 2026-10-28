@@ -19,7 +19,7 @@ from health_check.contrib.psutil import (
     Disk,
     Memory,
     Temperature,
-    _Cgroup,
+    _CGroup,
 )
 from health_check.exceptions import (
     ServiceReturnedUnexpectedResult,
@@ -129,8 +129,8 @@ class TestMemory:
     def no_cgroup(self, monkeypatch, tmp_path_factory):
         """Force host memory for tests that do not use a control group."""
         monkeypatch.setattr(
-            "health_check.contrib.psutil._Cgroup",
-            functools.partial(_Cgroup, root=tmp_path_factory.mktemp("cgroup")),
+            "health_check.contrib.psutil._CGroup",
+            functools.partial(_CGroup, root=tmp_path_factory.mktemp("cgroup")),
         )
 
     @pytest.fixture
@@ -141,8 +141,8 @@ class TestMemory:
         proc_self_cgroup = tmp_path / "proc-self-cgroup"
         proc_self_cgroup.write_text("0::/\n")
         monkeypatch.setattr(
-            "health_check.contrib.psutil._Cgroup",
-            functools.partial(_Cgroup, root=root, proc_self_cgroup=proc_self_cgroup),
+            "health_check.contrib.psutil._CGroup",
+            functools.partial(_CGroup, root=root, proc_self_cgroup=proc_self_cgroup),
         )
         return root
 
@@ -320,7 +320,7 @@ class TestMemory:
             inactive_file=100 * self.MIB,
         )
 
-        memory = _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+        memory = _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
         assert memory.total == self.GIB
         assert memory.available == 724 * self.MIB
@@ -336,7 +336,7 @@ class TestMemory:
             tmp_path, limit=self.GIB, current=current, inactive_file=inactive_file
         )
 
-        memory = _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+        memory = _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
         assert memory.available == self.GIB - (current - inactive_file)
         assert memory.percent == pytest.approx(45.0, abs=1e-6)
@@ -347,12 +347,12 @@ class TestMemory:
         proc_self_cgroup.write_text("12:memory:/docker/abc\n")
 
         with pytest.raises(FileNotFoundError):
-            _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+            _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
     def test_init__proc_self_cgroup_unavailable(self, tmp_path):
         """Raise FileNotFoundError when /proc/self/cgroup cannot be read."""
         with pytest.raises(FileNotFoundError):
-            _Cgroup(root=tmp_path, proc_self_cgroup=tmp_path / "missing")
+            _CGroup(root=tmp_path, proc_self_cgroup=tmp_path / "missing")
 
     def test_init__zero_limit(self, tmp_path):
         """Raise ValueError when the cgroup memory limit is zero."""
@@ -361,7 +361,7 @@ class TestMemory:
         self.write_cgroup(tmp_path, limit=0)
 
         with pytest.raises(ValueError, match="Unlimited"):
-            _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+            _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
     def test_init__inactive_file_exceeds_current(self, tmp_path):
         """Never report negative cgroup memory usage."""
@@ -369,7 +369,7 @@ class TestMemory:
         proc_self_cgroup.write_text("0::/\n")
         self.write_cgroup(tmp_path, current=self.MIB, inactive_file=2 * self.MIB)
 
-        memory = _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+        memory = _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
         assert memory.available == self.GIB
         assert memory.percent == 0.0
@@ -381,7 +381,7 @@ class TestMemory:
         self.write_cgroup(tmp_path, current=self.MIB)
         (tmp_path / "memory.stat").write_text("anon 0\n")
 
-        memory = _Cgroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
+        memory = _CGroup(root=tmp_path, proc_self_cgroup=proc_self_cgroup)
 
         assert memory.available == self.GIB - self.MIB
 

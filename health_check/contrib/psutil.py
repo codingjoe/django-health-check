@@ -112,7 +112,7 @@ class Disk(HealthCheck):
             raise ServiceReturnedUnexpectedResult("ValueError") from e
 
 
-class _Cgroup:
+class _CGroup:
     """Memory usage of a cgroup v2 control group."""
 
     total: int
@@ -171,7 +171,7 @@ class Memory(HealthCheck):
     def run(self):
         try:
             try:
-                memory = _Cgroup()
+                memory = _CGroup()
             except OSError, ValueError:
                 memory = psutil.virtual_memory()
             available_gibi = memory.available / (1024**3)
