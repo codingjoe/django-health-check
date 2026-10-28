@@ -26,41 +26,47 @@ from health_check.exceptions import (
     ServiceWarning,
 )
 
-_GIB = 1024**3
-_MIB = 1024**2
 
+class CgroupTestCase:
+    """Helpers for the cgroup v2 memory tests."""
 
-def _write_cgroup(
-    path: pathlib.Path,
-    *,
-    limit: int | str = _GIB,
-    current: int = 0,
-    inactive_file: int = 0,
-) -> None:
-    """Write the memory control files of a cgroup v2 directory."""
-    (path / "memory.max").write_text(f"{limit}\n")
-    (path / "memory.current").write_text(f"{current}\n")
-    (path / "memory.stat").write_text(f"inactive_file {inactive_file}\n")
+    GIB = 1024**3
+    MIB = 1024**2
 
+    def write_cgroup(
+        self,
+        path: pathlib.Path,
+        *,
+        limit: int | str = GIB,
+        current: int = 0,
+        inactive_file: int = 0,
+    ) -> None:
+        """Write the memory control files of a cgroup v2 directory."""
+        (path / "memory.max").write_text(f"{limit}\n")
+        (path / "memory.current").write_text(f"{current}\n")
+        (path / "memory.stat").write_text(f"inactive_file {inactive_file}\n")
 
-def _host_memory(*, available: int = _GIB, percent: float = 95.0) -> svmem:
-    """Return a host memory sample with 8 GiB total memory."""
-    total = 8 * _GIB
-    values = {
-        "total": total,
-        "available": available,
-        "percent": percent,
-        "used": total - available,
-        "free": available,
-        "active": 0,
-        "inactive": 0,
-        "buffers": 0,
-        "cached": 0,
-        "shared": 0,
-        "slab": 0,
-        "wired": 0,
-    }
-    return svmem(*(values[field] for field in svmem._fields))
+    def host_memory(
+        self, *, available: int | None = None, percent: float = 95.0
+    ) -> svmem:
+        """Return a host memory sample with 8 GiB total memory."""
+        available = self.GIB if available is None else available
+        total = 8 * self.GIB
+        values = {
+            "total": total,
+            "available": available,
+            "percent": percent,
+            "used": total - available,
+            "free": available,
+            "active": 0,
+            "inactive": 0,
+            "buffers": 0,
+            "cached": 0,
+            "shared": 0,
+            "slab": 0,
+            "wired": 0,
+        }
+        return svmem(*(values[field] for field in svmem._fields))
 
 
 class TestDisk:
@@ -119,11 +125,11 @@ class TestDisk:
             assert isinstance(result.error, ServiceReturnedUnexpectedResult)
 
 
-class TestMemory:
+class TestMemory(CgroupTestCase):
     """Test the Memory health check."""
 
     @pytest.fixture(autouse=True)
-    def host_memory(self, monkeypatch, tmp_path_factory):
+    def no_cgroup(self, monkeypatch, tmp_path_factory):
         """Force host memory for tests that do not use a control group."""
         monkeypatch.setattr(
             "health_check.contrib.psutil._CgroupMemory.ROOT",
@@ -155,8 +161,8 @@ class TestMemory:
     async def test_check_status__min_memory_available_exceeded(self):
         """Raise ServiceWarning when available memory is below threshold."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_virtual_memory.return_value = _host_memory(
-                available=0.5 * _GIB, percent=95.0
+            mock_virtual_memory.return_value = self.host_memory(
+                available=0.5 * self.GIB, percent=95.0
             )
 
             check = Memory(min_gibibytes_available=1.0)
@@ -169,8 +175,8 @@ class TestMemory:
     async def test_check_status__max_memory_usage_exceeded(self):
         """Raise ServiceWarning when memory usage exceeds threshold."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_virtual_memory.return_value = _host_memory(
-                available=_GIB, percent=95.0
+            mock_virtual_memory.return_value = self.host_memory(
+                available=self.GIB, percent=95.0
             )
 
             check = Memory(max_memory_usage_percent=90.0)
@@ -183,8 +189,8 @@ class TestMemory:
     async def test_check_status__memory_checks_disabled(self):
         """No warning when memory checks are disabled."""
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
-            mock_virtual_memory.return_value = _host_memory(
-                available=0.1 * _GIB, percent=99.0
+            mock_virtual_memory.return_value = self.host_memory(
+                available=0.1 * self.GIB, percent=99.0
             )
 
             check = Memory(min_gibibytes_available=None, max_memory_usage_percent=None)
@@ -205,11 +211,11 @@ class TestMemory:
     @pytest.mark.asyncio
     async def test_run_check__cgroup_working_set(self, cgroup):
         """Report the cgroup working set and succeed below the threshold."""
-        _write_cgroup(
+        self.write_cgroup(
             cgroup,
-            limit=_GIB,
-            current=400 * _MIB,
-            inactive_file=100 * _MIB,
+            limit=self.GIB,
+            current=400 * self.MIB,
+            inactive_file=100 * self.MIB,
         )
 
         with mock.patch("psutil.virtual_memory") as mock_virtual_memory:
@@ -218,18 +224,18 @@ class TestMemory:
         assert result.error is None
         mock_virtual_memory.assert_not_called()
         memory = _CgroupMemory.read()
-        assert memory.total == _GIB
-        assert memory.available == 724 * _MIB
+        assert memory.total == self.GIB
+        assert memory.available == 724 * self.MIB
         assert memory.percent == pytest.approx(300 / 1024 * 100)
 
     @pytest.mark.asyncio
     async def test_run_check__cgroup_excludes_inactive_file(self, cgroup):
         """Count reclaimable page cache as available cgroup memory."""
-        current = int(0.95 * _GIB)
-        inactive_file = _GIB // 2
-        _write_cgroup(
+        current = int(0.95 * self.GIB)
+        inactive_file = self.GIB // 2
+        self.write_cgroup(
             cgroup,
-            limit=_GIB,
+            limit=self.GIB,
             current=current,
             inactive_file=inactive_file,
         )
@@ -240,16 +246,16 @@ class TestMemory:
         assert result.error is None
         mock_virtual_memory.assert_not_called()
         memory = _CgroupMemory.read()
-        assert memory.available == _GIB - (current - inactive_file)
+        assert memory.available == self.GIB - (current - inactive_file)
         assert memory.percent == pytest.approx(45.0, abs=1e-6)
 
     @pytest.mark.asyncio
     async def test_check_status__cgroup_memory_usage_exceeded(self, cgroup):
         """Raise ServiceWarning when the cgroup working set exceeds the threshold."""
-        _write_cgroup(
+        self.write_cgroup(
             cgroup,
-            limit=_GIB,
-            current=int(1.05 * _GIB),
+            limit=self.GIB,
+            current=int(1.05 * self.GIB),
             inactive_file=0,
         )
 
@@ -263,10 +269,10 @@ class TestMemory:
     @pytest.mark.asyncio
     async def test_check_status__cgroup_min_memory_available_exceeded(self, cgroup):
         """Raise ServiceWarning when cgroup available memory is below the minimum."""
-        _write_cgroup(
+        self.write_cgroup(
             cgroup,
-            limit=_GIB,
-            current=_GIB // 2,
+            limit=self.GIB,
+            current=self.GIB // 2,
             inactive_file=0,
         )
 
@@ -286,7 +292,7 @@ class TestMemory:
             (cgroup / "memory.max").write_text(f"{limit}\n")
 
         with mock.patch(
-            "psutil.virtual_memory", return_value=_host_memory()
+            "psutil.virtual_memory", return_value=self.host_memory()
         ) as mock_virtual_memory:
             result = await Memory().get_result()
 
@@ -299,11 +305,11 @@ class TestMemory:
     @pytest.mark.asyncio
     async def test_run_check__cgroup_malformed_falls_back_to_host(self, cgroup):
         """Fall back to host memory when a cgroup file is malformed."""
-        _write_cgroup(cgroup, current=_MIB)
+        self.write_cgroup(cgroup, current=self.MIB)
         (cgroup / "memory.stat").write_text("inactive_file nope\n")
 
         with mock.patch(
-            "psutil.virtual_memory", return_value=_host_memory()
+            "psutil.virtual_memory", return_value=self.host_memory()
         ) as mock_virtual_memory:
             result = await Memory().get_result()
 
@@ -313,7 +319,7 @@ class TestMemory:
         assert "8.0GiB" in str(result.error)
 
 
-class TestCgroupMemory:
+class TestCgroupMemory(CgroupTestCase):
     """Test cgroup v2 memory discovery."""
 
     def test_read__cgroup_v2(self, monkeypatch, tmp_path):
@@ -327,9 +333,9 @@ class TestCgroupMemory:
         )
         cgroup = tmp_path / "docker/abc"
         cgroup.mkdir(parents=True)
-        _write_cgroup(cgroup, current=_MIB)
+        self.write_cgroup(cgroup, current=self.MIB)
 
-        assert _CgroupMemory.read().total == _GIB
+        assert _CgroupMemory.read().total == self.GIB
 
     def test_read__cgroup_v1_falls_back_to_host(self, monkeypatch, tmp_path):
         """Return None on a cgroup v1 host without a v2 memory limit."""
@@ -362,7 +368,7 @@ class TestCgroupMemory:
             "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
-        _write_cgroup(tmp_path, limit=0)
+        self.write_cgroup(tmp_path, limit=0)
 
         assert _CgroupMemory.read() is None
 
@@ -375,11 +381,11 @@ class TestCgroupMemory:
             "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
-        _write_cgroup(tmp_path, current=_MIB, inactive_file=2 * _MIB)
+        self.write_cgroup(tmp_path, current=self.MIB, inactive_file=2 * self.MIB)
 
         memory = _CgroupMemory.read()
 
-        assert memory.available == _GIB
+        assert memory.available == self.GIB
         assert memory.percent == 0.0
 
     def test_read__memory_stat_without_inactive_file(self, monkeypatch, tmp_path):
@@ -391,12 +397,12 @@ class TestCgroupMemory:
             "health_check.contrib.psutil._CgroupMemory.PROC_SELF_CGROUP",
             proc_self_cgroup,
         )
-        _write_cgroup(tmp_path, current=_MIB)
+        self.write_cgroup(tmp_path, current=self.MIB)
         (tmp_path / "memory.stat").write_text("anon 0\n")
 
         memory = _CgroupMemory.read()
 
-        assert memory.available == _GIB - _MIB
+        assert memory.available == self.GIB - self.MIB
 
 
 class TestBattery:
