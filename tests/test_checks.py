@@ -25,6 +25,8 @@ from health_check.checks import (
     check_auth_token,
 )
 from health_check.exceptions import (
+    RemoteServiceReturnedUnexpectedResultError,
+    RemoteServiceUnavailableError,
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
 )
@@ -307,6 +309,7 @@ class TestRemoteCheck:
             result = await check.get_result()
 
         assert result.error is None
+        response.json.assert_not_called()
         client.get.assert_awaited_once_with("https://example.com/health/")
         assert mock_client.call_args.kwargs["headers"] == {
             "Accept": "application/json",
@@ -314,6 +317,17 @@ class TestRemoteCheck:
         }
         assert mock_client.call_args.kwargs["timeout"] == 10.0
         assert mock_client.call_args.kwargs["follow_redirects"] is True
+
+    @pytest.mark.asyncio
+    async def test_run_check__warning_body(self):
+        """Ignore warning text in a successful response."""
+        response = self._response(200, {"Database": "Warning: slow", "Cache": "OK"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert result.error is None
+        response.json.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_run_check__auth_token(self):
@@ -332,71 +346,86 @@ class TestRemoteCheck:
             mock_client.call_args.kwargs["headers"]["Authorization"] == "Bearer secret"
         )
 
+    @pytest.mark.parametrize("status", [500, 503])
     @pytest.mark.asyncio
-    async def test_run_check__multiple_errors(self):
-        """Report all remote failures as one error."""
-        response = self._response(
-            500,
-            {
-                "Database": "Unavailable: down",
-                "Cache": "OK",
-                "Mail": "Unexpected Result: bad",
-            },
-        )
+    async def test_run_check__server_error(self, status):
+        """Raise ServiceUnavailable for a 5xx response."""
+        response = self._response(status, {"Database": "Unavailable: down"})
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
-            check = RemoteCheck(url="https://example.com/health/")
-            result = await check.get_result()
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, ServiceUnavailable)
+        assert isinstance(result.error, RemoteServiceUnavailableError)
         assert str(result.error) == (
-            "Unavailable: Database: Unavailable: down\nMail: Unexpected Result: bad"
+            f"Unavailable: Remote health check returned HTTP {status}\n"
+            "Database: Unavailable: down"
+        )
+
+    @pytest.mark.parametrize("status", [400, 404])
+    @pytest.mark.asyncio
+    async def test_run_check__client_error(self, status):
+        """Raise ServiceReturnedUnexpectedResult for a 4xx response."""
+        response = self._response(status, {"detail": "error"})
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
+        assert str(result.error) == (
+            f"Unexpected Result: Remote health check returned HTTP {status}"
         )
 
     @pytest.mark.asyncio
-    async def test_run_check__unexpected_http_status(self):
-        """Report an unexpected HTTP status when the response is not JSON."""
-        response = self._response(404)
-        response.json.side_effect = ValueError("invalid json")
+    async def test_run_check__unexpected_status(self):
+        """Raise ServiceReturnedUnexpectedResult for any other non-2xx response."""
+        response = self._response(302)
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
             result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
-        assert "Response is not valid JSON (HTTP 404)" in str(result.error)
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
+        assert str(result.error) == (
+            "Unexpected Result: Remote health check returned HTTP 302"
+        )
 
     @pytest.mark.asyncio
-    async def test_run_check__json_with_unexpected_http_status(self):
-        """Report JSON errors regardless of the HTTP status."""
-        response = self._response(404, {"detail": "Not found"})
-        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
-            mock_client.return_value = self._client(response)
-            result = await RemoteCheck(url="https://example.com/health/").get_result()
-
-        assert isinstance(result.error, ServiceUnavailable)
-        assert str(result.error) == "Unavailable: detail: Not found"
-
-    @pytest.mark.asyncio
-    async def test_run_check__invalid_json(self):
-        """Raise ServiceReturnedUnexpectedResult for malformed JSON."""
+    async def test_run_check__ignores_invalid_body(self):
+        """Do not parse a response body that is not valid JSON."""
         response = self._response(200)
         response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
             result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
-        assert "Response is not valid JSON" in str(result.error)
+        assert result.error is None
+        response.json.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_run_check__unexpected_json(self):
-        """Raise ServiceReturnedUnexpectedResult for a non-object JSON body."""
+    async def test_run_check__server_error_with_invalid_body(self):
+        """Raise ServiceReturnedUnexpectedResult when an error body is not valid JSON."""
+        response = self._response(500)
+        response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
-            mock_client.return_value = self._client(self._response(200, ["OK"]))
+            mock_client.return_value = self._client(response)
             result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, ServiceReturnedUnexpectedResult)
-        assert "Response is not a JSON object" in str(result.error)
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
+        assert str(result.error) == (
+            "Unexpected Result: Remote health check returned HTTP 500"
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_check__server_error_with_non_object_body(self):
+        """Raise ServiceReturnedUnexpectedResult when an error body is not an object."""
+        response = self._response(500, ["down"])
+        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
+            mock_client.return_value = self._client(response)
+            result = await RemoteCheck(url="https://example.com/health/").get_result()
+
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
+        assert str(result.error) == (
+            "Unexpected Result: Remote health check returned HTTP 500"
+        )
 
     @pytest.mark.asyncio
     async def test_run_check__connection_error(self):
