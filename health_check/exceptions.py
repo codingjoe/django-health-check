@@ -37,11 +37,6 @@ class ServiceReturnedUnexpectedResult(HealthCheckException):
 class RemoteHealthCheckError(HealthCheckError):
     """Remote health check endpoint returned a non-2xx response."""
 
-    @staticmethod
-    def _matches_component(check: str, component: str) -> bool:
-        """Return whether a remote check belongs to the component."""
-        return check == component or check.startswith(f"{component}(")
-
     def __init__(
         self,
         response: httpx.Response,
@@ -57,7 +52,9 @@ class RemoteHealthCheckError(HealthCheckError):
                 for check, result in response.json().items()
                 if result != "OK"
                 and (
-                    component in (None, "") or self._matches_component(check, component)
+                    component in (None, "")
+                    or check == component
+                    or check.startswith(f"{component}(")
                 )
             )
         except ValueError, AttributeError:
