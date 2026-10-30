@@ -361,30 +361,6 @@ class TestRemoteCheck:
             "Database: Unavailable: down"
         )
 
-    @pytest.mark.asyncio
-    async def test_run_check__component(self):
-        """Report only errors for the configured component."""
-        response = self._response(
-            500,
-            {
-                "Database": "Unavailable: down",
-                "Cache": "Unavailable: cold",
-                "Mail": "OK",
-            },
-        )
-        with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
-            mock_client.return_value = self._client(response)
-            result = await RemoteCheck(
-                url="https://example.com/health/",
-                component="Database",
-            ).get_result()
-
-        assert isinstance(result.error, RemoteServiceUnavailableError)
-        assert str(result.error) == (
-            "Unavailable: Remote health check returned HTTP 500 for 'Database'\n"
-            "Database: Unavailable: down"
-        )
-
     @pytest.mark.parametrize("status", [400, 404])
     @pytest.mark.asyncio
     async def test_run_check__client_error(self, status):
@@ -504,14 +480,6 @@ class TestRemoteCheck:
         """Include the label in labels."""
         check = RemoteCheck(url="https://example.com/health/", label="example")
         assert check.labels == {"check": "RemoteCheck", "label": "example"}
-
-    def test_labels__component(self):
-        """Include the component in labels."""
-        check = RemoteCheck(
-            url="https://example.com/health/",
-            component="Database",
-        )
-        assert check.labels == {"check": "RemoteCheck", "component": "Database"}
 
 
 class TestStorage:

@@ -276,10 +276,8 @@ class RemoteCheck(HealthCheck):
     Args:
         url: Absolute URL of the remote health check.
         auth_token: Bearer token for an authenticated remote health check.
-        label: Label that replaces the URL and component in the check representation.
+        label: Label that replaces the URL in the check representation.
         timeout: Request timeout.
-        component: Name of a specific component to report. Reports all
-            components when not set.
 
     """
 
@@ -289,7 +287,6 @@ class RemoteCheck(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
-    component: str | None = None
 
     def __repr__(self) -> str:
         match self.label:
@@ -324,11 +321,9 @@ class RemoteCheck(HealthCheck):
             case 2:
                 return
             case 5:
-                raise RemoteServiceUnavailableError(response, component=self.component)
+                raise RemoteServiceUnavailableError(response)
             case _:
-                raise RemoteServiceReturnedUnexpectedResultError(
-                    response, component=self.component
-                )
+                raise RemoteServiceReturnedUnexpectedResultError(response)
 
 
 @dataclasses.dataclass

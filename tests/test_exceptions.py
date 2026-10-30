@@ -141,53 +141,6 @@ class TestRemoteServiceUnavailableError:
             "Remote health check returned HTTP 500\nDatabase: Unavailable: down"
         )
 
-    def test_init__filter_component(self):
-        """Report only errors for the configured component."""
-        response = httpx.Response(
-            500,
-            json={
-                "Database": "Unavailable: down",
-                "Cache": "Unavailable: cold",
-            },
-        )
-        exc = RemoteServiceUnavailableError(response, component="Database")
-        assert exc.message == (
-            "Remote health check returned HTTP 500 for 'Database'\n"
-            "Database: Unavailable: down"
-        )
-
-    def test_init__report_component_without_errors(self):
-        """Report the status and component when no matching errors exist."""
-        response = httpx.Response(500, json={"Cache": "Unavailable: cold"})
-        exc = RemoteServiceUnavailableError(response, component="Database")
-        assert exc.message == "Remote health check returned HTTP 500 for 'Database'"
-
-    def test_init__empty_component_reports_all_errors(self):
-        """Report all errors when the component is empty."""
-        response = httpx.Response(500, json={"Database": "Unavailable: down"})
-        exc = RemoteServiceUnavailableError(response, component="")
-        assert exc.message == (
-            "Remote health check returned HTTP 500\nDatabase: Unavailable: down"
-        )
-
-    def test_init__match_component_representation(self):
-        """Match a component whose check includes arguments."""
-        response = httpx.Response(
-            500,
-            json={"Database(alias='default')": "Unavailable: down"},
-        )
-        exc = RemoteServiceUnavailableError(response, component="Database")
-        assert exc.message == (
-            "Remote health check returned HTTP 500 for 'Database'\n"
-            "Database(alias='default'): Unavailable: down"
-        )
-
-    def test_init__ignore_other_components(self):
-        """Ignore components that only share a name prefix."""
-        response = httpx.Response(500, json={"DatabaseBackup": "Unavailable: down"})
-        exc = RemoteServiceUnavailableError(response, component="Database")
-        assert exc.message == "Remote health check returned HTTP 500 for 'Database'"
-
     def test_init__ignore_ok_entries(self):
         """Report only the status when every remote check is OK."""
         exc = RemoteServiceUnavailableError(

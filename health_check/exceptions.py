@@ -37,25 +37,13 @@ class ServiceReturnedUnexpectedResult(HealthCheckException):
 class RemoteHealthCheckError(HealthCheckError):
     """Remote health check endpoint returned a non-2xx response."""
 
-    def __init__(
-        self,
-        response: httpx.Response,
-        *,
-        component: str | None = None,
-        timestamp=None,
-    ):
-        suffix = f" for {component!r}" if component else ""
-        message = f"Remote health check returned HTTP {response.status_code}{suffix}"
+    def __init__(self, response: httpx.Response, *, timestamp=None):
+        message = f"Remote health check returned HTTP {response.status_code}"
         try:
             errors = "\n".join(
                 f"{check}: {result}"
                 for check, result in response.json().items()
                 if result != "OK"
-                and (
-                    component in (None, "")
-                    or check == component
-                    or check.startswith(f"{component}(")
-                )
             )
         except ValueError, AttributeError:
             errors = ""
