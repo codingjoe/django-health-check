@@ -34,6 +34,15 @@ class ServiceReturnedUnexpectedResult(HealthCheckException):
     message_type = "Unexpected Result"
 
 
+class RemoteServiceReturnedUnexpectedResultError(ServiceReturnedUnexpectedResult):
+    """Remote health check endpoint returned an unexpected response."""
+
+    def __init__(self, status_code: int, *, timestamp=None):
+        super().__init__(
+            f"Remote health check returned HTTP {status_code}", timestamp=timestamp
+        )
+
+
 class RemoteHealthCheckError(HealthCheckError):
     """Remote health check endpoint returned a non-2xx response."""
 
@@ -45,8 +54,10 @@ class RemoteHealthCheckError(HealthCheckError):
                 for check, result in response.json().items()
                 if result != "OK"
             )
-        except ValueError, AttributeError:
-            errors = ""
+        except (ValueError, AttributeError) as e:
+            raise RemoteServiceReturnedUnexpectedResultError(
+                response.status_code, timestamp=timestamp
+            ) from e
         super().__init__(
             f"{message}\n{errors}" if errors else message, timestamp=timestamp
         )
@@ -54,12 +65,6 @@ class RemoteHealthCheckError(HealthCheckError):
 
 class RemoteServiceUnavailableError(RemoteHealthCheckError, ServiceUnavailable):
     """Remote health check endpoint returned a 5xx response."""
-
-
-class RemoteServiceReturnedUnexpectedResultError(
-    RemoteHealthCheckError, ServiceReturnedUnexpectedResult
-):
-    """Remote health check endpoint returned a non-5xx error response."""
 
 
 class StatusPageWarning(ServiceWarning):

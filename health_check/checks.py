@@ -323,7 +323,7 @@ class RemoteCheck(HealthCheck):
             case 5:
                 raise RemoteServiceUnavailableError(response)
             case _:
-                raise RemoteServiceReturnedUnexpectedResultError(response)
+                raise RemoteServiceReturnedUnexpectedResultError(response.status_code)
 
 
 @dataclasses.dataclass

@@ -372,8 +372,7 @@ class TestRemoteCheck:
 
         assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
         assert str(result.error) == (
-            f"Unexpected Result: Remote health check returned HTTP {status}\n"
-            "detail: error"
+            f"Unexpected Result: Remote health check returned HTTP {status}"
         )
 
     @pytest.mark.asyncio
@@ -403,29 +402,29 @@ class TestRemoteCheck:
 
     @pytest.mark.asyncio
     async def test_run_check__server_error_with_invalid_body(self):
-        """Report only the status when an error body is not valid JSON."""
+        """Raise ServiceReturnedUnexpectedResult when an error body is not valid JSON."""
         response = self._response(500)
         response.json.side_effect = ValueError("invalid json")
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
             result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, RemoteServiceUnavailableError)
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
         assert str(result.error) == (
-            "Unavailable: Remote health check returned HTTP 500"
+            "Unexpected Result: Remote health check returned HTTP 500"
         )
 
     @pytest.mark.asyncio
     async def test_run_check__server_error_with_non_object_body(self):
-        """Report only the status when an error body is not a JSON object."""
+        """Raise ServiceReturnedUnexpectedResult when an error body is not an object."""
         response = self._response(500, ["down"])
         with mock.patch("health_check.checks.httpx.AsyncClient") as mock_client:
             mock_client.return_value = self._client(response)
             result = await RemoteCheck(url="https://example.com/health/").get_result()
 
-        assert isinstance(result.error, RemoteServiceUnavailableError)
+        assert isinstance(result.error, RemoteServiceReturnedUnexpectedResultError)
         assert str(result.error) == (
-            "Unavailable: Remote health check returned HTTP 500"
+            "Unexpected Result: Remote health check returned HTTP 500"
         )
 
     @pytest.mark.asyncio
