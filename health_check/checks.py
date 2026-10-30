@@ -34,6 +34,8 @@ from django.utils.connection import ConnectionDoesNotExist
 
 from health_check.base import HealthCheck
 from health_check.exceptions import (
+    RemoteServiceReturnedUnexpectedResultError,
+    RemoteServiceUnavailableError,
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
 )
@@ -269,13 +271,15 @@ class RemoteCheck(HealthCheck):
     """
     Check a remote django-health-check endpoint.
 
-    Report every non-OK result as a single error.
+    Report every non-2xx response as a single error.
 
     Args:
         url: Absolute URL of the remote health check.
         auth_token: Bearer token for an authenticated remote health check.
-        label: Label that replaces the URL in the check representation.
+        label: Label that replaces the URL and component in the check representation.
         timeout: Request timeout.
+        component: Name of a specific component to report. Reports all
+            components when not set.
 
     """
 
@@ -285,6 +289,7 @@ class RemoteCheck(HealthCheck):
     timeout: datetime.timedelta = dataclasses.field(
         default=datetime.timedelta(seconds=10), repr=False
     )
+    component: str | None = None
 
     def __repr__(self) -> str:
         match self.label:
@@ -315,21 +320,15 @@ class RemoteCheck(HealthCheck):
                 msg = f"Failed to reach URL: {e}"
                 raise ServiceUnavailable(msg) from e
 
-        try:
-            errors = "\n".join(
-                f"{check}: {result}"
-                for check, result in response.json().items()
-                if result != "OK"
-            )
-        except ValueError as e:
-            msg = f"Response is not valid JSON (HTTP {response.status_code})"
-            raise ServiceReturnedUnexpectedResult(msg) from e
-        except AttributeError as e:
-            msg = "Response is not a JSON object"
-            raise ServiceReturnedUnexpectedResult(msg) from e
-
-        if errors:
-            raise ServiceUnavailable(errors)
+        match response.status_code // 100:
+            case 2:
+                return
+            case 5:
+                raise RemoteServiceUnavailableError(response, component=self.component)
+            case _:
+                raise RemoteServiceReturnedUnexpectedResultError(
+                    response, component=self.component
+                )
 
 
 @dataclasses.dataclass

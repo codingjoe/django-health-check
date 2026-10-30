@@ -2,11 +2,14 @@
 
 import datetime
 
+import httpx
 import pytest
 from django.utils import timezone
 
 from health_check.exceptions import (
     HealthCheckError,
+    RemoteServiceReturnedUnexpectedResultError,
+    RemoteServiceUnavailableError,
     ServiceReturnedUnexpectedResult,
     ServiceUnavailable,
     ServiceWarning,
@@ -124,6 +127,121 @@ class TestServiceReturnedUnexpectedResult:
         error = ServiceReturnedUnexpectedResult("unexpected result message")
         with pytest.raises(ServiceReturnedUnexpectedResult):
             raise error
+
+
+class TestRemoteServiceUnavailableError:
+    def test_init__include_remote_errors(self):
+        """Include remote check errors from the response body."""
+        response = httpx.Response(
+            500,
+            json={"Database": "Unavailable: down", "Cache": "OK"},
+        )
+        exc = RemoteServiceUnavailableError(response)
+        assert exc.message == (
+            "Remote health check returned HTTP 500\nDatabase: Unavailable: down"
+        )
+
+    def test_init__filter_component(self):
+        """Report only errors for the configured component."""
+        response = httpx.Response(
+            500,
+            json={
+                "Database": "Unavailable: down",
+                "Cache": "Unavailable: cold",
+            },
+        )
+        exc = RemoteServiceUnavailableError(response, component="Database")
+        assert exc.message == (
+            "Remote health check returned HTTP 500 for 'Database'\n"
+            "Database: Unavailable: down"
+        )
+
+    def test_init__report_component_without_errors(self):
+        """Report the status and component when no matching errors exist."""
+        response = httpx.Response(500, json={"Cache": "Unavailable: cold"})
+        exc = RemoteServiceUnavailableError(response, component="Database")
+        assert exc.message == "Remote health check returned HTTP 500 for 'Database'"
+
+    def test_init__empty_component_reports_all_errors(self):
+        """Report all errors when the component is empty."""
+        response = httpx.Response(500, json={"Database": "Unavailable: down"})
+        exc = RemoteServiceUnavailableError(response, component="")
+        assert exc.message == (
+            "Remote health check returned HTTP 500\nDatabase: Unavailable: down"
+        )
+
+    def test_init__match_component_representation(self):
+        """Match a component whose check includes arguments."""
+        response = httpx.Response(
+            500,
+            json={"Database(alias='default')": "Unavailable: down"},
+        )
+        exc = RemoteServiceUnavailableError(response, component="Database")
+        assert exc.message == (
+            "Remote health check returned HTTP 500 for 'Database'\n"
+            "Database(alias='default'): Unavailable: down"
+        )
+
+    def test_init__ignore_other_components(self):
+        """Ignore components that only share a name prefix."""
+        response = httpx.Response(500, json={"DatabaseBackup": "Unavailable: down"})
+        exc = RemoteServiceUnavailableError(response, component="Database")
+        assert exc.message == "Remote health check returned HTTP 500 for 'Database'"
+
+    def test_init__ignore_ok_entries(self):
+        """Report only the status when every remote check is OK."""
+        exc = RemoteServiceUnavailableError(
+            httpx.Response(500, json={"Database": "OK"})
+        )
+        assert exc.message == "Remote health check returned HTTP 500"
+
+    def test_init__handle_invalid_json(self):
+        """Report only the status when the body is not valid JSON."""
+        exc = RemoteServiceUnavailableError(httpx.Response(500, text="not json"))
+        assert exc.message == "Remote health check returned HTTP 500"
+
+    def test_init__handle_non_object_json(self):
+        """Report only the status when the body is not a JSON object."""
+        exc = RemoteServiceUnavailableError(httpx.Response(500, json=["down"]))
+        assert exc.message == "Remote health check returned HTTP 500"
+
+    def test_init__store_timestamp(self):
+        """Store explicit timestamp passed to constructor."""
+        ts = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
+        exc = RemoteServiceUnavailableError(httpx.Response(500), timestamp=ts)
+        assert exc.timestamp == ts
+
+    def test_str__format_with_unavailable_type(self):
+        """Format string with 'unavailable' message type."""
+        exc = RemoteServiceUnavailableError(httpx.Response(500))
+        assert str(exc) == "Unavailable: Remote health check returned HTTP 500"
+
+    def test_inherits_from_service_unavailable(self):
+        """Inherit from ServiceUnavailable."""
+        exc = RemoteServiceUnavailableError(httpx.Response(500))
+        assert isinstance(exc, ServiceUnavailable)
+        assert isinstance(exc, HealthCheckError)
+
+
+class TestRemoteServiceReturnedUnexpectedResultError:
+    def test_init__include_remote_errors(self):
+        """Include remote check errors from the response body."""
+        response = httpx.Response(404, json={"detail": "Not found"})
+        exc = RemoteServiceReturnedUnexpectedResultError(response)
+        assert exc.message == (
+            "Remote health check returned HTTP 404\ndetail: Not found"
+        )
+
+    def test_str__format_with_unexpected_result_type(self):
+        """Format string with 'unexpected result' message type."""
+        exc = RemoteServiceReturnedUnexpectedResultError(httpx.Response(404))
+        assert str(exc) == ("Unexpected Result: Remote health check returned HTTP 404")
+
+    def test_inherits_from_service_returned_unexpected_result(self):
+        """Inherit from ServiceReturnedUnexpectedResult."""
+        exc = RemoteServiceReturnedUnexpectedResultError(httpx.Response(404))
+        assert isinstance(exc, ServiceReturnedUnexpectedResult)
+        assert isinstance(exc, HealthCheckError)
 
 
 class TestStatusPageWarning:
