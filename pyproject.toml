@@ -50,7 +50,7 @@ psutil = [ "psutil>=7.2" ]
 rabbitmq = [ "aio-pika>=9" ]
 redis = [ "redis>=5.0.1" ]
 rss = [ "feedparser>=6" ]
-threadmill = [ "threadmill[redis]>=0.7.3" ]
+threadmill = [ "threadmill[redis]>=0.9" ]
 [project.urls]
 Changelog = "https://github.com/codingjoe/django-health-check/releases"
 Documentation = "https://codingjoe.dev/django-health-check/"
@@ -95,7 +95,7 @@ name = "health_check"
 # Always install the redis extras, even when another package requires the base distribution
 override-dependencies = [
   "django-crontask[redis]>=2.0.0",
-  "threadmill[redis]>=0.7.3",
+  "threadmill[redis]>=0.9.0",
 ]
 
 [tool.djlint]

@@ -12,7 +12,6 @@ from django.tasks import (
 from django.tasks.exceptions import InvalidTaskBackend
 from redis.exceptions import RedisError
 from threadmill.backends.base import ThreadmillTaskBackend
-from threadmill.backends.redis import RedisTaskBackend
 
 from health_check.base import HealthCheck
 from health_check.exceptions import ServiceUnavailable, ServiceWarning
@@ -60,8 +59,8 @@ class Threadmill(HealthCheck):
         if self.queue_name not in backend.queues:
             msg = "Task queue does not exist"
             raise ServiceUnavailable(msg)
-        # The handler caches a backend whose async client is bound to the event
-        # loop that created it. Build a new backend for each probe, then close it.
+        # The handler caches a backend bound to the event loop that created it.
+        # Build a new backend for each probe; threadmill manages its client.
         probe = task_backends.create_connection(self.alias)
         try:
             telemetry = await asyncio.wait_for(
@@ -73,11 +72,6 @@ class Threadmill(HealthCheck):
         except (RedisError, OSError) as e:
             msg = "Unable to connect to threadmill task broker"
             raise ServiceUnavailable(msg) from e
-        finally:
-            # RedisTaskBackend is the only backend that ships a client. When
-            # threadmill exposes a backend lifecycle hook, use it.
-            if isinstance(probe, RedisTaskBackend):
-                await probe.async_client.aclose()
         counts = telemetry.queues[self.queue_name].counts
         pending = counts.ready + counts.deferred
         failed = counts.failed

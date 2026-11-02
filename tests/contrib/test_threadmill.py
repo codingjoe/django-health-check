@@ -9,7 +9,6 @@ import pytest
 pytest.importorskip("threadmill")
 pytest.importorskip("redis")
 
-import redis.asyncio
 from django.tasks import task_backends
 from django.tasks.backends.immediate import ImmediateBackend
 from django.test import override_settings
@@ -257,24 +256,6 @@ class TestThreadmill:
             result = await check.get_result()
         assert isinstance(result.error, ServiceUnavailable)
         assert result.error.message == "Threadmill queue telemetry timed out"
-
-    @pytest.mark.asyncio
-    async def test_run__releases_probe_client(self, monkeypatch):
-        """Release the probe's own client once the telemetry probe is done."""
-        closed = []
-
-        async def record_close(client):
-            closed.append(client)
-
-        monkeypatch.setattr(redis.asyncio.Redis, "aclose", record_close)
-        alias = f"threadmill-{uuid.uuid4().hex}"
-        with redis_tasks(alias, "redis://127.0.0.1:1/0"):
-            cached = task_backends[alias]
-            result = await ThreadmillHealthCheck(alias=alias).get_result()
-        assert isinstance(result.error, ServiceUnavailable)
-        assert result.error.message == BROKER_ERROR
-        assert closed
-        assert closed[0] is not cached.async_client
 
     def test_labels__alias_and_queue(self):
         """Label the backend alias and queue, but never the limits."""
